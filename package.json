@@ -1,0 +1,11 @@
+{
+  "name": "pretupid-launcher",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "tauri": "tauri dev --config crates/tauri-app/tauri.conf.json"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  }
+}
