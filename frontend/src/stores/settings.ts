@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { getGlobalSettings } from '@/api'
 
 export type Theme = 'dark' | 'light'
 
@@ -12,6 +13,7 @@ interface SettingsState {
     default_java_path: string | null
     auto_install_java: boolean
     show_snapshots: boolean
+    auto_update_enabled: boolean
   }
 }
 
@@ -79,47 +81,58 @@ function applySettings(state: SettingsState) {
 
 const STORAGE_KEY = 'pretupid-settings'
 
-function loadSettings(): SettingsState {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  const base = {
+function defaultSettings(): SettingsState {
+  return {
     theme: 'dark',
-    accentColor: '#5a9eff',
+    accentColor: '#4a9eff',
     edgeRadius: 0,
     lastRoundedRadius: 8,
     globalSettings: {
-      default_java_path: null as string | null,
+      default_java_path: null,
       auto_install_java: true,
-      show_snapshots: false
+      show_snapshots: false,
+      auto_update_enabled: true
     }
   }
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored)
-      return {
-        theme: parsed.theme ?? base.theme,
-        accentColor: parsed.accentColor ?? base.accentColor,
-        edgeRadius: typeof parsed.edgeRadius === 'number' ? parsed.edgeRadius : base.edgeRadius,
-        lastRoundedRadius: typeof parsed.lastRoundedRadius === 'number' ? parsed.lastRoundedRadius : base.lastRoundedRadius,
-        globalSettings: {
-          default_java_path: parsed.globalSettings?.default_java_path ?? null,
-          auto_install_java: parsed.globalSettings?.auto_install_java ?? true,
-          show_snapshots: parsed.globalSettings?.show_snapshots ?? false
-        }
+}
+
+function loadSettingsFromStorage(): SettingsState {
+  const base = defaultSettings()
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (!stored) return base
+  try {
+    const parsed = JSON.parse(stored)
+    return {
+      theme: parsed.theme ?? base.theme,
+      accentColor: parsed.accentColor ?? base.accentColor,
+      edgeRadius: typeof parsed.edgeRadius === 'number' ? parsed.edgeRadius : base.edgeRadius,
+      lastRoundedRadius:
+        typeof parsed.lastRoundedRadius === 'number'
+          ? parsed.lastRoundedRadius
+          : base.lastRoundedRadius,
+      globalSettings: {
+        default_java_path: parsed.globalSettings?.default_java_path ?? null,
+        auto_install_java: parsed.globalSettings?.auto_install_java ?? true,
+        show_snapshots: parsed.globalSettings?.show_snapshots ?? false,
+        auto_update_enabled: parsed.globalSettings?.auto_update_enabled ?? true
       }
-    } catch {
-      return base
     }
+  } catch {
+    return base
   }
-  return base
 }
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref<SettingsState>(loadSettings())
+  const settings = ref<SettingsState>(loadSettingsFromStorage())
 
-  watch(settings, (newSettings) => {
-    applySettings(newSettings)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
-  }, { deep: true, immediate: true })
+  watch(
+    settings,
+    (newSettings) => {
+      applySettings(newSettings)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+    },
+    { deep: true, immediate: true }
+  )
 
   function setTheme(theme: Theme) {
     settings.value.theme = theme
@@ -143,28 +156,40 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function resetToDefaults() {
-    settings.value = {
-      theme: 'dark',
-      accentColor: '#5a9eff',
-      edgeRadius: 0,
-      lastRoundedRadius: 8,
-      globalSettings: {
-        default_java_path: null,
-        auto_install_java: true,
-        show_snapshots: false
-      }
-    }
+    settings.value = defaultSettings()
   }
 
-  function setGlobalSettings(value: { default_java_path: string | null; auto_install_java: boolean; show_snapshots: boolean }) {
+  function setGlobalSettings(value: {
+    default_java_path: string | null
+    auto_install_java: boolean
+    show_snapshots: boolean
+    auto_update_enabled: boolean
+  }) {
     settings.value.globalSettings = value
+  }
+
+  function loadLocalSettings() {
+    settings.value = loadSettingsFromStorage()
+  }
+
+  async function loadGlobalSettings() {
+    try {
+      const gs = await getGlobalSettings()
+      settings.value.globalSettings = {
+        ...settings.value.globalSettings,
+        ...gs
+      }
+    } catch (e) {
+      console.error('Failed to load global settings:', e)
+    }
   }
 
   function resetGlobalSettings() {
     settings.value.globalSettings = {
       default_java_path: null,
       auto_install_java: true,
-      show_snapshots: false
+      show_snapshots: false,
+      auto_update_enabled: true
     }
   }
 
@@ -175,6 +200,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setEdgeStyle,
     setEdgeRadius,
     setGlobalSettings,
+    loadLocalSettings,
+    loadGlobalSettings,
     resetGlobalSettings,
     resetToDefaults
   }

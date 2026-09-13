@@ -21,6 +21,8 @@ pub enum ModLoader {
     Forge,
     Fabric,
     Quilt,
+    NeoForge,
+    Modrinth,
 }
 
 impl Default for ModLoader {
@@ -72,4 +74,19 @@ impl Default for InstanceSettings {
             extra_game_args: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstanceMod {
+    pub id: String,
+    pub instance_id: String,
+    pub project_id: String,
+    pub project_type: String,
+    pub title: String,
+    pub icon_url: Option<String>,
+    pub version_id: Option<String>,
+    pub version_name: Option<String>,
+    pub file_url: Option<String>,
+    pub file_name: Option<String>,
+    pub created_at: String,
 }

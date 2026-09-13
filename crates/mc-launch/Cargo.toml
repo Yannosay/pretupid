@@ -7,6 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+uuid = { workspace = true }
 futures-util = "0.3"
 pretupid-core = { path = "../core" }
 serde = { workspace = true }

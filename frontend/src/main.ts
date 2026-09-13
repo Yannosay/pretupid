@@ -1,26 +1,64 @@
 import '@fontsource/press-start-2p'
 import '@fontsource/vt323'
 import './assets/styles/main.scss'
-import { createApp } from 'vue'
+import { createApp, type App as VueApp } from 'vue'
 import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import { listen } from '@tauri-apps/api/event'
-import { useAuthStore } from '@/stores/auth'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
-const app = createApp(App)
-const pinia = createPinia()
+const currentWindow = getCurrentWindow()
+const isTrayPanel = currentWindow.label === 'tray-panel'
 
-app.use(pinia)
-app.use(router)
+function installGlobalErrorHandler(app: VueApp) {
+  app.config.errorHandler = (err, _instance, info) => {
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack ?? '' : ''
+    console.error('[pretupid] Vue error:', message, info, stack)
+  }
+}
 
-const authStore = useAuthStore()
+if (isTrayPanel) {
+  const bootSplash = document.getElementById('boot-splash')
+  if (bootSplash) bootSplash.remove()
 
-await listen('auth-state', async () => {
-  console.log('Store listener fired')
-  await authStore.check()
-})
+  Promise.all([
+    import('./TrayPanel.vue'),
+    import('@/stores/settings')
+  ]).then(([{ default: TrayPanel }, { useSettingsStore }]) => {
+    const app = createApp(TrayPanel)
+    installGlobalErrorHandler(app)
+    app.use(createPinia())
 
-await authStore.check()
+    const settingsStore = useSettingsStore()
+    settingsStore.loadLocalSettings()
 
-app.mount('#app')
+    app.mount('#app')
+  })
+} else {
+  Promise.all([import('./App.vue'), import('./router')]).then(
+    ([{ default: App }, { default: router }]) => {
+      const app = createApp(App)
+      installGlobalErrorHandler(app)
+      app.use(createPinia())
+      app.use(router)
+      app.mount('#app')
+
+      const bootSplash = document.getElementById('boot-splash')
+      if (bootSplash) {
+        requestAnimationFrame(() => {
+          bootSplash.classList.add('boot-splash--hidden')
+          setTimeout(() => bootSplash.remove(), 400)
+        })
+      }
+
+      Promise.all([
+        import('@tauri-apps/api/event'),
+        import('@/stores/auth')
+      ]).then(([{ listen }, { useAuthStore }]) => {
+        const authStore = useAuthStore()
+        listen('auth-state', async () => {
+          await authStore.check()
+        })
+      })
+    }
+  )
+}

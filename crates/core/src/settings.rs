@@ -9,6 +9,12 @@ pub struct GlobalSettings {
     pub auto_install_java: bool,
     #[serde(default)]
     pub show_snapshots: bool,
+    #[serde(default = "default_auto_update_enabled")]
+    pub auto_update_enabled: bool,
+}
+
+fn default_auto_update_enabled() -> bool {
+    true
 }
 
 impl Default for GlobalSettings {
@@ -17,6 +23,7 @@ impl Default for GlobalSettings {
             default_java_path: None,
             auto_install_java: true,
             show_snapshots: false,
+            auto_update_enabled: true,
         }
     }
 }

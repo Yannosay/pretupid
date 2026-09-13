@@ -2,55 +2,89 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getAuthStatus, loginMicrosoft, logoutMicrosoft } from '@/api'
 
+const CACHE_KEY = 'pretupid-auth-cache'
+
+interface AuthProfile {
+  id: string
+  name: string
+}
+
+interface AuthCache {
+  authenticated: boolean
+  profile: AuthProfile | null
+}
+
+function readCache(): AuthCache | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as AuthCache
+    if (typeof parsed.authenticated !== 'boolean') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeCache(value: AuthCache) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(value))
+  } catch {
+    void 0
+  }
+}
+
+function clearCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY)
+  } catch {
+    void 0
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const authenticated = ref(false)
-  const profile = ref<{ id: string; name: string } | null>(null)
+  const cached = readCache()
+  const authenticated = ref<boolean>(cached?.authenticated ?? false)
+  const profile = ref<AuthProfile | null>(cached?.profile ?? null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
   async function check() {
-    console.log('check() called')
     loading.value = true
     error.value = null
     try {
       const status = await getAuthStatus()
-      console.log('getAuthStatus returned:', status)
       authenticated.value = status.authenticated
       profile.value = status.profile
-      console.log('State updated:', authenticated.value, profile.value)
+      writeCache({ authenticated: status.authenticated, profile: status.profile })
     } catch (e) {
       error.value = String(e)
-      console.error('check() error:', e)
     } finally {
       loading.value = false
     }
   }
 
   async function login() {
-    console.log('login() called')
     loading.value = true
     error.value = null
     try {
       await loginMicrosoft()
-      console.log('loginMicrosoft returned')
     } catch (e) {
       error.value = String(e)
-      console.error('login() error:', e)
       loading.value = false
     }
   }
 
   async function logout() {
-    console.log('logout() called')
     loading.value = true
     error.value = null
     try {
       await logoutMicrosoft()
       authenticated.value = false
       profile.value = null
+      clearCache()
     } catch (e) {
       error.value = String(e)
-      console.error('logout() error:', e)
     } finally {
       loading.value = false
     }

@@ -6,19 +6,17 @@
     </div>
 
     <nav class="sidebar__nav">
-      <RouterLink
-        to="/"
-        class="sidebar__nav-link"
-        :class="{ 'sidebar__nav-link--active': $route.name === 'home' }"
-      >
+      <RouterLink to="/" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
         Home
       </RouterLink>
-      <RouterLink
-        to="/library"
-        class="sidebar__nav-link"
-        :class="{ 'sidebar__nav-link--active': $route.name === 'library' }"
-      >
-        Library
+      <RouterLink to="/library" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
+        Instances
+      </RouterLink>
+      <RouterLink to="/profile" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
+        Profile
+      </RouterLink>
+      <RouterLink to="/modrinth" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
+        Modrinth Library
       </RouterLink>
     </nav>
 
@@ -26,21 +24,21 @@
       <div class="sidebar__auth">
         <div v-if="authStore.authenticated && authStore.profile" class="sidebar__profile">
           <span class="sidebar__profile-name">{{ authStore.profile.name }}</span>
-          <button class="btn btn--ghost sidebar__logout" @click="handleLogout">
+          <button class="btn btn--ghost btn--small sidebar__logout" @click="handleLogout">
             Logout
           </button>
         </div>
         <button
           v-else
-          class="btn sidebar__login"
+          class="btn btn--small sidebar__login"
           :disabled="authStore.loading"
-          @click="authStore.login"
+          @click="handleLogin"
         >
           {{ authStore.loading ? 'Logging in...' : 'Login with Microsoft' }}
         </button>
       </div>
 
-      <button class="btn btn--ghost sidebar__settings" @click="$emit('open-settings')">
+      <button class="btn btn--ghost sidebar__settings" @click.stop="$emit('open-settings')">
         Settings
       </button>
     </div>
@@ -50,27 +48,41 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
 defineEmits<{
   (e: 'open-settings'): void
 }>()
 
 const authStore = useAuthStore()
+const notifications = useNotificationsStore()
+
+async function handleLogin() {
+  try {
+    await authStore.login()
+  } catch (e) {
+    notifications.notifyError('Login failed', String(e))
+  }
+}
 
 async function handleLogout() {
   await authStore.logout()
   await authStore.check()
+  notifications.notifyInfo('Signed out', 'Your Microsoft account has been disconnected.')
 }
 </script>
 
 <style scoped lang="scss">
 .sidebar {
   width: 240px;
+  height: 100vh;
+  flex-shrink: 0;
   background-color: var(--bg-secondary);
   border-right: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
+  overflow-y: auto;
 }
 
 .sidebar__logo {
@@ -99,6 +111,7 @@ async function handleLogout() {
 }
 
 .sidebar__nav-link {
+  display: block;
   padding: 0.75rem 1rem;
   font-family: var(--font-pixel);
   font-size: 0.8rem;
@@ -109,6 +122,7 @@ async function handleLogout() {
   transition: background-color var(--transition-fast),
               border-color var(--transition-fast),
               color var(--transition-fast);
+  cursor: pointer;
 }
 
 .sidebar__nav-link:hover {
@@ -152,12 +166,12 @@ async function handleLogout() {
 
 .sidebar__login {
   width: 100%;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
 }
 
 .sidebar__logout {
   width: 100%;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
 }
 
 .sidebar__settings {

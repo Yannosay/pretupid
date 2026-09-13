@@ -1,7 +1,7 @@
 <template>
   <div class="library">
     <header class="library__header">
-      <h1 class="library__title">Library</h1>
+      <h1 class="library__title">Instances</h1>
       <button
         class="btn"
         :disabled="!authStore.authenticated || instanceStore.loading"
@@ -48,7 +48,8 @@
     </div>
 
     <CreateInstanceModal
-      v-model="createModalOpen"
+      v-if="createModalOpen"
+      @close="createModalOpen = false"
       @created="handleCreated"
     />
   </div>

@@ -1,5 +1,5 @@
 [package]
-name = "tauri-app"
+name = "pretupid"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -14,8 +14,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+zip = { version = "2", features = ["deflate"] }
 tracing-appender = { workspace = true }
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
+tauri-plugin-updater = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
@@ -26,3 +28,8 @@ uuid = { workspace = true }
 url = { workspace = true }
 pretupid-core = { path = "../core" }
 mc-launch = { path = "../mc-launch" }
+reqwest = { workspace = true }
+base64 = "0.22"
+chrono = { workspace = true }
+modrinth-client = { workspace = true }
+futures-util = "0.3"

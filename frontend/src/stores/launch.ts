@@ -9,98 +9,135 @@ export interface LaunchState {
   running: boolean
   pid: number | null
   exitCode: number | null
+  lastError: string | null
+}
+
+function createEmptyState(): LaunchState {
+  return {
+    progress: null,
+    logs: [],
+    running: false,
+    pid: null,
+    exitCode: null,
+    lastError: null
+  }
 }
 
 export const useLaunchStore = defineStore('launch', () => {
   const states = ref<Record<string, LaunchState>>({})
   const activeInstanceId = ref<string | null>(null)
   let listenersRegistered = false
+  let initPromise: Promise<void> | null = null
+
+  function ensureState(instanceId: string): LaunchState {
+    const existing = states.value[instanceId]
+    if (existing) return existing
+    const created = createEmptyState()
+    states.value = { ...states.value, [instanceId]: created }
+    return created
+  }
 
   function getState(instanceId: string): LaunchState {
-    if (!states.value[instanceId]) {
-      states.value[instanceId] = {
-        progress: null,
-        logs: [],
-        running: false,
-        pid: null,
-        exitCode: null
-      }
-    }
-    return states.value[instanceId]
+    return states.value[instanceId] ?? createEmptyState()
   }
 
-  function ensureState(instanceId: string) {
-    getState(instanceId)
-  }
-
-  async function initListeners() {
+  async function initListeners(): Promise<void> {
     if (listenersRegistered) return
-    listenersRegistered = true
+    if (initPromise) return initPromise
 
-    await listen<LaunchProgress>('launch://progress', (event) => {
-      const payload = event.payload as LaunchProgress
-      if (!payload.instance_id) return
-      const state = getState(payload.instance_id)
-      state.progress = {
-        instance_id: payload.instance_id,
-        current: payload.current,
-        total: payload.total,
-        message: payload.message
-      }
-      activeInstanceId.value = payload.instance_id
-    })
+    initPromise = (async () => {
+      await listen<LaunchProgress>('launch://progress', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id)
+        const current = states.value[payload.instance_id]
+        current.progress = {
+          instance_id: payload.instance_id,
+          current: payload.current,
+          total: payload.total,
+          message: payload.message
+        }
+        current.lastError = null
+        activeInstanceId.value = payload.instance_id
+      })
 
-    await listen<LaunchLog>('launch://log', (event) => {
-      const payload = event.payload as LaunchLog
-      if (!payload.instance_id) return
-      const state = getState(payload.instance_id)
-      state.logs.push(payload.line)
-      if (state.logs.length > 500) {
-        state.logs.shift()
-      }
-    })
+      await listen<LaunchLog>('launch://log', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id)
+        const current = states.value[payload.instance_id]
+        current.logs.push(payload.line)
+        if (current.logs.length > 500) {
+          current.logs.splice(0, current.logs.length - 500)
+        }
+      })
 
-    await listen<LaunchStarted>('launch://started', (event) => {
-      const payload = event.payload as LaunchStarted
-      if (!payload.instance_id) return
-      const state = getState(payload.instance_id)
-      state.running = true
-      state.pid = payload.pid
-      state.exitCode = null
-      activeInstanceId.value = payload.instance_id
-    })
+      await listen<LaunchStarted>('launch://started', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id)
+        const current = states.value[payload.instance_id]
+        current.running = true
+        current.pid = payload.pid
+        current.exitCode = null
+        current.lastError = null
+        activeInstanceId.value = payload.instance_id
+      })
 
-    await listen<LaunchExited>('launch://exited', (event) => {
-      const payload = event.payload as LaunchExited
-      if (!payload.instance_id) return
-      const state = getState(payload.instance_id)
-      state.running = false
-      state.pid = null
-      state.exitCode = payload.code
-      state.progress = null
-      if (activeInstanceId.value === payload.instance_id) {
-        activeInstanceId.value = null
-      }
-    })
+      await listen<{ instance_id: string; message: string }>(
+        'launch://failed',
+        (event) => {
+          const payload = event.payload
+          if (!payload?.instance_id) return
+          ensureState(payload.instance_id)
+          const current = states.value[payload.instance_id]
+          current.lastError = payload.message
+        }
+      )
+
+      await listen<LaunchExited>('launch://exited', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id)
+        const current = states.value[payload.instance_id]
+        current.running = false
+        current.pid = null
+        current.exitCode = payload.code
+        current.progress = null
+        if (activeInstanceId.value === payload.instance_id) {
+          activeInstanceId.value = null
+        }
+      })
+
+      listenersRegistered = true
+    })()
+
+    return initPromise
   }
 
   function reset(instanceId: string) {
-    const state = getState(instanceId)
-    state.progress = null
-    state.logs = []
-    state.running = false
-    state.pid = null
-    state.exitCode = null
+    ensureState(instanceId)
+    const current = states.value[instanceId]
+    current.progress = null
+    current.logs = []
+    current.running = false
+    current.pid = null
+    current.exitCode = null
+    current.lastError = null
   }
 
-  const activeState = computed(() => {
+  const activeState = computed<LaunchState | null>(() => {
     if (!activeInstanceId.value) return null
-    return getState(activeInstanceId.value)
+    return states.value[activeInstanceId.value] ?? null
   })
 
   const anyRunning = computed(() => {
-    return Object.values(states.value).some(s => s.running)
+    return Object.values(states.value).some((s) => s.running)
   })
+
+  function isRunning(instanceId: string): boolean {
+    return states.value[instanceId]?.running === true
+  }
 
   return {
     states,
@@ -110,6 +147,7 @@ export const useLaunchStore = defineStore('launch', () => {
     initListeners,
     reset,
     getState,
-    ensureState
+    ensureState,
+    isRunning
   }
 })

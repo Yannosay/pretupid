@@ -11,7 +11,6 @@ use uuid::Uuid;
 use crate::error::{CoreError, CoreResult};
 use super::models::{AuthTokens, MinecraftProfile};
 
-
 const MICROSOFT_AUTH_URL: &str = "https://login.live.com/oauth20_authorize.srf";
 const MICROSOFT_TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
 const XBOX_LIVE_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate";
@@ -246,25 +245,13 @@ impl OAuthClient {
     }
 
     async fn save_profile_to_db(&self, profile: &MinecraftProfile) -> CoreResult<()> {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS auth_profile (id TEXT PRIMARY KEY, name TEXT NOT NULL)",
-        )
-        .execute(&self.pool)
-        .await?;
+        self.ensure_tables().await?;
 
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS auth_tokens (access_token TEXT NOT NULL, refresh_token TEXT NOT NULL, expires_at INTEGER NOT NULL)",
-        )
-        .execute(&self.pool)
-        .await?;
-
-        sqlx::query(
-            "INSERT OR REPLACE INTO auth_profile (id, name) VALUES (?, ?)",
-        )
-        .bind(&profile.id)
-        .bind(&profile.name)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT OR REPLACE INTO auth_profile (id, name) VALUES (?, ?)")
+            .bind(&profile.id)
+            .bind(&profile.name)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -385,7 +372,7 @@ impl OAuthClient {
             .await
             .map_err(|e| CoreError::Storage(format!("failed to parse token response: {e}")))?;
 
-        let (minecraft_token, _minecraft_profile) = self
+        let (minecraft_token, minecraft_profile) = self
             .authenticate_minecraft(&parsed.access_token)
             .await?;
 
@@ -396,8 +383,39 @@ impl OAuthClient {
         };
 
         self.save_tokens_to_db(&tokens).await?;
+        self.save_profile_to_db(&minecraft_profile).await?;
 
         Ok(tokens)
+    }
+
+    pub async fn ensure_valid_token(&self) -> CoreResult<AuthTokens> {
+        let tokens = self.get_tokens().await?;
+
+        let response = self
+            .http
+            .get(MINECRAFT_PROFILE_URL)
+            .bearer_auth(&tokens.access_token)
+            .send()
+            .await
+            .map_err(|e| CoreError::Storage(format!("profile validation failed: {e}")))?;
+
+        if response.status().is_success() {
+            if self.get_profile().await?.is_none() {
+                let profile = self.fetch_minecraft_profile(&tokens.access_token).await?;
+                self.save_profile_to_db(&profile).await?;
+            }
+            return Ok(tokens);
+        }
+
+        if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+            let refreshed = self.refresh().await?;
+            return Ok(refreshed);
+        }
+
+        Err(CoreError::Storage(format!(
+            "failed to validate Minecraft token: {}",
+            response.status()
+        )))
     }
 
     pub async fn logout(&self) -> CoreResult<()> {
@@ -444,22 +462,12 @@ impl OAuthClient {
         &self,
         microsoft_token: &str,
     ) -> CoreResult<(String, MinecraftProfile)> {
-        let xbox_token = self
-            .authenticate_xbox_live(microsoft_token)
-            .await?;
-
-        let xsts_result = self
-            .authenticate_xsts(&xbox_token)
-            .await?;
-
+        let xbox_token = self.authenticate_xbox_live(microsoft_token).await?;
+        let xsts_result = self.authenticate_xsts(&xbox_token).await?;
         let minecraft_token = self
             .authenticate_minecraft_with_xsts(&xsts_result.token, &xsts_result.uhs)
             .await?;
-
-        let profile = self
-            .fetch_minecraft_profile(&minecraft_token)
-            .await?;
-
+        let profile = self.fetch_minecraft_profile(&minecraft_token).await?;
         Ok((minecraft_token, profile))
     }
 
@@ -547,9 +555,7 @@ impl OAuthClient {
         let response = self
             .http
             .post(MINECRAFT_AUTH_URL)
-            .json(&MinecraftAuthRequest {
-                identity_token,
-            })
+            .json(&MinecraftAuthRequest { identity_token })
             .send()
             .await
             .map_err(|e| CoreError::Storage(format!("Minecraft auth failed: {e}")))?;

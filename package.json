@@ -1,7 +1,8 @@
 {
   "name": "pretupid-launcher",
   "private": true,
-  "version": "0.0.1",
+  "license": "AGPL-3.0",
+  "version": "0.0.1-alpha",
   "scripts": {
     "tauri": "tauri dev --config crates/tauri-app/tauri.conf.json"
   },

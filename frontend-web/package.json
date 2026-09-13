@@ -1,0 +1,23 @@
+{
+  "name": "pretupid-launcher-website",
+  "version": "0.0.1-alpha",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "generate": "nuxt generate",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "^3.13.0",
+    "sass": "^1.77.8",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.3",
+    "wrangler": "^4.131.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0"
+  }
+}

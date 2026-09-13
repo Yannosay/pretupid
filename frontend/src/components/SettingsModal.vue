@@ -93,15 +93,23 @@
         <section class="modal__section">
           <h3>Minecraft Versions</h3>
           <label class="settings-checkbox">
-            <input
-              v-model="showSnapshots"
-              type="checkbox"
-              class="settings-checkbox__input"
-              @change="saveJavaSettings"
-            />
+            <input v-model="showSnapshots" type="checkbox" class="settings-checkbox__input" />
             <span class="settings-checkbox__box" aria-hidden="true"></span>
             <span class="settings-checkbox__label">Show non-release versions</span>
           </label>
+        </section>
+
+        <section class="modal__section">
+          <h3>Updates</h3>
+          <label class="settings-checkbox">
+            <input v-model="autoUpdate" type="checkbox" class="settings-checkbox__input" />
+            <span class="settings-checkbox__box" aria-hidden="true"></span>
+            <span class="settings-checkbox__label">Automatically check for updates</span>
+          </label>
+
+          <button class="btn btn--ghost btn--small" :disabled="updaterStore.checking" @click="checkForUpdates">
+            {{ updaterStore.checking ? 'Checking...' : 'Check for Updates' }}
+          </button>
         </section>
 
         <section class="modal__section">
@@ -110,15 +118,8 @@
             <div class="form-group">
               <label class="form-label">Default Java Path</label>
               <div class="java-path-row">
-                <input
-                  v-model="javaPath"
-                  class="input"
-                  placeholder="Auto-detect"
-                  @change="saveJavaSettings"
-                />
-                <button class="btn btn--ghost" @click="resetJavaPath">
-                  Reset
-                </button>
+                <input v-model="javaPath" class="input" placeholder="Auto-detect" @change="saveJavaSettings" />
+                <button class="btn btn--ghost btn--small" @click="resetJavaPath">Reset</button>
               </div>
             </div>
             <label class="settings-checkbox">
@@ -135,10 +136,13 @@
         </section>
 
         <section class="modal__section">
-          <button class="btn btn--danger" @click="resetSettings">
-            Reset to Defaults
-          </button>
+          <button class="btn btn--danger" @click="resetSettings">Reset to Defaults</button>
         </section>
+
+        <footer v-if="appInfo" class="modal__footer">
+          <span class="modal__footer-text">{{ appInfo.name }}</span>
+          <span class="modal__footer-version">v{{ appInfo.version }}</span>
+        </footer>
       </div>
     </div>
   </div>
@@ -146,7 +150,9 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from '@/stores/settings'
-import { getGlobalSettings, saveGlobalSettings } from '@/api'
+import { getGlobalSettings, saveGlobalSettings, getAppInfo } from '@/api'
+import { useUpdaterStore } from '@/stores/updater'
+import { useNotificationsStore } from '@/stores/notifications'
 import { computed, ref, onMounted } from 'vue'
 
 const props = defineProps<{
@@ -158,15 +164,39 @@ const emit = defineEmits<{
 }>()
 
 const settingsStore = useSettingsStore()
+const updaterStore = useUpdaterStore()
+const notifications = useNotificationsStore()
 const settings = computed(() => settingsStore.settings)
 
 const presetColors = ['#ffffff', '#4aff9e', '#5a9eff', '#ff9eb5', '#b47aff']
 
-const edgeStyle = computed(() => settings.value.edgeRadius === 0 ? 'blocky' : 'rounded')
+const edgeStyle = computed(() => (settings.value.edgeRadius === 0 ? 'blocky' : 'rounded'))
 
 const cornerRadius = computed(() => {
   const radius = settings.value.edgeRadius
   return radius === 0 ? settings.value.lastRoundedRadius : radius
+})
+
+const showSnapshots = computed({
+  get: () => settings.value.globalSettings.show_snapshots,
+  set: (value: boolean) => {
+    settingsStore.setGlobalSettings({
+      ...settings.value.globalSettings,
+      show_snapshots: value
+    })
+    saveJavaSettings()
+  }
+})
+
+const autoUpdate = computed({
+  get: () => settings.value.globalSettings.auto_update_enabled,
+  set: (value: boolean) => {
+    settingsStore.setGlobalSettings({
+      ...settings.value.globalSettings,
+      auto_update_enabled: value
+    })
+    saveJavaSettings()
+  }
 })
 
 function setEdgeStyle(style: 'blocky' | 'rounded') {
@@ -178,15 +208,23 @@ function updateCornerRadius(value: string) {
 }
 
 const javaPath = ref<string>('')
+const appInfo = ref<{ name: string; version: string } | null>(null)
 const autoInstallJava = ref(true)
-const showSnapshots = ref(false)
 
 onMounted(async () => {
   try {
+    appInfo.value = await getAppInfo()
     const gs = await getGlobalSettings()
     javaPath.value = gs.default_java_path ?? ''
     autoInstallJava.value = gs.auto_install_java
-    showSnapshots.value = gs.show_snapshots
+
+    settingsStore.setGlobalSettings({
+      ...settings.value.globalSettings,
+      show_snapshots: gs.show_snapshots,
+      default_java_path: gs.default_java_path,
+      auto_install_java: gs.auto_install_java,
+      auto_update_enabled: gs.auto_update_enabled ?? true
+    })
   } catch (e) {
     console.error(e)
   }
@@ -194,14 +232,21 @@ onMounted(async () => {
 
 async function saveJavaSettings() {
   try {
-    await saveGlobalSettings({
+    const globalSettings = {
       default_java_path: javaPath.value.trim() || null,
       auto_install_java: autoInstallJava.value,
-      show_snapshots: showSnapshots.value
-    })
+      show_snapshots: settings.value.globalSettings.show_snapshots,
+      auto_update_enabled: settings.value.globalSettings.auto_update_enabled
+    }
+    await saveGlobalSettings(globalSettings)
+    settingsStore.setGlobalSettings(globalSettings)
   } catch (e) {
-    console.error(e)
+    notifications.notifyError('Failed to save settings', String(e))
   }
+}
+
+function checkForUpdates() {
+  updaterStore.checkForUpdates(true)
 }
 
 function resetJavaPath() {
@@ -213,26 +258,24 @@ function resetSettings() {
   settingsStore.resetToDefaults()
   javaPath.value = ''
   autoInstallJava.value = true
-  showSnapshots.value = false
   saveJavaSettings()
+  notifications.notifyInfo('Settings reset', 'Defaults have been restored.')
 }
 
 function close() {
   emit('update:modelValue', false)
 }
 </script>
+
 <style scoped lang="scss">
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2500;
 }
 
 .modal {
@@ -241,39 +284,36 @@ function close() {
   border-radius: var(--edge-radius);
   width: 90%;
   max-width: 560px;
-  max-height: 80vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  overflow: hidden;
 }
 
 .modal__header {
-  position: sticky;
-  top: -1.5rem;
-  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: -1.5rem -1.5rem 1.5rem -1.5rem;
-  padding: 1.5rem;
-  background-color: var(--bg-secondary);
+  padding: 1.25rem 1.5rem;
   border-bottom: 2px solid var(--border-color);
-  border-radius: var(--edge-radius) var(--edge-radius) 0 0;
+  background-color: var(--bg-tertiary);
 }
 
 .modal__title {
-  font-size: 1.5rem;
+  font-family: var(--font-pixel);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .modal__close {
-  font-size: 2rem;
+  font-size: 1.75rem;
   line-height: 1;
   color: var(--text-secondary);
   transition: color var(--transition-fast);
   cursor: pointer;
   border: none;
   background: none;
-  padding: 0.25rem 0.5rem;
 }
 
 .modal__close:hover {
@@ -285,7 +325,7 @@ function close() {
   flex-direction: column;
   gap: 1.25rem;
   overflow-y: auto;
-  padding-right: 0.25rem;
+  padding: 1.5rem;
 }
 
 .modal__section {
@@ -295,17 +335,25 @@ function close() {
 }
 
 .modal__section h3 {
-  font-size: 1rem;
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  text-transform: uppercase;
   margin: 0;
 }
 
-.theme-toggle {
+.theme-toggle,
+.corner-toggle {
   display: flex;
   gap: 0.5rem;
 }
 
-.theme-toggle__btn {
+.theme-toggle__btn,
+.corner-toggle__btn {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
   padding: 0.75rem;
   font-family: var(--font-body);
   font-size: 1rem;
@@ -314,11 +362,11 @@ function close() {
   border-radius: var(--edge-radius);
   color: var(--text-primary);
   cursor: pointer;
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.theme-toggle__btn--active {
+.theme-toggle__btn--active,
+.corner-toggle__btn--active {
   background-color: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
@@ -336,8 +384,7 @@ function close() {
   border-radius: var(--edge-radius);
   border: 2px solid var(--border-color);
   cursor: pointer;
-  transition: transform var(--transition-fast),
-              border-color var(--transition-fast);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
 
 .color-preset--selected {
@@ -356,34 +403,6 @@ function close() {
   height: 36px;
   border: none;
   cursor: pointer;
-}
-
-.corner-toggle {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.corner-toggle__btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast);
-}
-
-.corner-toggle__btn--active {
-  background-color: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-text);
 }
 
 .corner-toggle__icon {
@@ -436,21 +455,10 @@ function close() {
 }
 
 .form-label {
-  display: block;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   color: var(--text-secondary);
-}
-
-.input {
-  padding: 0.75rem;
-  background-color: var(--bg-primary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 1rem;
 }
 
 .java-settings {
@@ -497,8 +505,7 @@ function close() {
   background-color: var(--bg-tertiary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast);
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
   flex-shrink: 0;
 }
 
@@ -511,8 +518,7 @@ function close() {
   height: 20px;
   background-color: var(--text-secondary);
   border-radius: var(--edge-radius);
-  transition: transform var(--transition-fast),
-              background-color var(--transition-fast);
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
 }
 
 .settings-checkbox__input:checked + .settings-checkbox__box {
@@ -525,35 +531,26 @@ function close() {
   background-color: var(--accent-text);
 }
 
-.settings-checkbox__label {
-  color: var(--text-primary);
+.modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--border-color);
 }
 
-.btn {
-  padding: 0.75rem 1.25rem;
+.modal__footer-text {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast);
+  color: var(--text-secondary);
 }
 
-.btn:hover {
-  border-color: var(--accent);
-}
-
-.btn--ghost {
-  background-color: transparent;
-}
-
-.btn--danger {
-  background-color: #e74c3c;
-  border-color: #c0392b;
-  color: white;
+.modal__footer-version {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 </style>

@@ -1,0 +1,27 @@
+@use '../_mixins' as *;
+
+.card {
+  @include card-base;
+
+  &:hover {
+    @include block-shadow(var(--shadow-color));
+    transform: translate(-2px, -2px);
+  }
+
+  &.card--interactive {
+    cursor: pointer;
+  }
+
+  .card__header {
+    margin-bottom: 1rem;
+  }
+
+  .card__title {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .card__content {
+    color: var(--text-secondary);
+  }
+}
