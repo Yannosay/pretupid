@@ -5,8 +5,7 @@ use std::str::FromStr;
 use crate::error::CoreResult;
 
 pub async fn create_pool(database_path: &str) -> CoreResult<SqlitePool> {
-    let options = SqliteConnectOptions::from_str(database_path)?
-        .create_if_missing(true);
+    let options = SqliteConnectOptions::from_str(database_path)?.create_if_missing(true);
 
     let pool = SqlitePoolOptions::new()
         .max_connections(5)

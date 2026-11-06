@@ -1,13 +1,17 @@
 use std::path::{Path, PathBuf};
 
 use futures_util::StreamExt;
+use sha2::{Digest, Sha256};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
 use tokio::sync::watch;
 
 use crate::error::LaunchError;
 use crate::launcher::LaunchEvent;
+use crate::process;
 use crate::LaunchResult;
+
+const JAVA_EXE: &str = if cfg!(windows) { "java.exe" } else { "java" };
 
 pub struct JavaRuntime;
 
@@ -79,13 +83,16 @@ impl JavaRuntime {
         let mut candidates = Vec::new();
 
         if let Ok(java_home) = std::env::var("JAVA_HOME") {
-            let exe = PathBuf::from(&java_home).join("bin").join("java.exe");
+            let exe = PathBuf::from(&java_home).join("bin").join(JAVA_EXE);
             if exe.exists() {
                 candidates.push(exe);
             }
         }
 
-        if let Ok(output) = std::process::Command::new("where").arg("java").output() {
+        if let Ok(output) = process::std_command(if cfg!(windows) { "where" } else { "which" })
+            .arg("java")
+            .output()
+        {
             if output.status.success() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 for line in stdout.lines() {
@@ -107,7 +114,7 @@ impl JavaRuntime {
         for root in roots {
             if let Ok(entries) = std::fs::read_dir(root) {
                 for entry in entries.flatten() {
-                    let exe = entry.path().join("bin").join("java.exe");
+                    let exe = entry.path().join("bin").join(JAVA_EXE);
                     if exe.exists() {
                         candidates.push(exe);
                     }
@@ -117,26 +124,22 @@ impl JavaRuntime {
 
         candidates.dedup();
 
-        for candidate in candidates {
-            if Self::java_matches_major(&candidate, major_version) {
-                return Some(candidate);
-            }
-        }
+        candidates
+            .into_iter()
+            .find(|candidate| Self::java_matches_major(candidate, major_version))
+    }
 
-        None
+    pub fn java_major(java_exe: &Path) -> Option<u32> {
+        let output = process::std_command(java_exe)
+            .arg("-version")
+            .output()
+            .ok()?;
+        let version_text = String::from_utf8_lossy(&output.stderr).to_string();
+        Self::parse_java_major(&version_text)
     }
 
     fn java_matches_major(java_exe: &Path, major_version: u32) -> bool {
-        let output = match std::process::Command::new(java_exe)
-            .arg("-version")
-            .output()
-        {
-            Ok(o) => o,
-            Err(_) => return false,
-        };
-
-        let version_text = String::from_utf8_lossy(&output.stderr).to_string();
-        Self::parse_java_major(&version_text) == Some(major_version)
+        Self::java_major(java_exe) == Some(major_version)
     }
 
     fn parse_java_major(version_text: &str) -> Option<u32> {
@@ -180,19 +183,22 @@ impl JavaRuntime {
             major_version, arch, os
         );
 
-        let response = reqwest::get(&api_url)
+        let response = crate::download::http_client()?
+            .get(&api_url)
+            .send()
             .await
             .map_err(|e| LaunchError::Network(e.to_string()))?
             .json::<serde_json::Value>()
             .await
             .map_err(|e| LaunchError::Parse(e.to_string()))?;
 
-        let assets = response.as_array().ok_or_else(|| {
-            LaunchError::Parse("invalid Adoptium API response".to_string())
-        })?;
+        let assets = response
+            .as_array()
+            .ok_or_else(|| LaunchError::Parse("invalid Adoptium API response".to_string()))?;
 
         let mut download_url: Option<String> = None;
         let mut package_name: Option<String> = None;
+        let mut package_checksum: Option<String> = None;
 
         for asset in assets {
             let binary = asset.get("binary").and_then(|b| b.as_object());
@@ -203,6 +209,10 @@ impl JavaRuntime {
                             if let Some(name) = package.get("name").and_then(|v| v.as_str()) {
                                 download_url = Some(link.to_string());
                                 package_name = Some(name.to_string());
+                                package_checksum = package
+                                    .get("checksum")
+                                    .and_then(|v| v.as_str())
+                                    .map(|v| v.to_lowercase());
                                 break;
                             }
                         }
@@ -211,10 +221,15 @@ impl JavaRuntime {
             }
         }
 
-        let download_url = download_url.ok_or_else(|| {
-            LaunchError::NotFound("no compatible Java runtime found".to_string())
-        })?;
+        let download_url = download_url
+            .ok_or_else(|| LaunchError::NotFound("no compatible Java runtime found".to_string()))?;
         let package_name = package_name.unwrap_or_else(|| "java.zip".to_string());
+        if package_name.contains('/') || package_name.contains('\\') || package_name.contains("..")
+        {
+            return Err(LaunchError::Parse(
+                "unexpected Java package name".to_string(),
+            ));
+        }
 
         event_tx
             .send(LaunchEvent::Log {
@@ -222,7 +237,9 @@ impl JavaRuntime {
             })
             .ok();
 
-        let response = reqwest::get(&download_url)
+        let response = crate::download::http_client()?
+            .get(&download_url)
+            .send()
             .await
             .map_err(|e| LaunchError::Network(e.to_string()))?;
 
@@ -242,6 +259,7 @@ impl JavaRuntime {
 
         let mut stream = response.bytes_stream();
         let mut downloaded: u64 = 0;
+        let mut hasher = Sha256::new();
 
         loop {
             tokio::select! {
@@ -255,6 +273,7 @@ impl JavaRuntime {
                     match chunk {
                         Some(Ok(bytes)) => {
                             downloaded += bytes.len() as u64;
+                            hasher.update(&bytes);
                             file.write_all(&bytes)
                                 .await
                                 .map_err(|e| LaunchError::Io(e.to_string()))?;
@@ -288,6 +307,17 @@ impl JavaRuntime {
             )));
         }
 
+        if let Some(expected) = package_checksum {
+            let actual = format!("{:x}", hasher.finalize());
+            if actual != expected {
+                let _ = tokio::fs::remove_file(&archive_path).await;
+                return Err(LaunchError::Integrity(format!(
+                    "Java download checksum mismatch (expected {}, got {})",
+                    expected, actual
+                )));
+            }
+        }
+
         if package_name.ends_with(".zip") {
             event_tx
                 .send(LaunchEvent::Log {
@@ -308,8 +338,7 @@ impl JavaRuntime {
     }
 
     fn extract_zip(archive_path: &Path, destination: &Path) -> LaunchResult<()> {
-        let file = std::fs::File::open(archive_path)
-            .map_err(|e| LaunchError::Io(e.to_string()))?;
+        let file = std::fs::File::open(archive_path).map_err(|e| LaunchError::Io(e.to_string()))?;
 
         let mut archive = zip::ZipArchive::new(file)
             .map_err(|e| LaunchError::Parse(format!("invalid zip archive: {}", e)))?;
@@ -325,21 +354,18 @@ impl JavaRuntime {
             };
 
             if file.is_dir() {
-                std::fs::create_dir_all(&out_path)
-                    .map_err(|e| LaunchError::Io(e.to_string()))?;
+                std::fs::create_dir_all(&out_path).map_err(|e| LaunchError::Io(e.to_string()))?;
                 continue;
             }
 
             if let Some(parent) = out_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| LaunchError::Io(e.to_string()))?;
+                std::fs::create_dir_all(parent).map_err(|e| LaunchError::Io(e.to_string()))?;
             }
 
-            let mut out_file = std::fs::File::create(&out_path)
-                .map_err(|e| LaunchError::Io(e.to_string()))?;
+            let mut out_file =
+                std::fs::File::create(&out_path).map_err(|e| LaunchError::Io(e.to_string()))?;
 
-            std::io::copy(&mut file, &mut out_file)
-                .map_err(|e| LaunchError::Io(e.to_string()))?;
+            std::io::copy(&mut file, &mut out_file).map_err(|e| LaunchError::Io(e.to_string()))?;
         }
 
         Ok(())
@@ -357,10 +383,10 @@ impl JavaRuntime {
                     continue;
                 }
 
-                if path.file_name().and_then(|n| n.to_str()) == Some("java.exe") {
-                    if Self::java_matches_major(&path, major_version) {
-                        return Some(path);
-                    }
+                if path.file_name().and_then(|n| n.to_str()) == Some(JAVA_EXE)
+                    && Self::java_matches_major(&path, major_version)
+                {
+                    return Some(path);
                 }
             }
         }
@@ -369,32 +395,32 @@ impl JavaRuntime {
     }
 
     pub fn detect() -> Result<PathBuf, LaunchError> {
-        let java_home = std::env::var("JAVA_HOME")
-            .ok()
-            .map(PathBuf::from);
+        let java_home = std::env::var("JAVA_HOME").ok().map(PathBuf::from);
 
         if let Some(home) = java_home {
-            let exe = home.join("bin").join("java.exe");
+            let exe = home.join("bin").join(JAVA_EXE);
             if exe.exists() {
                 return Ok(exe);
             }
         }
 
-        let output = std::process::Command::new("where")
+        let output = process::std_command(if cfg!(windows) { "where" } else { "which" })
             .arg("java")
             .output()
             .map_err(|e| LaunchError::Io(e.to_string()))?;
 
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let first = stdout.lines().next().ok_or_else(|| {
-                LaunchError::NotFound("java not found".to_string())
-            })?;
+            let first = stdout
+                .lines()
+                .next()
+                .ok_or_else(|| LaunchError::NotFound("java not found".to_string()))?;
             return Ok(PathBuf::from(first.trim()));
         }
 
         Err(LaunchError::NotFound(
-            "Java runtime not found. Install a compatible Java version or enable auto-install.".to_string(),
+            "Java runtime not found. Install a compatible Java version or enable auto-install."
+                .to_string(),
         ))
     }
 }

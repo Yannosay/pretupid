@@ -1,9 +1,12 @@
 mod commands;
+mod crash;
+mod deep_link;
 mod state;
 mod tray;
 
 use state::AppState;
 use tauri::Manager;
+use tauri_plugin_deep_link::DeepLinkExt;
 use tracing_subscriber::prelude::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -27,6 +30,8 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
             let meta_dir = base_dir.join("meta");
             let profiles_dir = base_dir.join("profiles");
@@ -47,14 +52,9 @@ pub fn run() {
             let setup_caches = caches_dir.clone();
 
             let state = tauri::async_runtime::block_on(async move {
-                AppState::new(
-                    &database_path_str,
-                    setup_meta,
-                    setup_profiles,
-                    setup_caches,
-                )
-                .await
-                .expect("failed to initialize app state")
+                AppState::new(&database_path_str, setup_meta, setup_profiles, setup_caches)
+                    .await
+                    .expect("failed to initialize app state")
             });
             app.manage(state);
 
@@ -66,6 +66,26 @@ pub fn run() {
 
             if let Err(err) = tray::build_tray(&handle) {
                 tracing::warn!("failed to build tray icon: {err}");
+            }
+
+            #[cfg(any(windows, target_os = "linux"))]
+            {
+                if let Err(err) = app.deep_link().register_all() {
+                    tracing::warn!("failed to register deep link scheme: {err}");
+                }
+            }
+
+            let handle_for_urls = handle.clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    deep_link::handle_url(&handle_for_urls, url.as_str());
+                }
+            });
+
+            if let Ok(Some(urls)) = app.deep_link().get_current() {
+                for url in urls {
+                    deep_link::handle_url(&handle, url.as_str());
+                }
             }
 
             Ok(())
@@ -80,12 +100,22 @@ pub fn run() {
             commands::instances::get_instance,
             commands::instances::update_instance,
             commands::instances::delete_instance,
+            commands::instances::duplicate_instance,
             commands::instances::save_instance_settings,
             commands::instances::get_instance_settings,
-            commands::instances::list_instance_mods,
-            commands::instances::add_instance_mod,
-            commands::instances::remove_instance_mod,
-            commands::instances::create_instance_from_modpack,
+            commands::instances::open_instance_folder,
+            commands::instances::repair_instance_mods,
+            commands::instances::get_system_info,
+            commands::content::list_instance_mods,
+            commands::content::add_instance_mod,
+            commands::content::remove_instance_mod,
+            commands::content::set_instance_mod_enabled,
+            commands::content::check_instance_updates,
+            commands::content::update_instance_mods,
+            commands::content::import_instance_files,
+            commands::modpack::create_instance_from_modpack,
+            commands::modpack::import_modpack_file,
+            commands::modpack::export_instance_modpack,
             commands::profile::list_skin_slots,
             commands::profile::save_skin_slot,
             commands::profile::delete_skin_slot,
@@ -94,11 +124,14 @@ pub fn run() {
             commands::profile::import_skin_from_url,
             commands::profile::apply_skin_slot,
             commands::profile::export_skin_slot,
+            commands::profile::export_skin_slot_to_downloads,
             commands::profile::reorder_skin_slots,
             commands::profile::get_current_skin,
             commands::launch::fetch_versions,
             commands::launch::launch_instance,
+            commands::launch::prepare_instance,
             commands::launch::cancel_launch,
+            commands::launch::list_running_instances,
             commands::settings::get_global_settings,
             commands::settings::save_global_settings,
             commands::modrinth::search_modrinth,
@@ -107,6 +140,8 @@ pub fn run() {
             commands::modrinth::get_modrinth_categories,
             commands::modrinth::get_modrinth_loaders,
             commands::modrinth::get_modrinth_game_versions,
+            commands::version_resolver::get_loader_versions,
+            commands::deep_link::take_pending_deep_links,
             commands::tray::hide_tray_panel,
             commands::tray::open_main_window,
             commands::tray::request_launch_from_tray,
@@ -121,13 +156,11 @@ fn get_base_dir() -> std::path::PathBuf {
         std::path::PathBuf::from(std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string()))
             .join("PretupidLauncher")
     } else {
-        std::path::PathBuf::from(
-            std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
-                std::env::var("HOME")
-                    .map(|h| format!("{}/.local/share", h))
-                    .unwrap_or_else(|_| ".".to_string())
-            }),
-        )
+        std::path::PathBuf::from(std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
+            std::env::var("HOME")
+                .map(|h| format!("{}/.local/share", h))
+                .unwrap_or_else(|_| ".".to_string())
+        }))
         .join("pretupid-launcher")
     }
 }

@@ -1,44 +1,61 @@
 <template>
   <aside class="sidebar">
-    <div class="sidebar__logo">
-      <img src="@/assets/branding/ptd_logo_main.webp" alt="Pretupid Launcher" />
+    <RouterLink to="/" class="sidebar__logo" aria-label="Pretupid Launcher home">
+      <img src="@/assets/branding/ptd_logo_main.webp" alt="" />
       <span class="sidebar__logo-text">Pretupid</span>
-    </div>
+    </RouterLink>
 
-    <nav class="sidebar__nav">
-      <RouterLink to="/" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
-        Home
-      </RouterLink>
-      <RouterLink to="/library" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
-        Instances
-      </RouterLink>
-      <RouterLink to="/profile" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
-        Profile
-      </RouterLink>
-      <RouterLink to="/modrinth" class="sidebar__nav-link" active-class="sidebar__nav-link--active">
-        Modrinth Library
+    <nav class="sidebar__nav" aria-label="Main">
+      <RouterLink
+        v-for="item in items"
+        :key="item.to"
+        :to="item.to"
+        class="sidebar__link"
+        :class="{ 'sidebar__link--active': isActive(item.to) }"
+      >
+        <AppIcon :name="item.icon" :size="18" />
+        <span class="sidebar__link-text">
+          <span class="sidebar__link-label">{{ item.label }}</span>
+          <span class="sidebar__link-hint">{{ item.hint }}</span>
+        </span>
       </RouterLink>
     </nav>
 
+    <RouterLink
+      v-if="playing"
+      :to="{ name: 'instance-detail', params: { id: playing.id } }"
+      class="sidebar__playing"
+    >
+      <span class="sidebar__playing-dot" />
+      <span class="sidebar__playing-text">
+        <span class="sidebar__playing-label">Now playing</span>
+        <span class="sidebar__playing-name">{{ playing.name }}</span>
+      </span>
+    </RouterLink>
+
     <div class="sidebar__bottom">
-      <div class="sidebar__auth">
-        <div v-if="authStore.authenticated && authStore.profile" class="sidebar__profile">
-          <span class="sidebar__profile-name">{{ authStore.profile.name }}</span>
-          <button class="btn btn--ghost btn--small sidebar__logout" @click="handleLogout">
-            Logout
-          </button>
+      <div v-if="authStore.authenticated && authStore.profile" class="sidebar__account">
+        <img
+          class="sidebar__avatar"
+          :src="`https://mc-heads.net/avatar/${authStore.profile.id}/64`"
+          alt=""
+          loading="lazy"
+        />
+        <div class="sidebar__account-meta">
+          <span class="sidebar__account-name">{{ authStore.profile.name }}</span>
+          <span class="sidebar__account-type">Microsoft account</span>
         </div>
-        <button
-          v-else
-          class="btn btn--small sidebar__login"
-          :disabled="authStore.loading"
-          @click="handleLogin"
-        >
-          {{ authStore.loading ? 'Logging in...' : 'Login with Microsoft' }}
+        <button class="icon-btn icon-btn--small" title="Sign out" aria-label="Sign out" @click="handleLogout">
+          <AppIcon name="logout" :size="16" />
         </button>
       </div>
+      <button v-else class="btn btn--small btn--block" :disabled="authStore.loading" @click="handleLogin">
+        <AppIcon name="login" :size="14" />
+        {{ authStore.loading ? 'Signing in' : 'Sign in' }}
+      </button>
 
-      <button class="btn btn--ghost sidebar__settings" @click.stop="$emit('open-settings')">
+      <button class="sidebar__settings" @click.stop="$emit('open-settings')">
+        <AppIcon name="settings" :size="16" />
         Settings
       </button>
     </div>
@@ -46,22 +63,49 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useLaunchStore } from '@/stores/launch'
+import { useInstanceStore } from '@/stores/instances'
 
-defineEmits<{
-  (e: 'open-settings'): void
-}>()
+defineEmits<{ (e: 'open-settings'): void }>()
 
 const authStore = useAuthStore()
 const notifications = useNotificationsStore()
+const launchStore = useLaunchStore()
+const instanceStore = useInstanceStore()
+const route = useRoute()
+
+const items: { to: string; label: string; hint: string; icon: IconName }[] = [
+  { to: '/', label: 'Home', hint: 'Jump back in', icon: 'home' },
+  { to: '/library', label: 'Library', hint: 'Your instances', icon: 'library' },
+  { to: '/browse', label: 'Browse', hint: 'Mods & modpacks', icon: 'compass' },
+  { to: '/profile', label: 'Skins', hint: 'Look & profile', icon: 'user' }
+]
+
+function isActive(path: string): boolean {
+  if (path === '/') return route.path === '/'
+  if (path === '/library') return route.path.startsWith('/library') || route.path.startsWith('/instance')
+  return route.path.startsWith(path)
+}
+
+const playing = computed(() => {
+  for (const [id, state] of Object.entries(launchStore.states)) {
+    if (state.running) {
+      return { id, name: instanceStore.byId(id)?.name ?? 'Minecraft' }
+    }
+  }
+  return null
+})
 
 async function handleLogin() {
   try {
     await authStore.login()
   } catch (e) {
-    notifications.notifyError('Login failed', String(e))
+    notifications.notifyError('Sign-in failed', String(e))
   }
 }
 
@@ -74,65 +118,129 @@ async function handleLogout() {
 
 <style scoped lang="scss">
 .sidebar {
-  width: 240px;
+  width: 232px;
   height: 100vh;
   flex-shrink: 0;
-  background-color: var(--bg-secondary);
-  border-right: 2px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 1rem;
+  gap: 1rem;
+  padding: 1.25rem 0.85rem;
   overflow-y: auto;
+  background-color: var(--bg-secondary);
+  border-right: 2px solid var(--border-color);
 }
 
 .sidebar__logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 2rem;
-}
+  padding: 0 0.35rem 0.5rem;
+  color: inherit;
+  text-decoration: none;
 
-.sidebar__logo img {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--edge-radius);
+  img {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--edge-radius);
+  }
 }
 
 .sidebar__logo-text {
   font-family: var(--font-pixel);
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   color: var(--accent);
 }
 
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
 }
 
-.sidebar__nav-link {
-  display: block;
-  padding: 0.75rem 1rem;
-  font-family: var(--font-pixel);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  color: var(--text-primary);
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.75rem;
+  color: var(--text-secondary);
+  text-decoration: none;
   border: 2px solid transparent;
   border-radius: var(--edge-radius);
-  transition: background-color var(--transition-fast),
-              border-color var(--transition-fast),
-              color var(--transition-fast);
-  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+  }
 }
 
-.sidebar__nav-link:hover {
+.sidebar__link--active {
+  color: var(--text-primary);
   background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+
+  .app-icon {
+    color: var(--accent);
+  }
 }
 
-.sidebar__nav-link--active {
-  background-color: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
+.sidebar__link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.sidebar__link-label {
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.sidebar__link-hint {
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.sidebar__playing {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  color: inherit;
+  text-decoration: none;
+  background-color: var(--bg-tertiary);
+  border: 2px solid #2ecc71;
+  border-radius: var(--edge-radius);
+}
+
+.sidebar__playing-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  background-color: #2ecc71;
+  animation: sidebar-pulse 1.4s ease-in-out infinite;
+}
+
+.sidebar__playing-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar__playing-label {
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  color: #2ecc71;
+}
+
+.sidebar__playing-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .sidebar__bottom {
@@ -142,39 +250,71 @@ async function handleLogout() {
   gap: 0.5rem;
 }
 
-.sidebar__auth {
+.sidebar__account {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.sidebar__profile {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem;
   background-color: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
-.sidebar__profile-name {
+.sidebar__avatar {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  border-radius: var(--edge-radius);
+}
+
+.sidebar__account-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sidebar__account-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  color: var(--accent);
-  word-break: break-all;
-}
-
-.sidebar__login {
-  width: 100%;
-  font-size: 0.6rem;
-}
-
-.sidebar__logout {
-  width: 100%;
   font-size: 0.55rem;
+  color: var(--accent);
+}
+
+.sidebar__account-type {
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-secondary);
 }
 
 .sidebar__settings {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   width: 100%;
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--edge-radius);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+  }
+}
+
+@keyframes sidebar-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 </style>

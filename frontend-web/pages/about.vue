@@ -1,71 +1,189 @@
 <template>
   <div class="about-page">
-    <h1 class="about-page__title">About Pretupid Launcher</h1>
-    <section class="about-page__section">
-      <h2>Our Mission</h2>
+    <header class="about-page__header">
+      <span class="about-page__eyebrow">Behind the project</span>
+      <h1 class="about-page__title">About Pretupid Launcher</h1>
+      <p class="about-page__subtitle">
+        A launcher built by a Minecraft player who got tired of waiting.
+      </p>
+    </header>
+
+    <section class="about-page__card">
+      <h2 class="about-page__card-title">Our mission</h2>
       <p>
-        Pretupid Launcher is a modern Minecraft launcher focused on performance, customization, and a clean user experience.
-        It is built with Tauri, Rust, Vue 3, and SQLite to deliver a lightweight and secure desktop application.
+        Pretupid Launcher exists because modern Minecraft launchers are slow, bloated, or both.
+        The goal is simple: a fast, reliable launcher that respects your time and your machine,
+        and stays out of the way while you play.
       </p>
       <p>
-        Created by Yannosay Productions, Pretupid Launcher is licensed under the GNU 2.0 license.
+        It is built with Tauri 2, Rust, Vue 3, and SQLite, and released as open source under the
+        GNU Affero General Public License v3.0.
       </p>
     </section>
-    <section class="about-page__section">
-      <h2>Technology Stack</h2>
-      <ul>
-        <li>Tauri 2 — Lightweight desktop shell</li>
-        <li>Rust — Backend performance and safety</li>
-        <li>Vue 3 — Reactive frontend</li>
-        <li>SQLite — Local data storage</li>
-        <li>Modrinth API — Mod and modpack integration</li>
+
+    <section class="about-page__card">
+      <h2 class="about-page__card-title">Technology</h2>
+      <ul class="about-page__list">
+        <li><span class="about-page__bullet"></span><strong>Tauri 2</strong> for a lightweight desktop shell that uses the OS WebView.</li>
+        <li><span class="about-page__bullet"></span><strong>Rust</strong> for the launch pipeline, download orchestration, and version resolution.</li>
+        <li><span class="about-page__bullet"></span><strong>Vue 3 and Pinia</strong> for the reactive interface and state management.</li>
+        <li><span class="about-page__bullet"></span><strong>SQLite</strong> via sqlx for local persistence with zero external dependencies.</li>
+        <li><span class="about-page__bullet"></span><strong>Modrinth API</strong> for mod, modpack, and metadata integration.</li>
       </ul>
     </section>
-    <section class="about-page__section">
-      <h2>License</h2>
+
+    <section class="about-page__card">
+      <h2 class="about-page__card-title">License</h2>
       <p>
-        Pretupid Launcher is open source under the GNU General Public License version 2.0.
-        You are free to use, modify, and distribute it under the terms of the license.
+        Pretupid Launcher is licensed under the GNU Affero General Public License version 3.0.
+        You may use, modify, and redistribute it under the terms of that license. Contributions
+        are welcome.
       </p>
+    </section>
+
+    <section class="about-page__cta">
+      <p class="about-page__cta-text">Curious what it looks like in action?</p>
+      <div class="about-page__cta-actions">
+        <NuxtLink to="/download" class="btn">Download</NuxtLink>
+        <button type="button" class="btn btn--secondary" @click="openLauncher">
+          Open Launcher
+        </button>
+      </div>
     </section>
   </div>
 </template>
 
-<style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+<script setup lang="ts">
+import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
-.about-page__title {
-  font-family: var(--font-pixel);
-  font-size: 2.5rem;
-  text-align: center;
-  margin-bottom: 2rem;
-  text-transform: uppercase;
+const { openLauncher } = useLauncherBridge()
+</script>
+
+<style scoped lang="scss">
+@use 'design-system/mixins' as *;
+
+.about-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 780px;
+  margin: 0 auto;
 }
 
-.about-page__section {
+.about-page__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+}
+
+.about-page__eyebrow {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
   background-color: var(--bg-secondary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 0.4rem 0.8rem;
 }
 
-.about-page__section h2 {
+.about-page__title {
   font-family: var(--font-pixel);
-  font-size: 1.3rem;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
   text-transform: uppercase;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
-.about-page__section p,
-.about-page__section li {
-  font-size: 1.1rem;
+.about-page__subtitle {
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.about-page__card {
+  padding: 1.75rem;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.about-page__card-title {
+  font-family: var(--font-pixel);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  margin: 0 0 1rem;
+}
+
+.about-page__card p {
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+}
+
+.about-page__card p:last-child {
+  margin-bottom: 0;
+}
+
+.about-page__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.about-page__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 1.15rem;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
-.about-page__section ul {
-  list-style: square;
-  padding-left: 1.5rem;
+.about-page__bullet {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  margin-top: 0.6rem;
+  background-color: var(--accent);
+  border-radius: var(--edge-radius);
+}
+
+.about-page__list strong {
+  color: var(--text-primary);
+}
+
+.about-page__cta {
+  padding: 2rem;
+  background-color: var(--bg-secondary);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--edge-radius);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.about-page__cta-text {
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.about-page__cta-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 </style>

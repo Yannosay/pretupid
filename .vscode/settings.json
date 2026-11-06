@@ -1,0 +1,52 @@
+{
+  "rust-analyzer.linkedProjects": [
+    "Cargo.toml",
+    "crates/core/Cargo.toml",
+    "crates/mc-launch/Cargo.toml",
+    "crates/modrinth-client/Cargo.toml",
+    "crates/tauri-app/Cargo.toml"
+  ],
+  "rust-analyzer.cargo.features": "all",
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--workspace", "--all-targets"],
+  "rust-analyzer.files.excludeDirs": ["target", "node_modules"],
+  "files.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/dist": true
+  },
+  "search.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/dist": true,
+    "**/Cargo.lock": true,
+    "**/package-lock.json": true
+  },
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {},
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "files.associations": {
+    "*.vue": "vue",
+    "*.scss": "scss"
+  },
+  "typescript.tsdk": "frontend/node_modules/typescript/lib"
+}

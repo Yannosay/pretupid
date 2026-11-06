@@ -20,7 +20,10 @@ pub async fn login_microsoft(app: AppHandle, state: State<'_, AppState>) -> Resu
         .inner_size(480.0, 640.0)
         .resizable(false)
         .on_navigation(move |url| {
-            if url.as_str().starts_with("https://login.live.com/oauth20_desktop.srf") {
+            if url
+                .as_str()
+                .starts_with("https://login.live.com/oauth20_desktop.srf")
+            {
                 let parsed = match Url::parse(url.as_str()) {
                     Ok(p) => p,
                     Err(e) => {
@@ -29,7 +32,11 @@ pub async fn login_microsoft(app: AppHandle, state: State<'_, AppState>) -> Resu
                     }
                 };
 
-                let code = match parsed.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v.to_string()) {
+                let code = match parsed
+                    .query_pairs()
+                    .find(|(k, _)| k == "code")
+                    .map(|(_, v)| v.to_string())
+                {
                     Some(c) => c,
                     None => {
                         tracing::error!("No code in redirect");
@@ -37,7 +44,11 @@ pub async fn login_microsoft(app: AppHandle, state: State<'_, AppState>) -> Resu
                     }
                 };
 
-                let state = match parsed.query_pairs().find(|(k, _)| k == "state").map(|(_, v)| v.to_string()) {
+                let state = match parsed
+                    .query_pairs()
+                    .find(|(k, _)| k == "state")
+                    .map(|(_, v)| v.to_string())
+                {
                     Some(s) => s,
                     None => {
                         tracing::error!("No state in redirect");
@@ -82,7 +93,9 @@ pub async fn logout_microsoft(app: AppHandle, state: State<'_, AppState>) -> Res
 }
 
 #[tauri::command]
-pub async fn get_auth_status(state: State<'_, AppState>) -> Result<pretupid_core::auth::models::AuthStatus, String> {
+pub async fn get_auth_status(
+    state: State<'_, AppState>,
+) -> Result<pretupid_core::auth::models::AuthStatus, String> {
     let oauth = OAuthClient::new(state.pool.clone());
     oauth.get_status().await.map_err(|e| e.to_string())
 }

@@ -1,8 +1,13 @@
 pub mod app_info;
 pub mod auth;
+pub mod content;
+pub mod deep_link;
 pub mod instances;
 pub mod launch;
+pub mod modpack;
 pub mod modrinth;
 pub mod profile;
 pub mod settings;
 pub mod tray;
+pub mod util;
+pub mod version_resolver;

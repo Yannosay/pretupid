@@ -1,10 +1,28 @@
 {
   "name": "pretupid-launcher",
   "private": true,
-  "license": "AGPL-3.0",
-  "version": "0.0.1-alpha",
+  "version": "0.0.1",
+  "description": "Pretupid Launcher — Tauri 2, Rust, Vue 3 monorepo",
+  "type": "module",
   "scripts": {
-    "tauri": "tauri dev --config crates/tauri-app/tauri.conf.json"
+    "sync-version": "node scripts/sync-version.mjs",
+    "tauri": "tauri dev --config crates/tauri-app/tauri.conf.json",
+    "tauri:build": "npm run sync-version && tauri build --config crates/tauri-app/tauri.conf.json",
+    "dev:desktop": "npm run dev --prefix frontend",
+    "dev:web": "npm run dev --prefix frontend-web",
+    "build:desktop": "npm run build --prefix frontend",
+    "build:web": "npm run build --prefix frontend-web",
+    "install:all": "npm install --prefix frontend && npm install --prefix frontend-web",
+    "check:rust": "cargo check --workspace",
+    "check:frontend": "npm run build --prefix frontend",
+    "check:web": "npm run build --prefix frontend-web",
+    "check": "npm run check:rust && npm run check:frontend",
+    "clean:rust": "cargo clean",
+    "clean:frontend": "Remove-Item -Recurse -Force frontend/dist -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force frontend/node_modules -ErrorAction SilentlyContinue",
+    "clean:web": "Remove-Item -Recurse -Force frontend-web/.output -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force frontend-web/.nuxt -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force frontend-web/node_modules -ErrorAction SilentlyContinue",
+    "format:rust": "cargo fmt --all",
+    "lint:rust": "cargo clippy --workspace -- -D warnings",
+    "release:prepare": "npm run sync-version"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4"

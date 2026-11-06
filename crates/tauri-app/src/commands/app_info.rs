@@ -10,8 +10,15 @@ pub struct AppInfo {
 pub fn get_app_info(app: AppHandle) -> AppInfo {
     let package_info = app.package_info();
 
+    let name = env!("CARGO_PKG_NAME");
+    let workspace_name = if name == "pretupid" {
+        "Pretupid Launcher".to_string()
+    } else {
+        package_info.name.clone()
+    };
+
     AppInfo {
-        name: package_info.name.clone(),
-        version: package_info.version.to_string(),
+        name: workspace_name,
+        version: env!("CARGO_PKG_VERSION").to_string(),
     }
 }

@@ -1,603 +1,459 @@
 <template>
-  <div class="instance-detail">
-    <header class="instance-detail__header">
-      <button class="btn btn--ghost btn--small" @click="goBack">← Back</button>
-      <h1 class="instance-detail__title">{{ instance?.name || 'Loading...' }}</h1>
-      <div class="instance-detail__actions">
-        <button
-          v-if="!launchState.running"
-          class="btn"
-          :disabled="!instance || launching || (launchStore.anyRunning && !launchState.running)"
-          @click="handleLaunch"
-        >
-          {{ launching ? 'Preparing...' : 'Launch' }}
-        </button>
-        <button v-else class="btn btn--warning" @click="handleCancelLaunch">Stop Game</button>
-        <button class="btn btn--danger btn--small" :disabled="!instance" @click="deleteConfirmOpen = true">
-          Delete
-        </button>
-      </div>
-    </header>
+  <div class="instance-view">
+    <RouterLink to="/library" class="instance-view__back">
+      <AppIcon name="back" :size="14" />
+      Library
+    </RouterLink>
 
-    <div v-if="error" class="detail-error">
-      <span>{{ error }}</span>
-      <button class="btn btn--ghost btn--small" @click="copyError">Copy</button>
-    </div>
+    <div v-if="loadError" class="form-error form-error--block">{{ loadError }}</div>
 
-    <div v-if="saveMessage" class="save-message">{{ saveMessage }}</div>
-
-    <div v-if="deleteConfirmOpen" class="delete-confirm">
-      <p>Are you sure you want to delete "{{ instance?.name }}"? This cannot be undone.</p>
-      <div class="delete-confirm__actions">
-        <button class="btn btn--danger" @click="handleDelete">Delete</button>
-        <button class="btn btn--ghost" @click="deleteConfirmOpen = false">Cancel</button>
-      </div>
-    </div>
-
-    <div v-if="instance" class="instance-detail__body">
-      <section class="instance-detail__section">
-        <h3 class="instance-detail__heading">Settings</h3>
-        <div class="settings-grid">
-          <div class="form-group">
-            <label class="form-label">Memory Min (MB)</label>
-            <input v-model.number="settings.memory_min_mb" type="number" class="input" min="256" step="128" />
+    <template v-if="instance">
+      <header class="instance-view__header">
+        <InstanceIcon :instance="instance" :size="84" />
+        <div class="instance-view__heading">
+          <h1 class="instance-view__title" :title="instance.name">{{ instance.name }}</h1>
+          <div class="instance-view__tags">
+            <span class="badge">Minecraft {{ instance.minecraft_version }}</span>
+            <span class="badge" :class="instance.mod_loader === 'vanilla' ? '' : 'badge--accent'">
+              {{ instance.loader_version ? `${loaderLabel(instance.mod_loader)} ${instance.loader_version}` : loaderLabel(instance.mod_loader) }}
+            </span>
+            <span v-if="instance.group_name" class="badge">{{ instance.group_name }}</span>
           </div>
-          <div class="form-group">
-            <label class="form-label">Memory Max (MB)</label>
-            <input v-model.number="settings.memory_max_mb" type="number" class="input" min="512" step="128" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Width</label>
-            <input v-model.number="settings.resolution_width" type="number" class="input" min="800" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Height</label>
-            <input v-model.number="settings.resolution_height" type="number" class="input" min="600" />
-          </div>
-          <div class="form-group form-group--checkbox">
-            <label class="form-label">Fullscreen</label>
-            <label class="checkbox-label">
-              <input v-model="settings.fullscreen" type="checkbox" class="checkbox" />
-              <span>{{ settings.fullscreen ? 'Enabled' : 'Disabled' }}</span>
-            </label>
-          </div>
+          <p class="instance-view__meta">
+            <span><AppIcon name="clock" :size="12" /> {{ formatPlaytime(instance.playtime_seconds) }}</span>
+            <span>Last played {{ formatRelative(instance.last_played) }}</span>
+          </p>
         </div>
-        <button class="btn btn--secondary" @click="saveSettings">Save Settings</button>
-      </section>
-
-      <section v-if="instance.mod_loader !== 'vanilla'" class="instance-detail__section">
-        <div class="instance-detail__section-header">
-          <h3 class="instance-detail__heading">Installed Mods</h3>
-          <span class="instance-detail__badge">{{ mods.length }}</span>
-        </div>
-
-        <div v-if="modsLoading" class="pixel-loader">
-          Loading Mods
-          <span class="pixel-loader__dots">
-            <span class="pixel-loader__dot"></span>
-            <span class="pixel-loader__dot"></span>
-            <span class="pixel-loader__dot"></span>
-          </span>
-        </div>
-
-        <div v-else-if="mods.length === 0" class="empty">
-          <p class="empty__title">No mods installed</p>
-          <p class="empty__hint">Browse the Modrinth library to add mods to this instance.</p>
-          <RouterLink to="/modrinth" class="btn btn--small">Open Modrinth</RouterLink>
-        </div>
-
-        <ul v-else class="mod-list">
-          <li v-for="mod in mods" :key="mod.id" class="mod-item">
-            <div class="mod-item__icon">
-              <img v-if="mod.icon_url" :src="mod.icon_url" :alt="mod.title" />
-              <span v-else class="mod-item__placeholder">?</span>
-            </div>
-            <div class="mod-item__body">
-              <span class="mod-item__title">{{ mod.title }}</span>
-              <span class="mod-item__meta">
-                {{ mod.version_name || 'latest' }} · {{ mod.project_type }}
-              </span>
-            </div>
-            <button
-              class="btn btn--danger btn--small"
-              :disabled="removingModId === mod.id"
-              @click="removeMod(mod.id)"
-            >
-              {{ removingModId === mod.id ? 'Removing...' : 'Remove' }}
+        <div class="instance-view__actions">
+          <PlayButton :instance-id="instance.id" size="large" />
+          <button class="icon-btn" title="Open folder" aria-label="Open instance folder" @click="openFolder()">
+            <AppIcon name="folder" :size="18" />
+          </button>
+          <div class="instance-view__menu-anchor">
+            <button class="icon-btn" aria-label="More actions" title="More actions" @click.stop="menuOpen = !menuOpen">
+              <AppIcon name="more" :size="18" />
             </button>
+            <div v-if="menuOpen" class="menu instance-view__menu" @click.stop>
+              <button class="menu__item" :disabled="locked" @click="runMenu(downloadNow)">
+                <AppIcon name="download" :size="14" />Download game files now
+              </button>
+              <button class="menu__item" :disabled="locked" @click="runMenu(repair)">
+                <AppIcon name="wrench" :size="14" />Repair files
+              </button>
+              <button class="menu__item" :disabled="locked" @click="runMenu(exportPack)">
+                <AppIcon name="upload" :size="14" />Export as .mrpack
+              </button>
+              <button class="menu__item" :disabled="locked" @click="runMenu(duplicate)">
+                <AppIcon name="copy" :size="14" />Duplicate
+              </button>
+              <div class="menu__divider" />
+              <button class="menu__item" @click="runMenu(() => openFolder('mods'))"><AppIcon name="folder" :size="14" />Mods folder</button>
+              <button class="menu__item" @click="runMenu(() => openFolder('saves'))"><AppIcon name="folder" :size="14" />Worlds folder</button>
+              <button class="menu__item" @click="runMenu(() => openFolder('screenshots'))"><AppIcon name="image" :size="14" />Screenshots</button>
+              <div class="menu__divider" />
+              <button class="menu__item menu__item--danger" :disabled="locked" @click="runMenu(() => (confirmDelete = true))">
+                <AppIcon name="trash" :size="14" />Delete instance
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div v-if="installState" class="panel panel--compact" :class="installState.status === 'error' ? 'panel--danger' : 'panel--accent'">
+        <div class="instance-view__banner">
+          <span class="badge" :class="installState.status === 'error' ? 'badge--danger' : 'badge--accent'">
+            {{ installs.statusLabel(installState.status) }}
+          </span>
+          <span>{{ installState.message }}</span>
+        </div>
+        <div v-if="installing" class="progress-bar progress-bar--indeterminate instance-view__banner-bar">
+          <div class="progress-bar__fill" />
+        </div>
+      </div>
+
+      <div v-if="state.lastError && !state.busy" class="panel panel--compact panel--danger instance-view__error">
+        <AppIcon name="alert" :size="16" />
+        <span>{{ state.lastError }}</span>
+        <button class="icon-btn icon-btn--small" aria-label="Dismiss" @click="state.lastError = null">
+          <AppIcon name="x" :size="14" />
+        </button>
+      </div>
+
+      <div v-if="repairReport" class="panel panel--compact" :class="repairReport.failed.length ? 'panel--danger' : 'panel--success'">
+        <div class="instance-view__banner">
+          <span>
+            Repair finished: {{ repairReport.repaired }} fixed, {{ repairReport.healthy }} already fine
+            <template v-if="repairReport.failed.length">, {{ repairReport.failed.length }} could not be fixed</template>.
+          </span>
+          <button class="icon-btn icon-btn--small" aria-label="Dismiss" @click="repairReport = null">
+            <AppIcon name="x" :size="14" />
+          </button>
+        </div>
+        <ul v-if="repairReport.failed.length" class="instance-view__failures">
+          <li v-for="failure in repairReport.failed" :key="failure.title + failure.file_name">
+            <strong>{{ failure.title }}</strong> — {{ failure.reason }}
           </li>
         </ul>
-      </section>
+      </div>
 
-      <section v-if="launchState.progress" class="instance-detail__section">
-        <h3 class="instance-detail__heading">Progress</h3>
-        <div class="progress-bar">
-          <div class="progress-bar__fill" :style="{ width: progressPercent + '%' }" />
-        </div>
-        <p class="text-secondary">{{ progressPercent }}% — {{ launchState.progress.message }}</p>
-      </section>
+      <nav class="tabs" role="tablist">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          class="tabs__tab"
+          :class="{ 'tabs__tab--active': activeTab === tab.id }"
+          role="tab"
+          :aria-selected="activeTab === tab.id"
+          @click="setTab(tab.id)"
+        >
+          <AppIcon :name="tab.icon" :size="14" />
+          {{ tab.label }}
+          <span v-if="tab.id === 'content' && contentCount !== null" class="tabs__count">{{ contentCount }}</span>
+          <span v-if="tab.id === 'console' && state.running" class="instance-view__live" />
+        </button>
+      </nav>
 
-      <section v-if="launchState.logs.length > 0" class="instance-detail__section">
-        <div class="instance-detail__section-header">
-          <h3 class="instance-detail__heading">Console</h3>
-          <button class="btn btn--ghost btn--small" @click="copyConsole">Copy</button>
-        </div>
-        <div class="console">
-          <div v-for="(line, i) in launchState.logs" :key="i" class="console__line">{{ line }}</div>
-        </div>
-      </section>
+      <InstanceContentTab
+        v-if="activeTab === 'content'"
+        :instance="instance"
+        :locked="locked"
+        @count="contentCount = $event"
+      />
+      <InstanceSettingsTab v-else-if="activeTab === 'settings'" :instance="instance" @updated="instance = $event" />
+      <InstanceConsoleTab v-else :instance-id="instance.id" />
+    </template>
 
-      <section v-if="launchState.exitCode !== null" class="instance-detail__section">
-        <h3 class="instance-detail__heading">Game Exited</h3>
-        <p class="text-secondary">Exit code: {{ launchState.exitCode }}</p>
-      </section>
+    <div v-else-if="!loadError" class="pixel-loader">
+      Loading
+      <span class="pixel-loader__dots"><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /></span>
     </div>
+
+    <ConfirmDialog
+      v-if="confirmDelete && instance"
+      title="Delete instance"
+      :message="`Delete “${instance.name}” with all its worlds, mods and settings? This cannot be undone.`"
+      confirm-label="Delete"
+      danger
+      :busy="deleting"
+      @cancel="confirmDelete = false"
+      @confirm="handleDelete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import {
-  getInstance,
-  getInstanceSettings,
-  saveInstanceSettings,
-  launchInstance,
-  cancelLaunch,
-  getGlobalSettings,
-  deleteInstance,
-  removeInstanceMod,
-  listInstanceMods
-} from '@/api'
+import AppIcon, { type IconName } from '@/components/AppIcon.vue'
+import InstanceIcon from '@/components/InstanceIcon.vue'
+import PlayButton from '@/components/PlayButton.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import InstanceContentTab from '@/components/instance/InstanceContentTab.vue'
+import InstanceSettingsTab from '@/components/instance/InstanceSettingsTab.vue'
+import InstanceConsoleTab from '@/components/instance/InstanceConsoleTab.vue'
+import { exportInstanceModpack, getInstance, openInstanceFolder, repairInstanceMods, type RepairReport } from '@/api'
 import { useLaunchStore } from '@/stores/launch'
-import { useAuthStore } from '@/stores/auth'
+import { useInstallsStore } from '@/stores/installs'
+import { useInstanceStore } from '@/stores/instances'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { Instance, LaunchSettings, InstanceMod } from '@/types'
+import { formatPlaytime, formatRelative, loaderLabel } from '@/utils/format'
+import type { Instance } from '@/types'
+
+type TabId = 'content' | 'settings' | 'console'
 
 const route = useRoute()
 const router = useRouter()
 const launchStore = useLaunchStore()
-const authStore = useAuthStore()
+const installs = useInstallsStore()
+const instanceStore = useInstanceStore()
 const notifications = useNotificationsStore()
 
 const instance = ref<Instance | null>(null)
-const mods = ref<InstanceMod[]>([])
-const modsLoading = ref(false)
-const removingModId = ref<string | null>(null)
-const settings = ref<LaunchSettings>({
-  memory_min_mb: 512,
-  memory_max_mb: 4096,
-  resolution_width: 1280,
-  resolution_height: 720,
-  fullscreen: false,
-  java_path: null,
-  auto_install_java: true,
-  extra_jvm_args: [],
-  extra_game_args: []
-})
-const launching = ref(false)
-const error = ref<string | null>(null)
-const saveMessage = ref<string | null>(null)
-const deleteConfirmOpen = ref(false)
+const loadError = ref<string | null>(null)
+const menuOpen = ref(false)
+const confirmDelete = ref(false)
+const deleting = ref(false)
+const repairReport = ref<RepairReport | null>(null)
+const contentCount = ref<number | null>(null)
+const working = ref(false)
 
-const instanceId = computed(() => instance.value?.id || '')
+const tabs: { id: TabId; label: string; icon: IconName }[] = [
+  { id: 'content', label: 'Content', icon: 'puzzle' },
+  { id: 'settings', label: 'Settings', icon: 'sliders' },
+  { id: 'console', label: 'Console', icon: 'terminal' }
+]
 
-const launchState = computed(() => {
-  if (!instanceId.value) {
-    return { progress: null, logs: [], running: false, pid: null, exitCode: null }
-  }
-  return launchStore.getState(instanceId.value)
-})
-
-const progressPercent = computed(() => {
-  if (!launchState.value.progress || launchState.value.progress.total === 0) return 0
-  return Math.round(
-    (launchState.value.progress.current / launchState.value.progress.total) * 100
-  )
-})
-
-async function loadMods() {
-  if (!instance.value || instance.value.mod_loader === 'vanilla') {
-    mods.value = []
-    return
-  }
-  modsLoading.value = true
-  try {
-    mods.value = await listInstanceMods(instance.value.id)
-  } catch (e) {
-    error.value = String(e)
-  } finally {
-    modsLoading.value = false
-  }
+function readTab(): TabId {
+  const tab = route.query.tab
+  return tab === 'settings' || tab === 'console' ? tab : 'content'
 }
 
-async function removeMod(modId: string) {
-  if (!instance.value) return
-  removingModId.value = modId
-  try {
-    await removeInstanceMod(modId)
-    mods.value = mods.value.filter((m) => m.id !== modId)
-    notifications.notifySuccess('Mod removed', 'The mod was removed from this instance.')
-  } catch (e) {
-    error.value = String(e)
-    notifications.notifyError('Failed to remove mod', String(e))
-  } finally {
-    removingModId.value = null
-  }
+const activeTab = ref<TabId>(readTab())
+
+launchStore.ensureState(String(route.params.id))
+const state = computed(() => launchStore.getState(String(route.params.id)))
+const installState = computed(() => (instance.value ? installs.getState(instance.value.id) : null))
+const installing = computed(() => (instance.value ? installs.isInstalling(instance.value.id) : false))
+const locked = computed(() => working.value || installing.value || state.value.busy)
+
+function setTab(tab: TabId) {
+  activeTab.value = tab
+  router.replace({ query: { ...route.query, tab } }).catch(() => void 0)
 }
-
-onMounted(async () => {
-  await launchStore.initListeners()
-  try {
-    const id = route.params.id as string
-    instance.value = await getInstance(id)
-    if (instance.value) {
-      launchStore.ensureState(id)
-      const loadedSettings = await getInstanceSettings(id)
-      settings.value = { ...loadedSettings, auto_install_java: true }
-      const gs = await getGlobalSettings()
-      settings.value.auto_install_java = gs.auto_install_java
-      if (loadedSettings.java_path) {
-        settings.value.java_path = loadedSettings.java_path
-      } else if (gs.default_java_path) {
-        settings.value.java_path = gs.default_java_path
-      }
-      if (launchStore.getState(id).running) {
-        launching.value = true
-      }
-      await loadMods()
-    }
-  } catch (e) {
-    error.value = String(e)
-  }
-})
-
-watch(instanceId, (newId) => {
-  launching.value = false
-  if (newId && launchStore.getState(newId).running) {
-    launching.value = true
-  }
-})
 
 watch(
-  () => launchState.value.running,
-  (isRunning) => {
-    launching.value = isRunning
+  () => state.value.running,
+  (running) => {
+    if (!running) refresh().catch(() => void 0)
   }
 )
 
-function goBack() {
-  router.push({ name: 'library' })
+watch(
+  () => state.value.crash,
+  (crash) => {
+    if (crash) activeTab.value = 'console'
+  }
+)
+
+async function refresh() {
+  const id = String(route.params.id)
+  const loaded = await getInstance(id)
+  if (!loaded) {
+    loadError.value = 'This instance no longer exists.'
+    instance.value = null
+    return
+  }
+  instance.value = loaded
 }
 
-async function saveSettings() {
+function runMenu(action: () => unknown) {
+  menuOpen.value = false
+  action()
+}
+
+function closeMenu() {
+  menuOpen.value = false
+}
+
+async function openFolder(folder?: string) {
   if (!instance.value) return
-  error.value = null
-  saveMessage.value = null
   try {
-    await saveInstanceSettings(instance.value.id, settings.value)
-    saveMessage.value = 'Settings saved.'
-    setTimeout(() => {
-      saveMessage.value = null
-    }, 2500)
+    await openInstanceFolder(instance.value.id, folder)
   } catch (e) {
-    error.value = String(e)
+    notifications.notifyError('Could not open folder', String(e))
+  }
+}
+
+async function downloadNow() {
+  if (!instance.value) return
+  try {
+    await launchStore.prepare(instance.value.id)
+    notifications.notifySuccess('Ready to play', `${instance.value.name} is fully downloaded.`)
+  } catch (e) {
+    notifications.notifyError('Download failed', String(e))
+  }
+}
+
+async function repair() {
+  if (!instance.value) return
+  working.value = true
+  repairReport.value = null
+  try {
+    repairReport.value = await repairInstanceMods(instance.value.id)
+    working.value = false
+    await launchStore.prepare(instance.value.id, true)
+    notifications.notifySuccess('Repair complete', 'Game files and content were verified.')
+  } catch (e) {
+    notifications.notifyError('Repair failed', String(e))
+  } finally {
+    working.value = false
+  }
+}
+
+async function exportPack() {
+  if (!instance.value) return
+  working.value = true
+  try {
+    const path = await exportInstanceModpack(instance.value.id)
+    notifications.notifySuccess('Exported', `Saved to ${path}`)
+  } catch (e) {
+    notifications.notifyError('Export failed', String(e))
+  } finally {
+    working.value = false
+  }
+}
+
+async function duplicate() {
+  if (!instance.value) return
+  working.value = true
+  try {
+    const copy = await instanceStore.duplicate(instance.value.id)
+    notifications.notifySuccess('Duplicated', `${copy.name} was created.`)
+    router.push({ name: 'instance-detail', params: { id: copy.id } })
+  } catch (e) {
+    notifications.notifyError('Duplicate failed', String(e))
+  } finally {
+    working.value = false
   }
 }
 
 async function handleDelete() {
   if (!instance.value) return
-  error.value = null
+  deleting.value = true
   try {
-    await deleteInstance(instance.value.id)
+    const name = instance.value.name
+    await instanceStore.remove(instance.value.id)
+    notifications.notifySuccess('Instance deleted', `${name} was removed.`)
     router.push({ name: 'library' })
   } catch (e) {
-    error.value = String(e)
-    deleteConfirmOpen.value = false
-  }
-}
-
-async function handleLaunch() {
-  if (!instance.value || !authStore.authenticated) return
-  launching.value = true
-  error.value = null
-  saveMessage.value = null
-  launchStore.reset(instance.value.id)
-  try {
-    await saveInstanceSettings(instance.value.id, settings.value)
-    await launchInstance(instance.value.id, instance.value.minecraft_version, settings.value)
-  } catch (e) {
-    error.value = String(e)
-    notifications.notifyError('Launch failed', String(e))
+    notifications.notifyError('Delete failed', String(e))
   } finally {
-    launching.value = false
+    deleting.value = false
+    confirmDelete.value = false
   }
 }
 
-async function handleCancelLaunch() {
-  if (!instance.value) return
-  error.value = null
+onMounted(async () => {
+  document.addEventListener('click', closeMenu)
+  await launchStore.initListeners()
   try {
-    await cancelLaunch(instance.value.id)
-    launching.value = false
-    launchStore.reset(instance.value.id)
+    await refresh()
   } catch (e) {
-    error.value = String(e)
+    loadError.value = String(e)
   }
-}
+})
 
-function copyError() {
-  if (error.value) {
-    navigator.clipboard.writeText(error.value)
-  }
-}
-
-function copyConsole() {
-  const text = launchState.value.logs.join('\n')
-  if (text) {
-    navigator.clipboard.writeText(text)
-  }
-}
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeMenu)
+})
 </script>
 
 <style scoped lang="scss">
-.instance-detail__header {
+.instance-view {
   display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.instance-view__back {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.instance-detail__title {
-  flex: 1;
-  font-size: 2rem;
-  margin: 0;
-}
-
-.instance-detail__actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.detail-error {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  background-color: #e74c3c;
-  color: white;
-  border-radius: var(--edge-radius);
-  border: 2px solid #c0392b;
-}
-
-.save-message {
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.5rem;
-  background-color: var(--accent);
-  color: var(--accent-text);
-  border-radius: var(--edge-radius);
-  border: 2px solid var(--accent);
+  gap: 0.4rem;
+  align-self: flex-start;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 
-.delete-confirm {
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  background-color: var(--bg-secondary);
-  border: 2px solid #e74c3c;
-  border-radius: var(--edge-radius);
-}
-
-.delete-confirm p {
-  margin: 0 0 1rem;
-}
-
-.delete-confirm__actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.instance-detail__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.instance-detail__section {
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 1.5rem;
-}
-
-.instance-detail__section-header {
+.instance-view__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.instance-detail__heading {
-  font-size: 1.1rem;
-  margin: 0 0 1rem;
-}
-
-.instance-detail__section-header .instance-detail__heading {
-  margin: 0;
-}
-
-.instance-detail__badge {
-  font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  padding: 0.25rem 0.5rem;
-  background-color: var(--bg-tertiary);
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
+    var(--bg-secondary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.form-group {
+.instance-view__heading {
+  flex: 1;
+  min-width: 220px;
   display: flex;
   flex-direction: column;
+  gap: 0.55rem;
+}
+
+.instance-view__title {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-pixel);
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.instance-view__tags {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
 }
 
-.form-group--checkbox {
-  justify-content: flex-end;
-}
-
-.form-label {
-  font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+.instance-view__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0;
   color: var(--text-secondary);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
 }
 
-.checkbox-label {
+.instance-view__actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 1.1rem;
-}
-
-.checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.progress-bar {
-  height: 20px;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  overflow: hidden;
-  margin-bottom: 0.75rem;
-}
-
-.progress-bar__fill {
-  height: 100%;
-  background-color: var(--accent);
-  transition: width var(--transition-normal);
-}
-
-.console {
-  background-color: var(--bg-primary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-}
-
-.console__line {
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 1.5rem;
-  border: 2px dashed var(--border-color);
-  border-radius: var(--edge-radius);
-}
-
-.empty__title {
-  font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.empty__hint {
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.mod-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
   gap: 0.5rem;
 }
 
-.mod-item {
+.instance-view__menu-anchor {
+  position: relative;
+}
+
+.instance-view__menu {
+  top: 100%;
+  right: 0;
+  margin-top: 0.35rem;
+  min-width: 250px;
+}
+
+.instance-view__banner {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-}
-
-.mod-item__icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  overflow: hidden;
-}
-
-.mod-item__icon img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mod-item__placeholder {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-}
-
-.mod-item__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.mod-item__title {
-  font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+
+  span:not(.badge) {
+    flex: 1;
+  }
 }
 
-.mod-item__meta {
-  font-size: 0.8rem;
+.instance-view__banner-bar {
+  margin-top: 0.6rem;
+}
+
+.instance-view__error {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  span {
+    flex: 1;
+    word-break: break-word;
+  }
+}
+
+.instance-view__failures {
+  margin: 0.6rem 0 0;
+  padding-left: 1.1rem;
   color: var(--text-secondary);
+}
+
+.instance-view__live {
+  width: 8px;
+  height: 8px;
+  background-color: #2ecc71;
 }
 </style>

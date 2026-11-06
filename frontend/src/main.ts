@@ -4,6 +4,7 @@ import './assets/styles/main.scss'
 import { createApp, type App as VueApp } from 'vue'
 import { createPinia } from 'pinia'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { listen } from '@tauri-apps/api/event'
 
 const currentWindow = getCurrentWindow()
 const isTrayPanel = currentWindow.label === 'tray-panel'
@@ -34,8 +35,11 @@ if (isTrayPanel) {
     app.mount('#app')
   })
 } else {
-  Promise.all([import('./App.vue'), import('./router')]).then(
-    ([{ default: App }, { default: router }]) => {
+  Promise.all([
+    import('./App.vue'),
+    import('./router')
+  ]).then(
+    ([{ default: App }, { default: router, registerNavigationListeners }]) => {
       const app = createApp(App)
       installGlobalErrorHandler(app)
       app.use(createPinia())
@@ -50,10 +54,9 @@ if (isTrayPanel) {
         })
       }
 
-      Promise.all([
-        import('@tauri-apps/api/event'),
-        import('@/stores/auth')
-      ]).then(([{ listen }, { useAuthStore }]) => {
+      registerNavigationListeners().catch(() => void 0)
+
+      import('@/stores/auth').then(({ useAuthStore }) => {
         const authStore = useAuthStore()
         listen('auth-state', async () => {
           await authStore.check()

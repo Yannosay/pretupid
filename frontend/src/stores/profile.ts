@@ -203,6 +203,19 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
+  async function exportSlotToDownloads(slotId: string): Promise<string | null> {
+    exporting.value = true
+    error.value = null
+    try {
+      return await profileApi.exportSkinSlotToDownloads(slotId)
+    } catch (e) {
+      error.value = String(e)
+      return null
+    } finally {
+      exporting.value = false
+    }
+  }
+
   async function exportSlot(slotId: string) {
     exporting.value = true
     error.value = null
@@ -240,6 +253,7 @@ export const useProfileStore = defineStore('profile', () => {
     reorder,
     applyActive,
     exportSlot,
+    exportSlotToDownloads,
     nextSlotNumber
   }
 })

@@ -2,7 +2,8 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chrono::Utc;
 use pretupid_core::auth::oauth::OAuthClient;
 use pretupid_core::profile::{SkinModelType, SkinSlot, SkinSource};
-use tauri::State;
+use std::path::{Path, PathBuf};
+use tauri::{Manager, State};
 use uuid::Uuid;
 
 use crate::state::AppState;
@@ -28,7 +29,23 @@ pub struct SkinSlotDto {
 }
 
 fn skin_base_dir(state: &AppState, profile_id: &str) -> std::path::PathBuf {
-    state.profiles_dir.join("skins").join(profile_id)
+    let safe: String = profile_id
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(64)
+        .collect();
+    let safe = if safe.is_empty() {
+        "unknown".to_string()
+    } else {
+        safe
+    };
+    state.skins_dir.join(safe)
 }
 
 fn preview_path_for(state: &AppState, profile_id: &str, file_name: &str) -> String {
@@ -157,15 +174,16 @@ pub async fn save_skin_slot(
 
     slot.updated_at = Utc::now();
 
-    state.skins.update_slot(&slot).await.map_err(|e| e.to_string())?;
+    state
+        .skins
+        .update_slot(&slot)
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(dto_from_slot(&state, slot))
 }
 
 #[tauri::command]
-pub async fn delete_skin_slot(
-    state: State<'_, AppState>,
-    slot_id: String,
-) -> Result<bool, String> {
+pub async fn delete_skin_slot(state: State<'_, AppState>, slot_id: String) -> Result<bool, String> {
     let slot = state
         .skins
         .get_slot_by_id(&slot_id)
@@ -259,6 +277,10 @@ pub async fn import_skin_from_file(
         .decode(file_data_base64.as_bytes())
         .map_err(|e| format!("Invalid skin file data: {e}"))?;
 
+    if bytes.len() > MAX_SKIN_BYTES {
+        return Err("That file is too large to be a Minecraft skin.".to_string());
+    }
+
     validate_png_bytes(&bytes)?;
 
     let slot_id = Uuid::new_v4().to_string();
@@ -312,26 +334,37 @@ pub async fn import_skin_from_url(
         return Err("A skin already uses that slot number.".to_string());
     }
 
+    let parsed =
+        url::Url::parse(url.trim()).map_err(|_| "That is not a valid skin URL.".to_string())?;
+    if parsed.scheme() != "https" {
+        return Err("Only https:// skin URLs are allowed.".to_string());
+    }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
+        .redirect(reqwest::redirect::Policy::limited(5))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let response = client.get(parsed).send().await.map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
         return Err(format!("Skin download failed: {}", response.status()));
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| e.to_string())?
-        .to_vec();
+    if response
+        .content_length()
+        .map(|l| l as usize > MAX_SKIN_BYTES)
+        .unwrap_or(false)
+    {
+        return Err("That file is too large to be a Minecraft skin.".to_string());
+    }
+
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?.to_vec();
+
+    if bytes.len() > MAX_SKIN_BYTES {
+        return Err("That file is too large to be a Minecraft skin.".to_string());
+    }
 
     validate_png_bytes(&bytes)?;
 
@@ -364,10 +397,7 @@ pub async fn import_skin_from_url(
 }
 
 #[tauri::command]
-pub async fn apply_skin_slot(
-    state: State<'_, AppState>,
-    slot_id: String,
-) -> Result<(), String> {
+pub async fn apply_skin_slot(state: State<'_, AppState>, slot_id: String) -> Result<(), String> {
     let slot = state
         .skins
         .get_slot_by_id(&slot_id)
@@ -376,10 +406,7 @@ pub async fn apply_skin_slot(
         .ok_or_else(|| "Skin slot not found".to_string())?;
 
     let oauth = OAuthClient::new(state.pool.clone());
-    let tokens = oauth
-        .get_tokens()
-        .await
-        .map_err(|e| e.to_string())?;
+    let tokens = oauth.get_tokens().await.map_err(|e| e.to_string())?;
 
     let file_path = skin_base_dir(&state, &slot.profile_id).join(&slot.file_name);
     let bytes = tokio::fs::read(&file_path)
@@ -483,10 +510,7 @@ pub async fn get_current_skin(
     profile_id: String,
 ) -> Result<CurrentSkinDto, String> {
     let oauth = OAuthClient::new(state.pool.clone());
-    let tokens = oauth
-        .get_tokens()
-        .await
-        .map_err(|e| e.to_string())?;
+    let tokens = oauth.get_tokens().await.map_err(|e| e.to_string())?;
 
     let response = reqwest::Client::new()
         .get("https://api.minecraftservices.com/minecraft/profile")
@@ -502,10 +526,7 @@ pub async fn get_current_skin(
         ));
     }
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
+    let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
 
     let skins = json
         .get("skins")
@@ -514,11 +535,7 @@ pub async fn get_current_skin(
 
     let active_skin = skins
         .iter()
-        .find(|skin| {
-            skin.get("state")
-                .and_then(|value| value.as_str())
-                == Some("ACTIVE")
-        })
+        .find(|skin| skin.get("state").and_then(|value| value.as_str()) == Some("ACTIVE"))
         .or_else(|| skins.first())
         .ok_or_else(|| "Minecraft profile has no usable skin entry.".to_string())?;
 
@@ -527,10 +544,7 @@ pub async fn get_current_skin(
         .and_then(|value| value.as_str())
         .ok_or_else(|| "Minecraft profile skin entry has no URL.".to_string())?;
 
-    let model_type = if active_skin
-        .get("variant")
-        .and_then(|value| value.as_str())
-        == Some("slim")
+    let model_type = if active_skin.get("variant").and_then(|value| value.as_str()) == Some("slim")
     {
         SkinModelType::Slim
     } else {
@@ -555,4 +569,87 @@ pub async fn get_current_skin(
         model_type,
         data_url,
     })
+}
+
+fn sanitize_skin_filename(name: &str) -> String {
+    let mut result: String = name
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            _ => c,
+        })
+        .collect();
+    if result.is_empty() {
+        result = "skin.png".to_string();
+    }
+    if !result.to_lowercase().ends_with(".png") {
+        result.push_str(".png");
+    }
+    result
+}
+
+fn unique_skin_target(dir: &Path, file_name: &str) -> PathBuf {
+    let candidate = dir.join(file_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+
+    let stem = Path::new(file_name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("skin");
+    let ext = Path::new(file_name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("png");
+
+    for index in 1..=10000 {
+        let candidate = dir.join(format!("{stem} ({index}).{ext}"));
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    dir.join(format!("{stem}-{}.{ext}", Uuid::new_v4()))
+}
+
+#[tauri::command]
+pub async fn export_skin_slot_to_downloads(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    slot_id: String,
+) -> Result<String, String> {
+    let slot = state
+        .skins
+        .get_slot_by_id(&slot_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Skin slot not found".to_string())?;
+
+    let file_path = skin_base_dir(&state, &slot.profile_id).join(&slot.file_name);
+    let bytes = tokio::fs::read(&file_path)
+        .await
+        .map_err(|e| format!("Failed to read skin file: {e}"))?;
+
+    let downloads_dir = app
+        .path()
+        .download_dir()
+        .map_err(|e| format!("Could not locate the Downloads folder: {e}"))?;
+
+    tokio::fs::create_dir_all(&downloads_dir)
+        .await
+        .map_err(|e| format!("Failed to create Downloads folder: {e}"))?;
+
+    let base_name = slot
+        .original_file_name
+        .clone()
+        .unwrap_or_else(|| slot.file_name.clone());
+    let safe_name = sanitize_skin_filename(&base_name);
+    let target = unique_skin_target(&downloads_dir, &safe_name);
+
+    tokio::fs::write(&target, &bytes)
+        .await
+        .map_err(|e| format!("Failed to write skin file: {e}"))?;
+
+    Ok(target.to_string_lossy().to_string())
 }

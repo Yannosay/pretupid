@@ -18,9 +18,11 @@ export const useModrinthStore = defineStore('modrinth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const currentQuery = ref('')
-  const currentFacets = ref<string | null>(null)
+  const currentFacets = ref<string | undefined>(undefined)
   const currentOffset = ref(0)
   const currentLimit = ref(20)
+  const currentIndex = ref<string | null>(null)
+  let searchToken = 0
   const totalHits = ref(0)
   const activeProject = ref<ModrinthProject | null>(null)
   const activeVersions = ref<ModrinthVersion[]>([])
@@ -63,37 +65,42 @@ export const useModrinthStore = defineStore('modrinth', () => {
     ])
   }
 
-  async function search(query?: string, facets?: string | null, offset?: number, limit?: number) {
+  async function search(query?: string, facets?: string | null, offset?: number, limit?: number, index?: string | null) {
+    const token = ++searchToken
     loading.value = true
     error.value = null
     try {
       const q = query ?? currentQuery.value
-      const f = facets ?? currentFacets.value
+      const f = facets ?? currentFacets.value ?? undefined
       const o = offset ?? 0
       const l = limit ?? currentLimit.value
+      const i = index === undefined ? currentIndex.value : index
 
-      const response = await api.searchModrinth(q, f, null, o, l)
+      const response = await api.searchModrinth(q, f, i, o, l)
+      if (token !== searchToken) return
       searchResults.value = response
       totalHits.value = response.total_hits
       currentQuery.value = q
-      currentFacets.value = f
+      currentFacets.value = f ?? undefined
       currentOffset.value = o
       currentLimit.value = l
+      currentIndex.value = i
     } catch (e) {
-      error.value = String(e)
+      if (token === searchToken) error.value = String(e)
     } finally {
-      loading.value = false
+      if (token === searchToken) loading.value = false
     }
   }
 
   async function loadMore() {
     if (!hasMore.value || loading.value) return
     const nextOffset = currentOffset.value + currentLimit.value
+    loading.value = true
     try {
       const response = await api.searchModrinth(
         currentQuery.value,
-        currentFacets.value,
-        null,
+        currentFacets.value ?? undefined,
+        currentIndex.value,
         nextOffset,
         currentLimit.value
       )
@@ -107,6 +114,8 @@ export const useModrinthStore = defineStore('modrinth', () => {
       totalHits.value = response.total_hits
     } catch (e) {
       error.value = String(e)
+    } finally {
+      loading.value = false
     }
   }
 

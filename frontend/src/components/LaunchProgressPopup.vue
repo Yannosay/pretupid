@@ -1,20 +1,26 @@
 <template>
-  <div v-if="activeState" class="launch-popup">
-    <div class="launch-popup__header">
-      <span class="launch-popup__title">{{ instanceName }} - {{ activeState.running ? 'Running' : 'Installing' }}</span>
-    </div>
-    <div v-if="activeState.progress" class="launch-popup__progress">
-      <div class="progress-bar">
-        <div class="progress-bar__fill" :style="{ width: progressPercent + '%' }" />
+  <Transition name="launch-popup">
+    <div v-if="visible && activeState && launchStore.activeInstanceId" class="launch-popup" role="status">
+      <div class="launch-popup__header">
+        <span class="launch-popup__title">{{ instanceName }}</span>
+        <button class="icon-btn icon-btn--small" title="Cancel" aria-label="Cancel" @click="cancel">
+          <AppIcon name="x" :size="14" />
+        </button>
       </div>
-      <span class="launch-popup__percent">{{ progressPercent }}%</span>
+      <div class="progress-bar" :class="{ 'progress-bar--indeterminate': indeterminate }">
+        <div class="progress-bar__fill" :style="indeterminate ? undefined : { width: progressPercent + '%' }" />
+      </div>
+      <p class="launch-popup__message">
+        <span>{{ activeState.progress?.message }}</span>
+        <span v-if="!indeterminate" class="launch-popup__percent">{{ progressPercent }}%</span>
+      </p>
     </div>
-    <p v-if="activeState.progress" class="launch-popup__message">{{ activeState.progress.message }}</p>
-  </div>
+  </Transition>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
 import { useLaunchStore } from '@/stores/launch'
 import { useInstanceStore } from '@/stores/instances'
 
@@ -22,76 +28,81 @@ const launchStore = useLaunchStore()
 const instanceStore = useInstanceStore()
 
 const activeState = computed(() => launchStore.activeState)
+const visible = computed(() => !!activeState.value?.progress && !activeState.value.running)
 const instanceName = computed(() => {
   if (!launchStore.activeInstanceId) return ''
-  const inst = instanceStore.instances.find(i => i.id === launchStore.activeInstanceId)
-  return inst ? inst.name : 'Instance'
+  return instanceStore.byId(launchStore.activeInstanceId)?.name ?? 'Instance'
+})
+const indeterminate = computed(() => !activeState.value?.progress || activeState.value.progress.total === 0)
+const progressPercent = computed(() => {
+  const p = activeState.value?.progress
+  if (!p || p.total === 0) return 0
+  return Math.min(100, Math.round((p.current / p.total) * 100))
 })
 
-const progressPercent = computed(() => {
-  if (!activeState.value?.progress || activeState.value.progress.total === 0) return 0
-  return Math.round((activeState.value.progress.current / activeState.value.progress.total) * 100)
-})
+function cancel() {
+  if (launchStore.activeInstanceId) launchStore.stop(launchStore.activeInstanceId).catch(() => void 0)
+}
 </script>
 
 <style scoped lang="scss">
 .launch-popup {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  width: 320px;
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 1rem;
+  right: 1.25rem;
+  bottom: 1.25rem;
   z-index: 1500;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--accent);
+  border-radius: var(--edge-radius);
+  box-shadow: 4px 4px 0 0 var(--shadow-color);
 }
 
 .launch-popup__header {
-  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .launch-popup__title {
-  font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  color: var(--accent);
-  text-transform: uppercase;
-}
-
-.launch-popup__progress {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.progress-bar {
-  flex: 1;
-  height: 16px;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
   overflow: hidden;
-}
-
-.progress-bar__fill {
-  height: 100%;
-  background-color: var(--accent);
-  transition: width var(--transition-normal);
-}
-
-.launch-popup__percent {
-  font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  color: var(--text-secondary);
   white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
 .launch-popup__message {
-  margin-top: 0.5rem;
-  font-family: var(--font-body);
-  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 0.95rem;
   color: var(--text-secondary);
-  word-break: break-all;
+  word-break: break-word;
+}
+
+.launch-popup__percent {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+}
+
+.launch-popup-enter-active,
+.launch-popup-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.launch-popup-enter-from,
+.launch-popup-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
 }
 </style>

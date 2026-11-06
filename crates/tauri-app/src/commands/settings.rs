@@ -4,14 +4,8 @@ use tauri::State;
 use crate::state::AppState;
 
 #[tauri::command]
-pub async fn get_global_settings(
-    state: State<'_, AppState>,
-) -> Result<GlobalSettings, String> {
-    state
-        .settings
-        .get()
-        .await
-        .map_err(|e| e.to_string())
+pub async fn get_global_settings(state: State<'_, AppState>) -> Result<GlobalSettings, String> {
+    state.settings.get().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

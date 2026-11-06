@@ -69,6 +69,7 @@ import { ref, computed, onMounted } from 'vue'
 import { getModrinthVersions, createInstanceFromModpack } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useInstallsStore } from '@/stores/installs'
 import type { ModrinthSearchResult, ModrinthVersion } from '@/types'
 
 const props = defineProps<{
@@ -82,6 +83,7 @@ const emit = defineEmits<{
 
 const instanceStore = useInstanceStore()
 const notifications = useNotificationsStore()
+const installs = useInstallsStore()
 
 const name = ref(props.project.title)
 const versions = ref<ModrinthVersion[]>([])
@@ -108,6 +110,9 @@ async function create() {
       selectedVersionId.value,
       name.value.trim()
     )
+    if (instance && typeof instance.id === 'string') {
+      installs.begin(instance.id, 'Preparing installation')
+    }
     await instanceStore.load()
     emit('created')
     emit('close')
@@ -145,7 +150,7 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .modal-overlay {
   position: fixed;

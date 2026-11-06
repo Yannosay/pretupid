@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { emit } from '@tauri-apps/api/event'
 import { getGlobalSettings } from '@/api'
 
 export type Theme = 'dark' | 'light'
@@ -16,6 +17,8 @@ interface SettingsState {
     auto_update_enabled: boolean
   }
 }
+
+const DEFAULT_ACCENT = '#4a9eff'
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const clean = hex.replace('#', '')
@@ -84,7 +87,7 @@ const STORAGE_KEY = 'pretupid-settings'
 function defaultSettings(): SettingsState {
   return {
     theme: 'dark',
-    accentColor: '#4a9eff',
+    accentColor: DEFAULT_ACCENT,
     edgeRadius: 0,
     lastRoundedRadius: 8,
     globalSettings: {
@@ -122,6 +125,18 @@ function loadSettingsFromStorage(): SettingsState {
   }
 }
 
+let broadcastTimer: number | null = null
+
+function broadcastSettings(state: SettingsState) {
+  if (broadcastTimer !== null) {
+    window.clearTimeout(broadcastTimer)
+  }
+  broadcastTimer = window.setTimeout(() => {
+    broadcastTimer = null
+    emit('settings://changed', state).catch(() => void 0)
+  }, 60)
+}
+
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<SettingsState>(loadSettingsFromStorage())
 
@@ -130,6 +145,7 @@ export const useSettingsStore = defineStore('settings', () => {
     (newSettings) => {
       applySettings(newSettings)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+      broadcastSettings(newSettings)
     },
     { deep: true, immediate: true }
   )
@@ -156,6 +172,11 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function resetToDefaults() {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      void 0
+    }
     settings.value = defaultSettings()
   }
 
@@ -170,6 +191,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function loadLocalSettings() {
     settings.value = loadSettingsFromStorage()
+  }
+
+  function applyExternalSettings(state: SettingsState) {
+    settings.value = state
   }
 
   async function loadGlobalSettings() {
@@ -201,6 +226,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setEdgeRadius,
     setGlobalSettings,
     loadLocalSettings,
+    applyExternalSettings,
     loadGlobalSettings,
     resetGlobalSettings,
     resetToDefaults

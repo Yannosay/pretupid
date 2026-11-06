@@ -21,3 +21,4 @@ logs/
 edit.ps1
 project-context-export.txt
 context-export/
+frontend-web/.wrangler/

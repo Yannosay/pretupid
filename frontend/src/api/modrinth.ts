@@ -10,8 +10,8 @@ import type {
 
 export async function searchModrinth(
   query: string,
-  facets?: string,
-  index?: string,
+  facets?: string | null,
+  index?: string | null,
   offset?: number,
   limit?: number
 ): Promise<ModrinthSearchResponse> {

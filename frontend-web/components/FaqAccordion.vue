@@ -21,7 +21,7 @@ const openIndex = ref(-1)
 </script>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .faq {
   display: flex;

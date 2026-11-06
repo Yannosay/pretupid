@@ -7,7 +7,7 @@
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .error-page {
   min-height: 60vh;

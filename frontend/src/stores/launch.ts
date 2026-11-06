@@ -1,40 +1,51 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
-import type { LaunchProgress, LaunchLog, LaunchStarted, LaunchExited } from '@/types'
+import type { LaunchProgress, LaunchLog, LaunchStarted, LaunchExited, CrashInfo } from '@/types'
+import { cancelLaunch, launchInstance, listRunningInstances, prepareInstance } from '@/api'
+
+export type LaunchPhase = 'idle' | 'preparing' | 'running' | 'installing'
 
 export interface LaunchState {
   progress: LaunchProgress | null
   logs: string[]
   running: boolean
+  busy: boolean
+  phase: LaunchPhase
   pid: number | null
   exitCode: number | null
   lastError: string | null
+  crash: CrashInfo | null
+  startedAt: number | null
 }
+
+const MAX_LOG_LINES = 2000
 
 function createEmptyState(): LaunchState {
   return {
     progress: null,
     logs: [],
     running: false,
+    busy: false,
+    phase: 'idle',
     pid: null,
     exitCode: null,
-    lastError: null
+    lastError: null,
+    crash: null,
+    startedAt: null
   }
 }
 
 export const useLaunchStore = defineStore('launch', () => {
   const states = ref<Record<string, LaunchState>>({})
   const activeInstanceId = ref<string | null>(null)
-  let listenersRegistered = false
   let initPromise: Promise<void> | null = null
 
   function ensureState(instanceId: string): LaunchState {
     const existing = states.value[instanceId]
     if (existing) return existing
-    const created = createEmptyState()
-    states.value = { ...states.value, [instanceId]: created }
-    return created
+    states.value = { ...states.value, [instanceId]: createEmptyState() }
+    return states.value[instanceId]
   }
 
   function getState(instanceId: string): LaunchState {
@@ -42,88 +53,150 @@ export const useLaunchStore = defineStore('launch', () => {
   }
 
   async function initListeners(): Promise<void> {
-    if (listenersRegistered) return
     if (initPromise) return initPromise
 
     initPromise = (async () => {
       await listen<LaunchProgress>('launch://progress', (event) => {
         const payload = event.payload
         if (!payload?.instance_id) return
-        ensureState(payload.instance_id)
-        const current = states.value[payload.instance_id]
-        current.progress = {
-          instance_id: payload.instance_id,
-          current: payload.current,
-          total: payload.total,
-          message: payload.message
-        }
-        current.lastError = null
+        const current = ensureState(payload.instance_id)
+        current.progress = { ...payload }
+        current.busy = true
+        if (current.phase === 'idle') current.phase = 'preparing'
         activeInstanceId.value = payload.instance_id
       })
 
       await listen<LaunchLog>('launch://log', (event) => {
         const payload = event.payload
         if (!payload?.instance_id) return
-        ensureState(payload.instance_id)
-        const current = states.value[payload.instance_id]
+        const current = ensureState(payload.instance_id)
         current.logs.push(payload.line)
-        if (current.logs.length > 500) {
-          current.logs.splice(0, current.logs.length - 500)
+        if (current.logs.length > MAX_LOG_LINES) {
+          current.logs.splice(0, current.logs.length - MAX_LOG_LINES)
         }
       })
 
       await listen<LaunchStarted>('launch://started', (event) => {
         const payload = event.payload
         if (!payload?.instance_id) return
-        ensureState(payload.instance_id)
-        const current = states.value[payload.instance_id]
+        const current = ensureState(payload.instance_id)
         current.running = true
+        current.busy = true
+        current.phase = 'running'
         current.pid = payload.pid
         current.exitCode = null
-        current.lastError = null
+        current.progress = null
+        current.startedAt = Date.now()
         activeInstanceId.value = payload.instance_id
       })
 
-      await listen<{ instance_id: string; message: string }>(
-        'launch://failed',
-        (event) => {
-          const payload = event.payload
-          if (!payload?.instance_id) return
-          ensureState(payload.instance_id)
-          const current = states.value[payload.instance_id]
-          current.lastError = payload.message
-        }
-      )
+      await listen<{ instance_id: string; message: string }>('launch://failed', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id).lastError = payload.message
+      })
+
+      await listen<CrashInfo>('launch://crash', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        ensureState(payload.instance_id).crash = payload
+      })
 
       await listen<LaunchExited>('launch://exited', (event) => {
         const payload = event.payload
         if (!payload?.instance_id) return
-        ensureState(payload.instance_id)
-        const current = states.value[payload.instance_id]
+        const current = ensureState(payload.instance_id)
         current.running = false
+        current.busy = false
+        current.phase = 'idle'
         current.pid = null
         current.exitCode = payload.code
         current.progress = null
-        if (activeInstanceId.value === payload.instance_id) {
-          activeInstanceId.value = null
-        }
+        current.startedAt = null
+        if (activeInstanceId.value === payload.instance_id) activeInstanceId.value = null
       })
 
-      listenersRegistered = true
+      await listen<{ instance_id: string; ok: boolean; message: string | null }>('launch://prepared', (event) => {
+        const payload = event.payload
+        if (!payload?.instance_id) return
+        const current = ensureState(payload.instance_id)
+        current.busy = false
+        current.phase = 'idle'
+        current.progress = null
+        if (!payload.ok && payload.message) current.lastError = payload.message
+        if (activeInstanceId.value === payload.instance_id) activeInstanceId.value = null
+      })
+
+      try {
+        const running = await listRunningInstances()
+        for (const id of running) {
+          const current = ensureState(id)
+          current.running = true
+          current.busy = true
+          current.phase = 'running'
+        }
+      } catch {
+        void 0
+      }
     })()
 
     return initPromise
   }
 
   function reset(instanceId: string) {
-    ensureState(instanceId)
-    const current = states.value[instanceId]
-    current.progress = null
-    current.logs = []
-    current.running = false
-    current.pid = null
-    current.exitCode = null
+    const current = ensureState(instanceId)
+    Object.assign(current, createEmptyState())
+  }
+
+  async function play(instanceId: string, verifyFiles = false): Promise<void> {
+    await initListeners()
+    const current = ensureState(instanceId)
+    if (current.busy) return
+    reset(instanceId)
+    const fresh = ensureState(instanceId)
+    fresh.busy = true
+    fresh.phase = 'preparing'
+    fresh.progress = { instance_id: instanceId, current: 0, total: 0, message: 'Getting ready' }
+    activeInstanceId.value = instanceId
+    try {
+      await launchInstance(instanceId, verifyFiles)
+    } catch (e) {
+      fresh.lastError = String(e)
+      throw e
+    } finally {
+      fresh.busy = false
+      fresh.running = false
+      fresh.phase = 'idle'
+      fresh.progress = null
+    }
+  }
+
+  async function prepare(instanceId: string, verifyFiles = false): Promise<void> {
+    await initListeners()
+    const current = ensureState(instanceId)
+    if (current.busy) return
+    current.busy = true
+    current.phase = 'installing'
     current.lastError = null
+    current.progress = { instance_id: instanceId, current: 0, total: 0, message: verifyFiles ? 'Verifying files' : 'Downloading game files' }
+    try {
+      await prepareInstance(instanceId, verifyFiles)
+    } catch (e) {
+      current.lastError = String(e)
+      throw e
+    } finally {
+      current.busy = false
+      current.phase = 'idle'
+      current.progress = null
+    }
+  }
+
+  async function stop(instanceId: string): Promise<void> {
+    await cancelLaunch(instanceId)
+  }
+
+  function dismissCrash(instanceId: string) {
+    ensureState(instanceId).crash = null
   }
 
   const activeState = computed<LaunchState | null>(() => {
@@ -131,12 +204,15 @@ export const useLaunchStore = defineStore('launch', () => {
     return states.value[activeInstanceId.value] ?? null
   })
 
-  const anyRunning = computed(() => {
-    return Object.values(states.value).some((s) => s.running)
-  })
+  const anyRunning = computed(() => Object.values(states.value).some((s) => s.running))
+  const anyBusy = computed(() => Object.values(states.value).some((s) => s.busy))
 
   function isRunning(instanceId: string): boolean {
     return states.value[instanceId]?.running === true
+  }
+
+  function isBusy(instanceId: string): boolean {
+    return states.value[instanceId]?.busy === true
   }
 
   return {
@@ -144,10 +220,16 @@ export const useLaunchStore = defineStore('launch', () => {
     activeInstanceId,
     activeState,
     anyRunning,
+    anyBusy,
     initListeners,
     reset,
     getState,
     ensureState,
-    isRunning
+    isRunning,
+    isBusy,
+    play,
+    prepare,
+    stop,
+    dismissCrash
   }
 })

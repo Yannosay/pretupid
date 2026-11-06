@@ -1,199 +1,256 @@
 <template>
   <div class="library">
-    <header class="library__header">
-      <h1 class="library__title">Instances</h1>
-      <button
-        class="btn"
-        :disabled="!authStore.authenticated || instanceStore.loading"
-        @click="createModalOpen = true"
-      >
-        Create Instance
-      </button>
+    <header class="page-header">
+      <div>
+        <h1 class="page-header__title">Library</h1>
+        <p class="page-header__subtitle">
+          {{ instanceStore.instances.length }} {{ instanceStore.instances.length === 1 ? 'instance' : 'instances' }}
+          <template v-if="totalPlaytime > 0"> · {{ formatPlaytime(totalPlaytime) }} played</template>
+        </p>
+      </div>
+      <div class="page-header__actions">
+        <button class="btn" :disabled="!authStore.authenticated" @click="createModalOpen = true">
+          <AppIcon name="plus" :size="14" />
+          New instance
+        </button>
+      </div>
     </header>
 
-    <div v-if="!authStore.authenticated" class="library__empty">
-      <p class="text-secondary">Login with Microsoft to manage instances.</p>
+    <div v-if="!authStore.authenticated" class="empty empty--centered library__empty">
+      <AppIcon name="login" :size="32" class="empty__icon" />
+      <p class="empty__title">Sign in to get started</p>
+      <p class="empty__hint">Your instances appear here once you are signed in with your Microsoft account.</p>
+      <button class="btn" :disabled="authStore.loading" @click="authStore.login">Sign in with Microsoft</button>
     </div>
 
-    <div v-else-if="instanceStore.error" class="library__error">
-      {{ instanceStore.error }}
-    </div>
-
-    <div v-else-if="instanceStore.loading" class="library__empty">
-      <p class="text-secondary">Loading instances...</p>
-    </div>
-
-    <div v-else-if="instanceStore.instances.length === 0" class="library__empty">
-      <p class="text-secondary">No instances yet. Create your first instance to get started.</p>
-    </div>
-
-    <div v-else class="library__grid">
-      <div
-        v-for="instance in instanceStore.instances"
-        :key="instance.id"
-        class="instance-card"
-        :class="{ 'instance-card--disabled': launchStore.anyRunning && !isInstanceRunning(instance.id) }"
-        @click="launchStore.anyRunning && !isInstanceRunning(instance.id) ? null : openInstance(instance.id)"
-      >
-        <div class="instance-card__header">
-          <h3 class="instance-card__title">{{ instance.name }}</h3>
-          <span class="instance-card__version">{{ instance.minecraft_version }}</span>
+    <template v-else>
+      <div v-if="instanceStore.instances.length > 0" class="library__toolbar">
+        <div class="library__search">
+          <AppIcon name="search" :size="16" />
+          <input v-model="search" type="search" class="input" placeholder="Search instances" aria-label="Search instances" />
         </div>
-        <p class="instance-card__description">{{ instance.description || 'No description' }}</p>
-        <div class="instance-card__footer">
-          <span class="instance-card__loader">{{ instance.mod_loader }}</span>
-          <span v-if="isInstanceRunning(instance.id)" class="instance-card__running">Instance running</span>
+        <div class="segmented" role="group" aria-label="Sort">
+          <button
+            v-for="option in sortOptions"
+            :key="option.value"
+            class="segmented__option"
+            :class="{ 'segmented__option--active': sort === option.value }"
+            @click="sort = option.value"
+          >
+            {{ option.label }}
+          </button>
         </div>
       </div>
-    </div>
 
-    <CreateInstanceModal
-      v-if="createModalOpen"
-      @close="createModalOpen = false"
-      @created="handleCreated"
+      <div v-if="instanceStore.groups.length > 0" class="chip-row library__groups">
+        <button class="chip" :class="{ 'chip--active': group === null }" @click="group = null">All</button>
+        <button
+          v-for="g in instanceStore.groups"
+          :key="g"
+          class="chip"
+          :class="{ 'chip--active': group === g }"
+          @click="group = g"
+        >
+          {{ g }}
+        </button>
+      </div>
+
+      <div v-if="instanceStore.error" class="form-error form-error--block">{{ instanceStore.error }}</div>
+
+      <div v-if="instanceStore.loading && !instanceStore.loaded" class="pixel-loader">
+        Loading instances
+        <span class="pixel-loader__dots"><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /></span>
+      </div>
+
+      <div v-else-if="instanceStore.instances.length === 0" class="empty empty--centered library__empty">
+        <AppIcon name="box" :size="32" class="empty__icon" />
+        <p class="empty__title">No instances yet</p>
+        <p class="empty__hint">Create a fresh instance, or install a ready-made modpack from Browse.</p>
+        <div class="library__empty-actions">
+          <button class="btn" @click="createModalOpen = true">
+            <AppIcon name="plus" :size="14" />
+            New instance
+          </button>
+          <RouterLink to="/browse?type=modpack" class="btn btn--secondary">
+            <AppIcon name="compass" :size="14" />
+            Find a modpack
+          </RouterLink>
+        </div>
+      </div>
+
+      <div v-else-if="visible.length === 0" class="empty empty--centered">
+        <p class="empty__title">Nothing matches</p>
+        <p class="empty__hint">Try a different search or group.</p>
+      </div>
+
+      <div v-else class="library__grid">
+        <InstanceCard v-for="instance in visible" :key="instance.id" :instance="instance" @delete="pendingDelete = $event" />
+      </div>
+    </template>
+
+    <CreateInstanceModal v-if="createModalOpen" @close="createModalOpen = false" @created="handleCreated" />
+
+    <ConfirmDialog
+      v-if="pendingDelete"
+      title="Delete instance"
+      :message="`Delete “${pendingDelete.name}” with all its worlds, mods and settings? This cannot be undone.`"
+      confirm-label="Delete"
+      danger
+      :busy="deleting"
+      @cancel="pendingDelete = null"
+      @confirm="confirmDelete"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import AppIcon from '@/components/AppIcon.vue'
+import InstanceCard from '@/components/InstanceCard.vue'
+import CreateInstanceModal from '@/components/CreateInstanceModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useInstanceStore } from '@/stores/instances'
 import { useAuthStore } from '@/stores/auth'
 import { useLaunchStore } from '@/stores/launch'
-import CreateInstanceModal from '@/components/CreateInstanceModal.vue'
-import type { CreateInstanceRequest } from '@/types'
+import { useNotificationsStore } from '@/stores/notifications'
+import { formatPlaytime } from '@/utils/format'
+import type { Instance } from '@/types'
+
+type SortMode = 'recent' | 'name' | 'playtime'
+
+const SORT_KEY = 'pretupid.library.sort'
 
 const router = useRouter()
 const instanceStore = useInstanceStore()
 const authStore = useAuthStore()
 const launchStore = useLaunchStore()
-const createModalOpen = ref(false)
+const notifications = useNotificationsStore()
 
-function isInstanceRunning(instanceId: string): boolean {
-  return launchStore.getState(instanceId).running
+const createModalOpen = ref(false)
+const search = ref('')
+const group = ref<string | null>(null)
+const sort = ref<SortMode>(readSort())
+const pendingDelete = ref<Instance | null>(null)
+const deleting = ref(false)
+
+const sortOptions: { value: SortMode; label: string }[] = [
+  { value: 'recent', label: 'Recent' },
+  { value: 'name', label: 'Name' },
+  { value: 'playtime', label: 'Most played' }
+]
+
+function readSort(): SortMode {
+  try {
+    const value = localStorage.getItem(SORT_KEY)
+    if (value === 'name' || value === 'playtime' || value === 'recent') return value
+  } catch {
+    void 0
+  }
+  return 'recent'
+}
+
+watch(sort, (value) => {
+  try {
+    localStorage.setItem(SORT_KEY, value)
+  } catch {
+    void 0
+  }
+})
+
+const totalPlaytime = computed(() => instanceStore.instances.reduce((sum, i) => sum + (i.playtime_seconds ?? 0), 0))
+
+const visible = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  let list = sort.value === 'recent' ? [...instanceStore.recent] : [...instanceStore.instances]
+  if (group.value) list = list.filter((i) => i.group_name === group.value)
+  if (term) {
+    list = list.filter(
+      (i) =>
+        i.name.toLowerCase().includes(term) ||
+        i.minecraft_version.toLowerCase().includes(term) ||
+        i.mod_loader.toLowerCase().includes(term)
+    )
+  }
+  if (sort.value === 'name') list.sort((a, b) => a.name.localeCompare(b.name))
+  if (sort.value === 'playtime') list.sort((a, b) => (b.playtime_seconds ?? 0) - (a.playtime_seconds ?? 0))
+  return list
+})
+
+function handleCreated(instance: Instance) {
+  router.push({ name: 'instance-detail', params: { id: instance.id } })
+}
+
+async function confirmDelete() {
+  if (!pendingDelete.value) return
+  deleting.value = true
+  try {
+    const name = pendingDelete.value.name
+    await instanceStore.remove(pendingDelete.value.id)
+    notifications.notifySuccess('Instance deleted', `${name} was removed.`)
+    pendingDelete.value = null
+  } catch (e) {
+    notifications.notifyError('Delete failed', String(e))
+  } finally {
+    deleting.value = false
+  }
 }
 
 onMounted(async () => {
   await launchStore.initListeners()
   await authStore.check()
-  if (authStore.authenticated) {
-    await instanceStore.load()
-  }
+  if (authStore.authenticated) await instanceStore.load(instanceStore.loaded)
 })
-
-function openInstance(id: string) {
-  router.push({ name: 'instance-detail', params: { id } })
-}
-
-async function handleCreated(request: CreateInstanceRequest) {
-  createModalOpen.value = false
-  await instanceStore.create(request)
-}
 </script>
 
 <style scoped lang="scss">
-.library__header {
+.library {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.library__toolbar {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 2rem;
+  gap: 0.75rem;
 }
 
-.library__title {
-  font-size: 2rem;
-}
+.library__search {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+  color: var(--text-secondary);
 
-.library__error {
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  background-color: #e74c3c;
-  color: white;
-  border-radius: var(--edge-radius);
-  border: 2px solid #c0392b;
+  .app-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    transform: translateY(-50%);
+  }
+
+  .input {
+    padding-left: 2.5rem;
+  }
 }
 
 .library__empty {
-  padding: 3rem;
-  text-align: center;
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
+  padding: 3rem 1.5rem;
+}
+
+.library__empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .library__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.5rem;
-}
-
-.instance-card {
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 1.25rem;
-  cursor: pointer;
-  transition: transform var(--transition-fast),
-              box-shadow var(--transition-fast),
-              border-color var(--transition-fast);
-}
-
-.instance-card:hover {
-  border-color: var(--accent);
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 0 var(--shadow-color);
-}
-
-.instance-card--disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.instance-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.75rem;
-}
-
-.instance-card__title {
-  font-size: 1rem;
-  margin: 0;
-}
-
-.instance-card__version {
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  background-color: var(--bg-tertiary);
-  padding: 0.2rem 0.5rem;
-  border-radius: var(--edge-radius);
-}
-
-.instance-card__description {
-  color: var(--text-secondary);
-  font-size: 1rem;
-}
-
-.instance-card__footer {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.instance-card__loader {
-  text-transform: uppercase;
-  font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  color: var(--accent);
-}
-
-.instance-card__running {
-  font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  color: #2ecc71;
-  text-transform: uppercase;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
 }
 </style>

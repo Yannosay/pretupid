@@ -18,6 +18,7 @@ zip = { version = "2", features = ["deflate"] }
 tracing-appender = { workspace = true }
 tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
 tauri-plugin-updater = "2"
+tauri-plugin-deep-link = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
@@ -33,3 +34,7 @@ base64 = "0.22"
 chrono = { workspace = true }
 modrinth-client = { workspace = true }
 futures-util = "0.3"
+sha1 = "0.10"
+sha2 = "0.10"
+sysinfo = { version = "0.33", default-features = false, features = ["system"] }
+tauri-plugin-dialog = "2"

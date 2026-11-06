@@ -69,6 +69,10 @@ export async function applySkinToMinecraft(slotId: string): Promise<void> {
   return invoke('apply_skin_slot', { slotId })
 }
 
+export async function exportSkinSlotToDownloads(slotId: string): Promise<string> {
+  return invoke('export_skin_slot_to_downloads', { slotId })
+}
+
 export async function exportSkinSlot(slotId: string): Promise<string> {
   return invoke('export_skin_slot', { slotId })
 }

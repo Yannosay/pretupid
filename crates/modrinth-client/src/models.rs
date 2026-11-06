@@ -292,8 +292,16 @@ where
             url: None,
         })),
         Value::Object(map) => Ok(Some(License {
-            id: map.get("id").and_then(Value::as_str).unwrap_or_default().to_string(),
-            name: map.get("name").and_then(Value::as_str).unwrap_or_default().to_string(),
+            id: map
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            name: map
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
             url: map.get("url").and_then(Value::as_str).map(String::from),
         })),
         _ => Ok(None),
@@ -317,9 +325,21 @@ where
                         url: String::new(),
                     }),
                     Value::Object(map) => result.push(DonationUrl {
-                        id: map.get("id").and_then(Value::as_str).unwrap_or_default().to_string(),
-                        platform: map.get("platform").and_then(Value::as_str).unwrap_or_default().to_string(),
-                        url: map.get("url").and_then(Value::as_str).unwrap_or_default().to_string(),
+                        id: map
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                        platform: map
+                            .get("platform")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
+                        url: map
+                            .get("url")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string(),
                     }),
                     _ => {}
                 }

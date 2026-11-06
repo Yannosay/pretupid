@@ -1,3 +1,7 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
     AppHandle, Manager, PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder, Wry,
@@ -6,14 +10,29 @@ use tauri::{
 pub const TRAY_ID: &str = "pretupid-main-tray";
 pub const TRAY_PANEL_LABEL: &str = "tray-panel";
 
-const PANEL_WIDTH: f64 = 340.0;
-const PANEL_HEIGHT: f64 = 480.0;
+const PANEL_WIDTH: f64 = 360.0;
+const PANEL_HEIGHT: f64 = 500.0;
 
 fn focus_main_window(app: &AppHandle<Wry>) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
+
+        #[cfg(target_os = "windows")]
+        {
+            let _ = window.set_always_on_top(true);
+        }
+
         let _ = window.set_focus();
+
+        #[cfg(target_os = "windows")]
+        {
+            let window_handle = window.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(Duration::from_millis(120)).await;
+                let _ = window_handle.set_always_on_top(false);
+            });
+        }
     }
 }
 
@@ -22,33 +41,41 @@ pub fn create_panel_window(app: &AppHandle<Wry>) -> tauri::Result<()> {
         return Ok(());
     }
 
-    let panel = WebviewWindowBuilder::new(
-        app,
-        TRAY_PANEL_LABEL,
-        WebviewUrl::App("index.html".into()),
-    )
-    .title("Pretupid")
-    .inner_size(PANEL_WIDTH, PANEL_HEIGHT)
-    .resizable(false)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .visible(false)
-    .focused(false)
-    .shadow(true)
-    .build()?;
+    let panel =
+        WebviewWindowBuilder::new(app, TRAY_PANEL_LABEL, WebviewUrl::App("index.html".into()))
+            .title("Pretupid")
+            .inner_size(PANEL_WIDTH, PANEL_HEIGHT)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .visible(false)
+            .focused(false)
+            .shadow(true)
+            .build()?;
 
+    let was_focused = Arc::new(AtomicBool::new(false));
+    let was_focused_clone = was_focused.clone();
     let panel_handle = panel.clone();
-    panel.on_window_event(move |event| {
-        if let tauri::WindowEvent::Focused(false) = event {
-            let panel = panel_handle.clone();
+
+    panel.on_window_event(move |event| match event {
+        tauri::WindowEvent::Focused(true) => {
+            was_focused_clone.store(true, Ordering::SeqCst);
+        }
+        tauri::WindowEvent::Focused(false) => {
+            let had_focus = was_focused_clone.swap(false, Ordering::SeqCst);
+            if !had_focus {
+                return;
+            }
+            let panel_for_task = panel_handle.clone();
             tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(180)).await;
-                if !panel.is_focused().unwrap_or(true) {
-                    let _ = panel.hide();
+                tokio::time::sleep(Duration::from_millis(220)).await;
+                if !panel_for_task.is_focused().unwrap_or(true) {
+                    let _ = panel_for_task.hide();
                 }
             });
         }
+        _ => {}
     });
 
     Ok(())
@@ -83,7 +110,9 @@ fn toggle_panel(app: &AppHandle<Wry>, cursor: PhysicalPosition<f64>) -> tauri::R
         y = y.max(min_y).min(max_y);
     }
 
-    panel.set_position(Position::Physical(PhysicalPosition::new(x as i32, y as i32)))?;
+    panel.set_position(Position::Physical(PhysicalPosition::new(
+        x as i32, y as i32,
+    )))?;
     panel.show()?;
     panel.set_focus()?;
     Ok(())

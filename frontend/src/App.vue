@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount } from 'vue'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 import AppLayout from '@/components/AppLayout.vue'
 import SplashOverlay from '@/components/SplashOverlay.vue'
+import WhatsNewOverlay from '@/components/WhatsNewOverlay.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useInstanceStore } from '@/stores/instances'
 import { useProfileStore } from '@/stores/profile'
@@ -11,12 +13,15 @@ import { useSplashStore } from '@/stores/splash'
 import { useUpdaterStore } from '@/stores/updater'
 import { useLaunchStore } from '@/stores/launch'
 import { useNotificationsStore } from '@/stores/notifications'
-import {
-  getInstance,
-  getInstanceSettings,
-  getGlobalSettings,
-  launchInstance
-} from '@/api'
+import { useInstallsStore, type InstallStatus } from '@/stores/installs'
+import { getInstance } from '@/api'
+
+interface DeepLinkAction {
+  type: string
+  theme?: string | null
+  accent?: string | null
+  edge?: string | null
+}
 
 const authStore = useAuthStore()
 const instanceStore = useInstanceStore()
@@ -26,29 +31,56 @@ const splashStore = useSplashStore()
 const updaterStore = useUpdaterStore()
 const launchStore = useLaunchStore()
 const notifications = useNotificationsStore()
+const installs = useInstallsStore()
 
 const unlisteners: UnlistenFn[] = []
 
-async function launchInstanceById(instanceId: string, sourceLabel: string) {
+function applyDeepLinkAction(payload: DeepLinkAction) {
+  if (!payload || payload.type !== 'settings') return
+
+  if (payload.theme === 'dark' || payload.theme === 'light') {
+    settingsStore.setTheme(payload.theme)
+  }
+  if (typeof payload.accent === 'string' && /^#?[0-9a-fA-F]{6}$/.test(payload.accent)) {
+    settingsStore.setAccentColor(payload.accent.startsWith('#') ? payload.accent : `#${payload.accent}`)
+  }
+  if (typeof payload.edge === 'string') {
+    const parsed = parseInt(payload.edge, 10)
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 24) {
+      settingsStore.setEdgeRadius(parsed)
+    }
+  }
+
+  notifications.notifySuccess(
+    'Settings synced from website',
+    'Your theme, accent, and corner preferences have been applied.'
+  )
+}
+
+async function drainPendingDeepLinks() {
+  try {
+    const pending = await invoke<DeepLinkAction[]>('take_pending_deep_links')
+    for (const action of pending) {
+      applyDeepLinkAction(action)
+    }
+  } catch {
+    void 0
+  }
+}
+
+async function launchInstanceById(instanceId: string) {
+  if (installs.isInstalling(instanceId)) {
+    notifications.notifyWarning('Installation in progress', 'Wait for the modpack to finish installing before launching.')
+    return
+  }
   try {
     const instance = await getInstance(instanceId)
     if (!instance) {
       notifications.notifyError('Launch failed', 'Instance no longer exists.')
       return
     }
-
-    const storedSettings = await getInstanceSettings(instanceId)
-    const globalSettings = await getGlobalSettings()
-
-    const launchSettings = {
-      ...storedSettings,
-      auto_install_java: globalSettings.auto_install_java,
-      java_path: storedSettings.java_path ?? globalSettings.default_java_path
-    }
-
-    launchStore.reset(instanceId)
-    notifications.notifyInfo('Launching', `Starting ${instance.name} (${sourceLabel}).`)
-    await launchInstance(instanceId, instance.minecraft_version, launchSettings)
+    notifications.notifyInfo('Launching', `Starting ${instance.name}.`)
+    await launchStore.play(instanceId)
   } catch (e) {
     notifications.notifyError('Launch failed', String(e))
   }
@@ -59,7 +91,13 @@ async function registerListeners() {
     await listen<string>('tray-panel://launch', async (event) => {
       const instanceId = event.payload
       if (typeof instanceId !== 'string' || instanceId.length === 0) return
-      await launchInstanceById(instanceId, 'tray')
+      await launchInstanceById(instanceId)
+    })
+  )
+
+  unlisteners.push(
+    await listen<DeepLinkAction>('deep-link://action', (event) => {
+      applyDeepLinkAction(event.payload)
     })
   )
 
@@ -77,11 +115,18 @@ async function registerListeners() {
   )
 
   unlisteners.push(
-    await listen<{ instance_id: string; message: string }>(
+    await listen<{ instance_id: string; status: string; message: string }>(
       'modpack://progress',
       (event) => {
         const payload = event.payload
         if (!payload || typeof payload.instance_id !== 'string') return
+
+        const status = payload.status as InstallStatus
+        if (!installs.getState(payload.instance_id)) {
+          installs.begin(payload.instance_id, payload.message)
+        }
+        installs.update(payload.instance_id, status, payload.message)
+
         const existing = notifications.getInstallNotification(payload.instance_id)
         if (existing) {
           notifications.update(existing, { message: payload.message })
@@ -99,14 +144,9 @@ async function registerListeners() {
   )
 
   unlisteners.push(
-    await listen<{ instance_id: string; minecraft_version: string }>(
-      'modpack://instance-updated',
-      (event) => {
-        const payload = event.payload
-        if (!payload || typeof payload.instance_id !== 'string') return
-        instanceStore.load().catch(() => void 0)
-      }
-    )
+    await listen('modpack://instance-updated', () => {
+      instanceStore.load().catch(() => void 0)
+    })
   )
 
   unlisteners.push(
@@ -115,6 +155,9 @@ async function registerListeners() {
       (event) => {
         const payload = event.payload
         if (!payload || typeof payload.instance_id !== 'string') return
+
+        installs.complete(payload.instance_id)
+
         const existing = notifications.getInstallNotification(payload.instance_id)
         if (existing) {
           notifications.update(existing, {
@@ -141,6 +184,9 @@ async function registerListeners() {
       (event) => {
         const payload = event.payload
         if (!payload || typeof payload.instance_id !== 'string') return
+
+        installs.fail(payload.instance_id, payload.message)
+
         const existing = notifications.getInstallNotification(payload.instance_id)
         if (existing) {
           notifications.update(existing, {
@@ -176,6 +222,9 @@ onMounted(async () => {
 
   splashStore.finishStartup()
 
+  await registerListeners()
+  await drainPendingDeepLinks()
+
   if (authStore.authenticated && authStore.profile?.id) {
     instanceStore.load().catch(() => void 0)
     profileStore.load(authStore.profile.id).catch(() => void 0)
@@ -183,8 +232,6 @@ onMounted(async () => {
 
   launchStore.initListeners().catch(() => void 0)
   updaterStore.checkForUpdates().catch(() => void 0)
-
-  await registerListeners()
 })
 
 onBeforeUnmount(() => {
@@ -202,4 +249,5 @@ onBeforeUnmount(() => {
 <template>
   <AppLayout />
   <SplashOverlay />
+  <WhatsNewOverlay />
 </template>

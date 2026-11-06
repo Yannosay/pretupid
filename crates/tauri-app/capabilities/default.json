@@ -1,12 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capability for the main window",
-  "windows": ["main"],
+  "description": "Default capability for the main window and tray panel",
+  "windows": ["main", "tray-panel"],
   "permissions": [
     "core:default",
-    "updater:default",
     "core:window:default",
-    "core:event:default"
+    "core:event:default",
+    "core:app:default",
+    "core:path:default",
+    "core:webview:default",
+    "updater:default",
+    "dialog:allow-open"
   ]
 }

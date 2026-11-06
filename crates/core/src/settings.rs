@@ -51,11 +51,10 @@ impl SettingsRepository {
     }
 
     pub async fn get(&self) -> CoreResult<GlobalSettings> {
-        let row: Option<(String,)> = sqlx::query_as(
-            "SELECT value FROM global_settings WHERE key = 'global'",
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT value FROM global_settings WHERE key = 'global'")
+                .fetch_optional(&self.pool)
+                .await?;
 
         match row {
             Some((json,)) => serde_json::from_str(&json).map_err(CoreError::from),
@@ -65,12 +64,10 @@ impl SettingsRepository {
 
     pub async fn save(&self, settings: &GlobalSettings) -> CoreResult<()> {
         let json = serde_json::to_string(settings)?;
-        sqlx::query(
-            "INSERT OR REPLACE INTO global_settings (key, value) VALUES ('global', ?)",
-        )
-        .bind(&json)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT OR REPLACE INTO global_settings (key, value) VALUES ('global', ?)")
+            .bind(&json)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

@@ -5,8 +5,23 @@ export interface Instance {
   minecraft_version: string
   mod_loader: 'vanilla' | 'forge' | 'fabric' | 'quilt' | 'neoforge' | 'modrinth'
   loader_version: string | null
+  folder_name?: string
   created_at: string
   updated_at: string
+  last_played: string | null
+  playtime_seconds: number
+  icon_url: string | null
+  group_name: string | null
+}
+
+export interface UpdateInstanceRequest {
+  name?: string | null
+  description?: string | null
+  minecraft_version?: string | null
+  mod_loader?: Instance['mod_loader'] | null
+  loader_version?: string | null
+  icon_url?: string | null
+  group_name?: string | null
 }
 
 export interface InstanceSettings {
@@ -18,6 +33,7 @@ export interface InstanceSettings {
   java_path: string | null
   extra_jvm_args: string[]
   extra_game_args: string[]
+  quick_play_server: string | null
 }
 
 export interface VersionEntry {
@@ -205,5 +221,49 @@ export interface InstanceMod {
   file_url: string | null
   file_name: string | null
   created_at: string
+  enabled: boolean
+  sha1: string | null
 }
+
+export interface LoaderVersion {
+  version: string
+  stable: boolean
+  recommended: boolean
+  latest: boolean
+}
+
+export interface InstallResult {
+  installed: InstanceMod[]
+  warnings: string[]
+}
+
+export interface ModUpdate {
+  mod_id: string
+  title: string
+  icon_url: string | null
+  current_version: string | null
+  new_version_id: string
+  new_version_name: string
+}
+
+export interface SystemInfo {
+  total_memory_mb: number
+  recommended_memory_mb: number
+  cpu_threads: number
+  os: string
+}
+
+export interface CrashHint {
+  title: string
+  detail: string
+}
+
+export interface CrashInfo {
+  instance_id: string
+  code: number | null
+  hints: CrashHint[]
+  crash_report: string | null
+  message: string | null
+}
+
 export * from './profile'

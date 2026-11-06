@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
-use crate::error::CoreResult;
 use super::models::{SkinModelType, SkinSlot, SkinSource};
+use crate::error::CoreResult;
 
 type SkinRow = (
     String,
@@ -137,7 +137,11 @@ impl SkinRepository {
         Ok(row.map(map_skin_row))
     }
 
-    pub async fn get_slot(&self, profile_id: &str, slot_number: u32) -> CoreResult<Option<SkinSlot>> {
+    pub async fn get_slot(
+        &self,
+        profile_id: &str,
+        slot_number: u32,
+    ) -> CoreResult<Option<SkinSlot>> {
         let row: Option<SkinRow> = sqlx::query_as(
             r#"
             SELECT id, profile_id, slot_number, name, file_name, original_file_name,
@@ -251,12 +255,10 @@ impl SkinRepository {
     }
 
     pub async fn count_slots(&self, profile_id: &str) -> CoreResult<i64> {
-        let row: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM skin_slots WHERE profile_id = ?",
-        )
-        .bind(profile_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM skin_slots WHERE profile_id = ?")
+            .bind(profile_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(row.0)
     }

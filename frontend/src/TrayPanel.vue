@@ -86,7 +86,7 @@
               </button>
             </li>
             <li>
-              <button type="button" class="tray-panel__nav-item" @click="openRoute('/modrinth')">
+              <button type="button" class="tray-panel__nav-item" @click="openRoute('/browse')">
                 <span class="tray-panel__nav-dot" aria-hidden="true"></span>
                 Modrinth Library
               </button>
@@ -112,9 +112,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useSettingsStore } from '@/stores/settings'
 import type { Instance } from '@/types'
 
@@ -124,6 +124,7 @@ settingsStore.loadLocalSettings()
 const instances = ref<Instance[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+const unlisteners: UnlistenFn[] = []
 
 function instanceInitial(instance: Instance): string {
   if (!instance || typeof instance.name !== 'string') return '?'
@@ -148,34 +149,32 @@ async function loadInstances() {
 async function closePanel() {
   try {
     await invoke('hide_tray_panel')
-  } catch {
-    void 0
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
 async function openMain() {
   try {
-    await invoke('open_main_window')
-  } catch {
-    void 0
+    await invoke('open_main_window', { route: null })
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
 async function openRoute(route: string) {
   try {
-    await invoke('open_main_window')
-    await new Promise((resolve) => setTimeout(resolve, 60))
-    window.dispatchEvent(new CustomEvent('pretupid:navigate', { detail: route }))
-  } catch {
-    void 0
+    await invoke('open_main_window', { route })
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
 async function quit() {
   try {
     await invoke('quit_app')
-  } catch {
-    void 0
+  } catch (e) {
+    error.value = String(e)
   }
 }
 
@@ -191,9 +190,33 @@ async function launch(instance: Instance) {
 onMounted(async () => {
   await loadInstances()
 
-  listen('instances://changed', () => {
-    loadInstances().catch(() => void 0)
-  })
+  unlisteners.push(
+    await listen('instances://changed', () => {
+      loadInstances().catch(() => void 0)
+    })
+  )
+
+  unlisteners.push(
+    await listen<unknown>('settings://changed', (event) => {
+      const payload = event.payload
+      if (payload && typeof payload === 'object') {
+        settingsStore.applyExternalSettings(
+          payload as Parameters<typeof settingsStore.applyExternalSettings>[0]
+        )
+      }
+    })
+  )
+})
+
+onBeforeUnmount(() => {
+  for (const unlisten of unlisteners) {
+    try {
+      unlisten()
+    } catch {
+      void 0
+    }
+  }
+  unlisteners.length = 0
 })
 </script>
 

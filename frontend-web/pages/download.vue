@@ -1,120 +1,205 @@
 <template>
   <div class="download-page">
-    <h1 class="download-page__title">Download Pretupid Launcher</h1>
-    <p class="download-page__subtitle">Choose your platform below.</p>
+    <header class="download-page__hero">
+      <span class="download-page__eyebrow">Free and open source</span>
+      <h1 class="download-page__title">Download Pretupid Launcher</h1>
+      <p class="download-page__subtitle">
+        Choose your platform. Windows is available today. Linux and macOS are on the way.
+      </p>
+    </header>
+
     <div class="download-page__grid">
       <DownloadCard
         title="Linux"
-        description="Coming soon"
-        url="#"
-        button-text="Join Waitlist"
-        meta="Early access"
+        description="Distribution-agnostic AppImage and tarball. Coming soon."
+        url="https://github.com/yannosay/pretupid-launcher"
+        button-text="Follow progress"
+        meta="In development"
         :featured="false"
       />
       <DownloadCard
         title="Windows"
-        description="Windows 10/11 installer"
+        description="Native installer for Windows 10 and 11, 64-bit."
         :url="config.public.downloadUrl"
         button-text="Download for Windows"
-        meta="Free"
+        meta="Free and open source"
         :featured="true"
       />
       <DownloadCard
         title="macOS"
-        description="Coming soon"
-        url="#"
-        button-text="Join Waitlist"
-        meta="Early access"
+        description="Universal build for Apple Silicon and Intel Macs. Coming soon."
+        url="https://github.com/yannosay/pretupid-launcher"
+        button-text="Follow progress"
+        meta="In development"
         :featured="false"
       />
     </div>
-    <section class="download-page__notes">
-      <h2>System Requirements</h2>
-      <ul>
-        <li>Windows 10 or 11 (64-bit)</li>
-        <li>4 GB RAM minimum</li>
-        <li>Java 17 or newer (auto-installed if missing)</li>
-      </ul>
-      <p>For other platforms, join our <NuxtLink to="/about" class="download-page__link">contact list</NuxtLink> to be notified.</p>
+
+    <section class="download-page__requirements">
+      <h2 class="download-page__requirements-title">System requirements</h2>
+      <div class="download-page__requirements-grid">
+        <div class="download-page__requirement">
+          <span class="download-page__requirement-label">Operating system</span>
+          <span class="download-page__requirement-value">Windows 10 or Windows 11 (64-bit)</span>
+        </div>
+        <div class="download-page__requirement">
+          <span class="download-page__requirement-label">Memory</span>
+          <span class="download-page__requirement-value">4 GB RAM minimum, 8 GB recommended</span>
+        </div>
+        <div class="download-page__requirement">
+          <span class="download-page__requirement-label">Java</span>
+          <span class="download-page__requirement-value">Java 17 or newer, auto-installed if missing</span>
+        </div>
+        <div class="download-page__requirement">
+          <span class="download-page__requirement-label">Disk</span>
+          <span class="download-page__requirement-value">500 MB for the launcher, plus space for instances</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="download-page__open">
+      <div class="download-page__open-content">
+        <h2 class="download-page__open-title">Already installed?</h2>
+        <p class="download-page__open-text">
+          Open the launcher directly from your browser without downloading again.
+        </p>
+      </div>
+      <button type="button" class="btn" @click="openLauncher">Open Launcher</button>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useLauncherBridge } from '~/composables/useLauncherBridge'
+
 const config = useRuntimeConfig()
+const { openLauncher } = useLauncherBridge()
 </script>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
-.download-page__title {
-  font-family: var(--font-pixel);
-  font-size: 2.5rem;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-}
-
-.download-page__subtitle {
-  font-size: 1.2rem;
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.download-page__grid {
+.download-page {
   display: flex;
-  justify-content: center;
-  align-items: stretch;
-  gap: 1.5rem;
-  margin-bottom: 3rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 3rem;
 }
 
-.download-page__grid > * {
-  flex: 1 1 280px;
-  max-width: 350px;
+.download-page__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  max-width: 42rem;
+  margin: 0 auto;
 }
 
-.download-page__grid > *:nth-child(1) {
-  order: 1;
-}
-
-.download-page__grid > *:nth-child(2) {
-  order: 2;
-}
-
-.download-page__grid > *:nth-child(3) {
-  order: 3;
-}
-
-.download-page__notes {
+.download-page__eyebrow {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
   background-color: var(--bg-secondary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 1.5rem;
+  padding: 0.4rem 0.8rem;
 }
 
-.download-page__notes h2 {
+.download-page__title {
   font-family: var(--font-pixel);
-  font-size: 1.2rem;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
   text-transform: uppercase;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
-.download-page__notes ul {
-  list-style: square;
-  padding-left: 1.5rem;
+.download-page__subtitle {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
   color: var(--text-secondary);
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
-.download-page__link {
+.download-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.download-page__requirements {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.download-page__requirements-title {
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.download-page__requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+}
+
+.download-page__requirement {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.download-page__requirement-label {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--accent);
-  text-decoration: none;
 }
 
-.download-page__link:hover {
-  text-decoration: underline;
+.download-page__requirement-value {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.download-page__open {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2rem;
+  background-color: var(--bg-secondary);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--edge-radius);
+  flex-wrap: wrap;
+}
+
+.download-page__open-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.download-page__open-title {
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.download-page__open-text {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
 }
 </style>

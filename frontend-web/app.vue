@@ -19,4 +19,13 @@ useHead({
 html {
   scroll-behavior: smooth;
 }
+
+.pretupid-body {
+  min-height: 100vh;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-text);
+}
 </style>

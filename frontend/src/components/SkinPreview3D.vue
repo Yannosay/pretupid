@@ -1,8 +1,13 @@
 <template>
   <div class="skin-preview">
-    <canvas ref="canvasRef" class="skin-preview__canvas"></canvas>
+    <canvas
+      ref="canvasRef"
+      class="skin-preview__canvas"
+      :class="{ 'skin-preview__canvas--plain': compact }"
+      :style="{ width: `${width}px`, height: `${height}px` }"
+    ></canvas>
 
-    <div class="skin-preview__controls">
+    <div v-if="!compact" class="skin-preview__controls">
       <button
         v-for="animation in animations"
         :key="animation.type"
@@ -33,10 +38,16 @@ import {
   FlyingAnimation
 } from 'skinview3d'
 
-const props = defineProps<{
-  skinUrl: string
-  modelType: 'classic' | 'slim'
-}>()
+const props = withDefaults(
+  defineProps<{
+    skinUrl: string
+    modelType: 'classic' | 'slim'
+    width?: number
+    height?: number
+    compact?: boolean
+  }>(),
+  { width: 300, height: 480, compact: false }
+)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const activeAnimation = ref<'idle' | 'walk' | 'fly'>('idle')
@@ -89,15 +100,15 @@ onMounted(() => {
 
   viewer = new SkinViewer({
     canvas: canvasRef.value,
-    width: 300,
-    height: 480,
+    width: props.width,
+    height: props.height,
     skin: props.skinUrl || DEFAULT_SKIN_URL,
     model: props.modelType === 'slim' ? 'slim' : 'default',
     zoom: 1.2
   })
 
   applyAnimation('idle')
-  viewer.controls.enableZoom = true
+  viewer.controls.enableZoom = !props.compact
   viewer.controls.enablePan = false
   viewer.controls.enableRotate = true
   resetCamera()
@@ -139,14 +150,17 @@ onBeforeUnmount(() => {
 }
 
 .skin-preview__canvas {
-  width: 300px;
-  height: 480px;
   max-width: none;
   display: block;
   margin: 0 auto;
   background-color: var(--bg-tertiary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
+}
+
+.skin-preview__canvas--plain {
+  background-color: transparent;
+  border-color: transparent;
 }
 
 .skin-preview__controls {

@@ -11,37 +11,42 @@
     <section class="legal-page__section">
       <h2>Information We Collect</h2>
       <ul>
-        <li>Authentication tokens required for Microsoft login.</li>
-        <li>Local instance and mod data stored on your device.</li>
-        <li>Anonymous usage statistics to improve the launcher (if enabled).</li>
+        <li>Authentication tokens required for Microsoft login, stored only on your device.</li>
+        <li>Local instance, mod, playtime and settings data stored on your device.</li>
       </ul>
-      <p>We do not sell your personal information to third parties.</p>
+      <p>
+        Pretupid Launcher has no telemetry or analytics. Nothing is sent to the Pretupid team, and we do not sell or
+        share personal information.
+      </p>
     </section>
     <section class="legal-page__section">
       <h2>Data Storage</h2>
       <p>
         All personal data is stored locally on your device in the Pretupid Launcher data directory.
-        Authentication tokens are used solely to connect to Minecraft services and are not transmitted to us.
+        Authentication tokens are encrypted before they are written to disk, and the encryption key is kept in your
+        operating system's credential store. Tokens are only ever sent to Microsoft and Mojang services.
       </p>
     </section>
     <section class="legal-page__section">
       <h2>Third-Party Services</h2>
       <p>
-        The launcher integrates with Modrinth for mod and modpack downloads.
-        Please refer to Modrinth's own privacy policy for details on their data practices.
+        The launcher connects to Microsoft and Xbox Live (sign-in), Mojang (game files and skins), Modrinth (mods and
+        modpacks), the Fabric, Quilt, Forge and NeoForge download servers (mod loaders), Adoptium (Java), mc-heads.net
+        (player head previews, which receive your public player ID) and GitHub (launcher updates). Each service has its
+        own privacy policy.
       </p>
     </section>
     <section class="legal-page__section">
       <h2>Contact</h2>
       <p>
-        If you have any questions about this Privacy Policy, please contact us through the website.
+        If you have any questions about this Privacy Policy, please reach out through the Contact page.
       </p>
     </section>
   </div>
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .legal-page__title {
   font-family: var(--font-pixel);

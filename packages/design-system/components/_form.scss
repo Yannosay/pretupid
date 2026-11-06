@@ -1,0 +1,70 @@
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group--checkbox {
+  justify-content: flex-end;
+}
+
+.form-group--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.form-label {
+  font-family: var(--font-pixel);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.form-label-optional {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.form-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.form-error {
+  font-size: 0.9rem;
+  color: #e74c3c;
+}
+
+.form-error--block {
+  padding: 0.75rem 1rem;
+  background-color: rgba(231, 76, 60, 0.12);
+  border: 2px solid #e74c3c;
+  border-radius: var(--edge-radius);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}

@@ -5,8 +5,12 @@ import type {
   GlobalSettings,
   Instance,
   InstanceSettings,
-  LaunchSettings,
-  VersionEntry
+  VersionEntry,
+  UpdateInstanceRequest,
+  LoaderVersion,
+  InstallResult,
+  ModUpdate,
+  SystemInfo
 } from '@/types'
 
 export {
@@ -17,6 +21,7 @@ export {
   getModrinthLoaders,
   getModrinthGameVersions
 } from '@/api/modrinth'
+
 
 export async function listInstances(): Promise<Instance[]> {
   return invoke('list_instances')
@@ -36,35 +41,52 @@ export async function getInstance(id: string): Promise<Instance | null> {
   return invoke('get_instance', { id })
 }
 
+export async function updateInstance(id: string, request: UpdateInstanceRequest): Promise<Instance | null> {
+  return invoke('update_instance', { id, request })
+}
+
 export async function deleteInstance(id: string): Promise<boolean> {
   return invoke('delete_instance', { id })
+}
+
+export async function duplicateInstance(id: string, name?: string): Promise<Instance> {
+  return invoke('duplicate_instance', { id, name: name ?? null })
+}
+
+export async function openInstanceFolder(id: string, folder?: string): Promise<void> {
+  return invoke('open_instance_folder', { id, folder: folder ?? null })
 }
 
 export async function fetchVersions(): Promise<VersionEntry[]> {
   return invoke('fetch_versions')
 }
 
-export async function launchInstance(
-  instanceId: string,
-  versionId: string,
-  settings: LaunchSettings
-): Promise<void> {
-  return invoke('launch_instance', {
-    instanceId,
-    versionId,
-    settings
-  })
+export async function getLoaderVersions(loader: string, mcVersion: string): Promise<LoaderVersion[]> {
+  return invoke('get_loader_versions', { loader, mcVersion })
 }
 
-export async function saveInstanceSettings(
-  id: string,
-  settings: InstanceSettings
-): Promise<void> {
+export async function launchInstance(instanceId: string, verifyFiles = false): Promise<void> {
+  return invoke('launch_instance', { instanceId, verifyFiles })
+}
+
+export async function prepareInstance(instanceId: string, verifyFiles = false): Promise<void> {
+  return invoke('prepare_instance', { instanceId, verifyFiles })
+}
+
+export async function listRunningInstances(): Promise<string[]> {
+  return invoke('list_running_instances')
+}
+
+export async function saveInstanceSettings(id: string, settings: InstanceSettings): Promise<void> {
   return invoke('save_instance_settings', { id, settings })
 }
 
 export async function getInstanceSettings(id: string): Promise<InstanceSettings> {
   return invoke('get_instance_settings', { id })
+}
+
+export async function getSystemInfo(): Promise<SystemInfo> {
+  return invoke('get_system_info')
 }
 
 export async function loginMicrosoft(): Promise<void> {
@@ -101,29 +123,30 @@ export async function listInstanceMods(instanceId: string): Promise<InstanceMod[
 export async function addInstanceMod(
   instanceId: string,
   projectId: string,
-  projectType: string,
-  title: string,
-  iconUrl: string | null,
-  versionId: string | null,
-  versionName: string | null,
-  fileUrl: string | null,
-  fileName: string | null
-): Promise<InstanceMod> {
-  return invoke('add_instance_mod', {
-    instanceId,
-    projectId,
-    projectType,
-    title,
-    iconUrl,
-    versionId,
-    versionName,
-    fileUrl,
-    fileName
-  })
+  versionId: string | null = null,
+  installDependencies = true
+): Promise<InstallResult> {
+  return invoke('add_instance_mod', { instanceId, projectId, versionId, installDependencies })
 }
 
 export async function removeInstanceMod(modId: string): Promise<boolean> {
   return invoke('remove_instance_mod', { modId })
+}
+
+export async function setInstanceModEnabled(modId: string, enabled: boolean): Promise<InstanceMod> {
+  return invoke('set_instance_mod_enabled', { modId, enabled })
+}
+
+export async function checkInstanceUpdates(instanceId: string): Promise<ModUpdate[]> {
+  return invoke('check_instance_updates', { instanceId })
+}
+
+export async function updateInstanceMods(instanceId: string, modIds: string[] | null = null): Promise<InstallResult> {
+  return invoke('update_instance_mods', { instanceId, modIds })
+}
+
+export async function importInstanceFiles(instanceId: string, paths: string[]): Promise<InstallResult> {
+  return invoke('import_instance_files', { instanceId, paths })
 }
 
 export async function createInstanceFromModpack(
@@ -132,6 +155,14 @@ export async function createInstanceFromModpack(
   name: string
 ): Promise<Instance> {
   return invoke('create_instance_from_modpack', { projectId, versionId, name })
+}
+
+export async function importModpackFile(path: string, name: string | null = null): Promise<Instance> {
+  return invoke('import_modpack_file', { path, name })
+}
+
+export async function exportInstanceModpack(instanceId: string): Promise<string> {
+  return invoke('export_instance_modpack', { instanceId })
 }
 
 export async function hideTrayPanel(): Promise<void> {
@@ -157,4 +188,21 @@ export interface AppInfo {
 
 export async function getAppInfo(): Promise<AppInfo> {
   return invoke('get_app_info')
+}
+
+export interface RepairFailure {
+  title: string
+  file_name: string
+  reason: string
+}
+
+export interface RepairReport {
+  total: number
+  healthy: number
+  repaired: number
+  failed: RepairFailure[]
+}
+
+export async function repairInstanceMods(instanceId: string): Promise<RepairReport> {
+  return invoke('repair_instance_mods', { instanceId })
 }

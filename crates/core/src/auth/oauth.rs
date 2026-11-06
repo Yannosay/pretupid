@@ -8,8 +8,8 @@ use std::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
 
-use crate::error::{CoreError, CoreResult};
 use super::models::{AuthTokens, MinecraftProfile};
+use crate::error::{CoreError, CoreResult};
 
 const MICROSOFT_AUTH_URL: &str = "https://login.live.com/oauth20_authorize.srf";
 const MICROSOFT_TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
@@ -223,9 +223,7 @@ impl OAuthClient {
         }
         .ok_or_else(|| CoreError::Storage("no pending OAuth flow".to_string()))?;
 
-        let microsoft_tokens = self
-            .exchange_code(code, &code_verifier)
-            .await?;
+        let microsoft_tokens = self.exchange_code(code, &code_verifier).await?;
 
         let (minecraft_token, minecraft_profile) = self
             .authenticate_minecraft(&microsoft_tokens.access_token)
@@ -258,9 +256,10 @@ impl OAuthClient {
 
     pub async fn get_tokens(&self) -> CoreResult<AuthTokens> {
         self.ensure_tables().await?;
-        let stored = self.load_tokens_from_db().await?.ok_or_else(|| {
-            CoreError::NotFound("No Microsoft account logged in".to_string())
-        })?;
+        let stored = self
+            .load_tokens_from_db()
+            .await?
+            .ok_or_else(|| CoreError::NotFound("No Microsoft account logged in".to_string()))?;
 
         if chrono::Utc::now().timestamp() >= stored.expires_at {
             self.refresh().await
@@ -278,8 +277,8 @@ impl OAuthClient {
         sqlx::query(
             "INSERT INTO auth_tokens (access_token, refresh_token, expires_at) VALUES (?, ?, ?)",
         )
-        .bind(&tokens.access_token)
-        .bind(&tokens.refresh_token)
+        .bind(super::token_store::seal_secret(&tokens.access_token))
+        .bind(super::token_store::seal_secret(&tokens.refresh_token))
         .bind(tokens.expires_at)
         .execute(&self.pool)
         .await?;
@@ -294,11 +293,21 @@ impl OAuthClient {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|(access_token, refresh_token, expires_at)| AuthTokens {
-            access_token,
-            refresh_token,
+        let (access_raw, refresh_raw, expires_at) = match row {
+            Some(r) => r,
+            None => return Ok(None),
+        };
+        let tokens = AuthTokens {
+            access_token: super::token_store::open_secret(&access_raw)?,
+            refresh_token: super::token_store::open_secret(&refresh_raw)?,
             expires_at,
-        }))
+        };
+        if !super::token_store::is_sealed(&access_raw)
+            || !super::token_store::is_sealed(&refresh_raw)
+        {
+            let _ = self.save_tokens_to_db(&tokens).await;
+        }
+        Ok(Some(tokens))
     }
 
     async fn delete_tokens_from_db(&self) -> CoreResult<()> {
@@ -317,22 +326,20 @@ impl OAuthClient {
 
     pub async fn get_profile(&self) -> CoreResult<Option<MinecraftProfile>> {
         self.ensure_tables().await?;
-        let row = sqlx::query_as::<_, (String, String)>(
-            "SELECT id, name FROM auth_profile LIMIT 1",
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            sqlx::query_as::<_, (String, String)>("SELECT id, name FROM auth_profile LIMIT 1")
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(row.map(|(id, name)| MinecraftProfile { id, name }))
     }
 
     pub async fn get_status(&self) -> CoreResult<super::models::AuthStatus> {
         self.ensure_tables().await?;
-        let row = sqlx::query_as::<_, (String, String)>(
-            "SELECT id, name FROM auth_profile LIMIT 1",
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let row =
+            sqlx::query_as::<_, (String, String)>("SELECT id, name FROM auth_profile LIMIT 1")
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(super::models::AuthStatus {
             authenticated: row.is_some(),
@@ -342,9 +349,10 @@ impl OAuthClient {
 
     pub async fn refresh(&self) -> CoreResult<AuthTokens> {
         self.ensure_tables().await?;
-        let stored = self.load_tokens_from_db().await?.ok_or_else(|| {
-            CoreError::NotFound("no stored tokens".to_string())
-        })?;
+        let stored = self
+            .load_tokens_from_db()
+            .await?
+            .ok_or_else(|| CoreError::NotFound("no stored tokens".to_string()))?;
 
         let response = self
             .http
@@ -372,9 +380,8 @@ impl OAuthClient {
             .await
             .map_err(|e| CoreError::Storage(format!("failed to parse token response: {e}")))?;
 
-        let (minecraft_token, minecraft_profile) = self
-            .authenticate_minecraft(&parsed.access_token)
-            .await?;
+        let (minecraft_token, minecraft_profile) =
+            self.authenticate_minecraft(&parsed.access_token).await?;
 
         let tokens = AuthTokens {
             access_token: minecraft_token,
@@ -572,7 +579,9 @@ impl OAuthClient {
             .json::<MinecraftAuthResponse>()
             .await
             .map(|r| r.access_token)
-            .map_err(|e| CoreError::Storage(format!("failed to parse Minecraft auth response: {e}")))
+            .map_err(|e| {
+                CoreError::Storage(format!("failed to parse Minecraft auth response: {e}"))
+            })
     }
 
     async fn fetch_minecraft_profile(&self, minecraft_token: &str) -> CoreResult<MinecraftProfile> {

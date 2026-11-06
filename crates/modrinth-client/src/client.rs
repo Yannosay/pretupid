@@ -151,8 +151,16 @@ fn parse_license(value: &Value) -> Option<License> {
     }
     if let Some(map) = value.as_object() {
         return Some(License {
-            id: map.get("id").and_then(Value::as_str).unwrap_or_default().to_string(),
-            name: map.get("name").and_then(Value::as_str).unwrap_or_default().to_string(),
+            id: map
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
+            name: map
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string(),
             url: map.get("url").and_then(Value::as_str).map(String::from),
         });
     }
@@ -174,13 +182,21 @@ fn parse_donation_urls(value: &Value) -> Vec<DonationUrl> {
             }
             if let Some(map) = item.as_object() {
                 return Some(DonationUrl {
-                    id: map.get("id").and_then(Value::as_str).unwrap_or_default().to_string(),
+                    id: map
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
                     platform: map
                         .get("platform")
                         .and_then(Value::as_str)
                         .unwrap_or_default()
                         .to_string(),
-                    url: map.get("url").and_then(Value::as_str).unwrap_or_default().to_string(),
+                    url: map
+                        .get("url")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string(),
                 });
             }
             None
@@ -301,20 +317,26 @@ fn parse_version(value: &Value) -> Version {
 
 impl ModrinthClient {
     pub fn new() -> ModrinthResult<Self> {
-        Ok(Self {
-            http: reqwest::Client::new(),
-        })
+        let http = reqwest::Client::builder()
+            .user_agent(concat!(
+                "pretupid-launcher/",
+                env!("CARGO_PKG_VERSION"),
+                " (contact: github.com/yannosay)"
+            ))
+            .timeout(std::time::Duration::from_secs(60))
+            .build()
+            .map_err(Error::Http)?;
+
+        Ok(Self { http })
     }
 
     async fn get_json(&self, url: &str) -> ModrinthResult<Value> {
-        let response = self
-            .http
-            .get(url)
-            .send()
-            .await
-            .map_err(Error::Http)?;
+        let response = self.http.get(url).send().await.map_err(Error::Http)?;
         if !response.status().is_success() {
-            return Err(Error::Api(format!("API returned status {}", response.status())));
+            return Err(Error::Api(format!(
+                "API returned status {}",
+                response.status()
+            )));
         }
         let body = response.text().await.map_err(Error::Http)?;
         serde_json::from_str(&body).map_err(Error::Json)
@@ -360,7 +382,11 @@ impl ModrinthClient {
     }
 
     pub async fn list_versions(&self, id_or_slug: &str) -> ModrinthResult<Vec<Version>> {
-        let url = format!("{}/project/{}/version", API_BASE, urlencoding::encode(id_or_slug));
+        let url = format!(
+            "{}/project/{}/version",
+            API_BASE,
+            urlencoding::encode(id_or_slug)
+        );
         let json = self.get_json(&url).await?;
         let arr = json
             .as_array()
@@ -462,13 +488,92 @@ impl ModrinthClient {
         Ok(result)
     }
 
+    pub async fn get_version(&self, version_id: &str) -> ModrinthResult<Version> {
+        let url = format!("{}/version/{}", API_BASE, urlencoding::encode(version_id));
+        let json = self.get_json(&url).await?;
+        Ok(parse_version(&json))
+    }
+
+    pub async fn list_versions_filtered(
+        &self,
+        id_or_slug: &str,
+        loaders: &[String],
+        game_versions: &[String],
+    ) -> ModrinthResult<Vec<Version>> {
+        let mut url = format!(
+            "{}/project/{}/version?include_changelog=false",
+            API_BASE,
+            urlencoding::encode(id_or_slug)
+        );
+        if !loaders.is_empty() {
+            let json = serde_json::to_string(loaders).map_err(Error::Json)?;
+            url.push_str(&format!("&loaders={}", urlencoding::encode(&json)));
+        }
+        if !game_versions.is_empty() {
+            let json = serde_json::to_string(game_versions).map_err(Error::Json)?;
+            url.push_str(&format!("&game_versions={}", urlencoding::encode(&json)));
+        }
+        let json = self.get_json(&url).await?;
+        let arr = json
+            .as_array()
+            .ok_or_else(|| Error::Api("expected array of versions".to_string()))?;
+        Ok(arr.iter().map(parse_version).collect())
+    }
+
+    pub async fn get_latest_versions_from_hashes(
+        &self,
+        hashes: &[String],
+        loaders: &[String],
+        game_versions: &[String],
+    ) -> ModrinthResult<HashMap<String, Version>> {
+        if hashes.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let url = format!("{}/version_files/update", API_BASE);
+        let mut body = serde_json::json!({
+            "hashes": hashes,
+            "algorithm": "sha1",
+        });
+        if !loaders.is_empty() {
+            body["loaders"] = serde_json::json!(loaders);
+        }
+        if !game_versions.is_empty() {
+            body["game_versions"] = serde_json::json!(game_versions);
+        }
+        let response = self
+            .http
+            .post(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(Error::Http)?;
+        if !response.status().is_success() {
+            return Err(Error::Api(format!(
+                "version_files/update returned status {}",
+                response.status()
+            )));
+        }
+        let body: Value = response.json().await.map_err(Error::Http)?;
+        let map = body
+            .as_object()
+            .ok_or_else(|| Error::Api("expected object from version_files/update".to_string()))?;
+        Ok(map
+            .iter()
+            .map(|(hash, value)| (hash.clone(), parse_version(value)))
+            .collect())
+    }
+
     pub async fn get_projects_by_ids(&self, ids: &[String]) -> ModrinthResult<Vec<Project>> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
 
         let ids_json = serde_json::to_string(ids).map_err(Error::Json)?;
-        let url = format!("{}/projects?ids={}", API_BASE, urlencoding::encode(&ids_json));
+        let url = format!(
+            "{}/projects?ids={}",
+            API_BASE,
+            urlencoding::encode(&ids_json)
+        );
         let json = self.get_json(&url).await?;
         let arr = json
             .as_array()

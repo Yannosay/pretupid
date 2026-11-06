@@ -18,7 +18,9 @@ pub struct AppState {
     pub modrinth: ModrinthClient,
     pub profiles_dir: PathBuf,
     pub caches_dir: PathBuf,
+    pub skins_dir: PathBuf,
     pub cancel_channels: Mutex<HashMap<String, watch::Sender<bool>>>,
+    pub pending_deep_links: Mutex<Vec<serde_json::Value>>,
 }
 
 impl AppState {
@@ -40,6 +42,19 @@ impl AppState {
         skins.init_schema().await?;
 
         let resolver = VersionResolver::new(resolver_base_dir);
+
+        let base_dir = caches_dir
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| profiles_dir.clone());
+        let skins_dir = base_dir.join("skins");
+        let legacy_skins = profiles_dir.join("skins");
+        if legacy_skins.is_dir() && !skins_dir.exists() {
+            if let Err(err) = std::fs::rename(&legacy_skins, &skins_dir) {
+                tracing::warn!("could not migrate skins folder: {err}");
+            }
+        }
+        std::fs::create_dir_all(&skins_dir)?;
         let modrinth = ModrinthClient::new()?;
 
         Ok(Self {
@@ -51,7 +66,9 @@ impl AppState {
             modrinth,
             profiles_dir,
             caches_dir,
+            skins_dir,
             cancel_channels: Mutex::new(HashMap::new()),
+            pending_deep_links: Mutex::new(Vec::new()),
         })
     }
 }

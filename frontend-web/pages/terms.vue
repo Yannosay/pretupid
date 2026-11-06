@@ -20,7 +20,7 @@
       <ul>
         <li>You may not use the launcher for any illegal or unauthorized purpose.</li>
         <li>You must comply with the terms of service of Minecraft and related services.</li>
-        <li>You may not distribute modified versions that violate the GNU GPL v2.0 license.</li>
+        <li>You may not distribute modified versions that violate the GNU AGPL-3.0 license.</li>
       </ul>
     </section>
     <section class="legal-page__section">
@@ -40,7 +40,7 @@
 </template>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .legal-page__title {
   font-family: var(--font-pixel);

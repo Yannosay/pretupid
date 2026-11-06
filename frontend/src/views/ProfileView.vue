@@ -42,7 +42,7 @@
         <section class="profile-view__panel">
           <div class="profile-view__panel-heading">
             <h3>3D Preview</h3>
-            <span class="profile-view__panel-hint">Scroll to zoom · drag to rotate</span>
+            <span class="profile-view__panel-hint">Scroll to zoom, drag to rotate</span>
           </div>
 
           <div class="profile-view__preview">
@@ -66,7 +66,7 @@
               :disabled="!activeSlot || profileStore.exporting"
               @click="handleExportActive"
             >
-              Export PNG
+              {{ profileStore.exporting ? 'Exporting...' : 'Export PNG' }}
             </button>
           </div>
         </section>
@@ -84,7 +84,12 @@
           </div>
 
           <div v-if="profileStore.loading" class="pixel-loader">
-            Loading Slots <span class="pixel-loader__dots"><span class="pixel-loader__dot"></span><span class="pixel-loader__dot"></span><span class="pixel-loader__dot"></span></span>
+            Loading Slots
+            <span class="pixel-loader__dots">
+              <span class="pixel-loader__dot"></span>
+              <span class="pixel-loader__dot"></span>
+              <span class="pixel-loader__dot"></span>
+            </span>
           </div>
 
           <div v-else-if="profileStore.skinSlots.length === 0" class="profile-view__empty">
@@ -127,10 +132,12 @@ import SkinSlotCard from '@/components/SkinSlotCard.vue'
 import SkinImportModal from '@/components/SkinImportModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
+import { useNotificationsStore } from '@/stores/notifications'
 import type { SkinModelType } from '@/types/profile'
 
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
+const notifications = useNotificationsStore()
 const importModalOpen = ref(false)
 const draggedSlotId = ref<string | null>(null)
 
@@ -191,16 +198,12 @@ async function handleApplyActive() {
 }
 
 async function handleExportSlot(slotId: string) {
-  const base64 = await profileStore.exportSlot(slotId)
-  if (!base64) return
-
-  const slot = profileStore.skinSlots.find((item) => item.id === slotId)
-  const fileName = slot?.original_file_name || slot?.file_name || 'skin.png'
-
-  const link = document.createElement('a')
-  link.href = `data:image/png;base64,${base64}`
-  link.download = fileName
-  link.click()
+  const savedPath = await profileStore.exportSlotToDownloads(slotId)
+  if (savedPath) {
+    notifications.notifySuccess('Skin exported', `Saved to ${savedPath}`, 7000)
+  } else if (profileStore.error) {
+    notifications.notifyError('Export failed', profileStore.error)
+  }
 }
 
 async function handleExportActive() {
@@ -216,7 +219,6 @@ function confirmDelete(slotId: string) {
 }
 
 async function handleSelectSlot(slotId: string) {
-  console.log('Select slot clicked:', slotId)
   await profileStore.setActive(slotId)
 }
 

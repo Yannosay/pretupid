@@ -1,54 +1,86 @@
 <template>
-  <div class="feature-card">
-    <div class="feature-card__icon">{{ icon }}</div>
+  <article class="feature-card">
+    <div class="feature-card__icon" aria-hidden="true">
+      <SiteIcon :name="icon" :size="22" />
+    </div>
     <h3 class="feature-card__title">{{ title }}</h3>
     <p class="feature-card__description">{{ description }}</p>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
+import type { SiteIconName } from '~/components/SiteIcon.vue'
+
 defineProps<{
-  icon: string
+  icon: SiteIconName
   title: string
   description: string
 }>()
 </script>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+@use 'design-system/mixins' as *;
 
 .feature-card {
-  @include card-base;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.5rem;
   background-color: var(--bg-secondary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal), border-color var(--transition-normal);
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
 }
 
 .feature-card:hover {
-  transform: translate(-2px, -2px);
+  transform: translate(-3px, -3px);
+  border-color: var(--accent);
   @include block-shadow(var(--shadow-color));
 }
 
+.feature-card:hover::before {
+  opacity: 1;
+}
+
 .feature-card__icon {
-  font-size: 2.5rem;
-  line-height: 1;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background-color: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--edge-radius);
 }
 
 .feature-card__title {
-  font-family: var(--font-pixel);
-  font-size: 1rem;
-  text-transform: uppercase;
   margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 .feature-card__description {
-  font-size: 1rem;
-  color: var(--text-secondary);
   margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
 }
 </style>

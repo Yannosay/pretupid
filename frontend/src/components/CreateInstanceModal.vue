@@ -1,250 +1,320 @@
 <template>
   <div class="modal-overlay" @click.self="handleClose">
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-instance-title">
       <div class="modal__header">
-        <h3 class="modal__title">Create Instance</h3>
-        <button class="modal__close" @click="handleClose">×</button>
+        <div>
+          <h3 id="create-instance-title" class="modal__title">New instance</h3>
+          <p class="modal__subtitle">An instance is a separate Minecraft setup with its own mods, worlds and settings.</p>
+        </div>
+        <button class="modal__close" aria-label="Close" @click="handleClose">×</button>
       </div>
 
       <div class="modal__body">
-        <div class="form-group">
-          <label class="form-label" for="instance-name">Instance Name</label>
-          <input
-            id="instance-name"
-            v-model="name"
-            type="text"
-            class="input"
-            placeholder="My Survival World"
-            :disabled="creating"
-            autofocus
-          />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="instance-version">Minecraft Version</label>
-          <div v-if="loadingVersions" class="pixel-loader">
-            Loading Versions
-            <span class="pixel-loader__dots">
-              <span class="pixel-loader__dot"></span>
-              <span class="pixel-loader__dot"></span>
-              <span class="pixel-loader__dot"></span>
-            </span>
-          </div>
-          <select
-            v-else
-            id="instance-version"
-            v-model="minecraftVersion"
-            class="input"
-            :disabled="creating"
+        <div class="segmented create__mode">
+          <button
+            class="segmented__option"
+            :class="{ 'segmented__option--active': mode === 'new' }"
+            @click="mode = 'new'"
           >
-            <option value="" disabled>Select a version</option>
-            <option v-for="version in filteredVersions" :key="version.id" :value="version.id">
-              {{ version.id }} · {{ version.type }}
-            </option>
-          </select>
-          <span v-if="versionsError" class="form-error">{{ versionsError }}</span>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="instance-loader">Mod Loader</label>
-          <select
-            id="instance-loader"
-            v-model="loader"
-            class="input"
-            :disabled="creating"
+            <AppIcon name="plus" :size="12" />
+            Start fresh
+          </button>
+          <button
+            class="segmented__option"
+            :class="{ 'segmented__option--active': mode === 'import' }"
+            @click="mode = 'import'"
           >
-            <option value="vanilla">Vanilla — no mods</option>
-            <option value="fabric">Fabric</option>
-            <option value="quilt">Quilt</option>
-            <option value="forge">Forge</option>
-            <option value="neoforge">NeoForge</option>
-          </select>
-          <span class="form-hint">
-            {{ loaderHint }}
-          </span>
-        </div>
-
-        <div v-if="loader !== 'vanilla'" class="form-group">
-          <label class="form-label" for="instance-loader-version">Loader Version</label>
-          <input
-            id="instance-loader-version"
-            v-model="loaderVersion"
-            type="text"
-            class="input"
-            :placeholder="loaderVersionPlaceholder"
-            :disabled="creating"
-          />
-          <span class="form-hint">{{ loaderVersionHint }}</span>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="instance-description">Description <span class="form-label-optional">(optional)</span></label>
-          <input
-            id="instance-description"
-            v-model="description"
-            type="text"
-            class="input"
-            placeholder="Notes for this instance"
-            :disabled="creating"
-          />
-        </div>
-
-        <div v-if="submitError" class="form-error form-error--block">{{ submitError }}</div>
-
-        <div class="modal__actions">
-          <button class="btn btn--ghost" :disabled="creating" @click="handleClose">Cancel</button>
-          <button class="btn" :disabled="!canSubmit || creating" @click="submit">
-            {{ creating ? 'Creating...' : 'Create Instance' }}
+            <AppIcon name="upload" :size="12" />
+            Import modpack file
           </button>
         </div>
+
+        <template v-if="mode === 'new'">
+          <div class="form-group">
+            <label class="form-label" for="instance-version">Minecraft version</label>
+            <div class="create__row">
+              <select id="instance-version" v-model="minecraftVersion" class="input" :disabled="creating || loadingVersions">
+                <option v-if="loadingVersions" value="">Loading versions</option>
+                <option v-for="version in filteredVersions" :key="version.id" :value="version.id">
+                  {{ version.id }}{{ version.type !== 'release' ? ` (${version.type})` : '' }}
+                </option>
+              </select>
+              <label class="toggle create__snapshots">
+                <input v-model="showSnapshots" type="checkbox" class="toggle__input" />
+                <span class="toggle__track" />
+                <span class="toggle__label">Snapshots</span>
+              </label>
+            </div>
+            <span v-if="versionsError" class="form-error">{{ versionsError }}</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Mod loader</span>
+            <div class="option-cards">
+              <button
+                v-for="option in loaderOptions"
+                :key="option.value"
+                class="option-card"
+                :class="{ 'option-card--active': loader === option.value }"
+                :disabled="creating"
+                @click="loader = option.value"
+              >
+                <span class="option-card__title">{{ option.label }}</span>
+                <span class="option-card__hint">{{ option.hint }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="loader !== 'vanilla'" class="form-group">
+            <label class="form-label" for="loader-version">{{ loaderName }} version</label>
+            <select
+              id="loader-version"
+              v-model="loaderVersion"
+              class="input"
+              :disabled="creating || loadingLoaderVersions || loaderVersions.length === 0"
+            >
+              <option v-if="loadingLoaderVersions" value="">Loading {{ loaderName }} versions</option>
+              <option v-else-if="loaderVersions.length === 0" value="">No {{ loaderName }} build for {{ minecraftVersion }}</option>
+              <option v-for="v in loaderVersions" :key="v.version" :value="v.version">
+                {{ v.version }}{{ v.recommended ? ' — recommended' : v.latest ? ' — latest' : '' }}{{ v.stable ? '' : ' (beta)' }}
+              </option>
+            </select>
+            <span class="form-hint">{{ loaderHint }}</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="instance-name">Name</label>
+            <input
+              id="instance-name"
+              v-model="name"
+              type="text"
+              class="input"
+              maxlength="64"
+              :placeholder="suggestedName"
+              :disabled="creating"
+              @keyup.enter="submit"
+            />
+          </div>
+
+          <details class="create__advanced">
+            <summary>More options</summary>
+            <div class="create__advanced-body">
+              <div class="form-group">
+                <label class="form-label" for="instance-group">Group <span class="form-label-optional">(optional)</span></label>
+                <input id="instance-group" v-model="group" list="instance-groups" type="text" class="input" maxlength="32" placeholder="e.g. Survival" />
+                <datalist id="instance-groups">
+                  <option v-for="g in instanceStore.groups" :key="g" :value="g" />
+                </datalist>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="instance-description">Notes <span class="form-label-optional">(optional)</span></label>
+                <input id="instance-description" v-model="description" type="text" class="input" maxlength="500" placeholder="What is this instance for?" />
+              </div>
+            </div>
+          </details>
+        </template>
+
+        <template v-else>
+          <div class="create__import">
+            <AppIcon name="box" :size="28" />
+            <p class="create__import-text">
+              Pick a <strong>.mrpack</strong> file exported from Pretupid, Modrinth App or Prism. Mods are downloaded and
+              verified automatically.
+            </p>
+            <button class="btn btn--secondary" :disabled="creating" @click="pickModpack">
+              <AppIcon name="folder" :size="14" />
+              {{ modpackPath ? 'Choose another file' : 'Choose file' }}
+            </button>
+            <span v-if="modpackPath" class="create__import-file">{{ modpackFileName }}</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="import-name">Name <span class="form-label-optional">(optional)</span></label>
+            <input id="import-name" v-model="importName" type="text" class="input" maxlength="64" placeholder="Use the modpack's name" />
+          </div>
+        </template>
+
+        <div v-if="submitError" class="form-error form-error--block">{{ submitError }}</div>
+      </div>
+
+      <div class="modal__footer">
+        <button class="btn btn--ghost" :disabled="creating" @click="handleClose">Cancel</button>
+        <button class="btn" :disabled="!canSubmit" @click="submit">
+          {{ creating ? 'Creating' : mode === 'new' ? 'Create instance' : 'Import' }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { fetchVersions } from '@/api'
+import { ref, computed, onMounted, watch } from 'vue'
+import { open } from '@tauri-apps/plugin-dialog'
+import AppIcon from '@/components/AppIcon.vue'
+import { fetchVersions, getLoaderVersions, importModpackFile } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotificationsStore } from '@/stores/notifications'
-import type { VersionEntry } from '@/types'
+import { useInstallsStore } from '@/stores/installs'
+import { loaderLabel } from '@/utils/format'
+import type { VersionEntry, LoaderVersion, Instance } from '@/types'
+
+type LoaderChoice = 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'created'): void
+  (e: 'created', instance: Instance): void
 }>()
 
 const instanceStore = useInstanceStore()
 const settingsStore = useSettingsStore()
 const notifications = useNotificationsStore()
+const installs = useInstallsStore()
 
+const mode = ref<'new' | 'import'>('new')
 const versions = ref<VersionEntry[]>([])
 const loadingVersions = ref(false)
 const versionsError = ref<string | null>(null)
+const showSnapshots = ref(settingsStore.settings.globalSettings.show_snapshots)
 
 const name = ref('')
 const description = ref('')
+const group = ref('')
 const minecraftVersion = ref('')
-const loader = ref<'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'>('vanilla')
+const loader = ref<LoaderChoice>('fabric')
 const loaderVersion = ref('')
+const loaderVersions = ref<LoaderVersion[]>([])
+const loadingLoaderVersions = ref(false)
+let loaderRequest = 0
+
+const modpackPath = ref<string | null>(null)
+const importName = ref('')
 
 const creating = ref(false)
 const submitError = ref<string | null>(null)
 
+const loaderOptions: { value: LoaderChoice; label: string; hint: string }[] = [
+  { value: 'vanilla', label: 'Vanilla', hint: 'Plain Minecraft, no mods' },
+  { value: 'fabric', label: 'Fabric', hint: 'Fast, most popular for mods' },
+  { value: 'quilt', label: 'Quilt', hint: 'Runs Fabric mods too' },
+  { value: 'forge', label: 'Forge', hint: 'Classic big modpacks' },
+  { value: 'neoforge', label: 'NeoForge', hint: 'Modern Forge successor' }
+]
+
 const filteredVersions = computed(() => {
-  if (!versions.value.length) return []
-  if (settingsStore.settings.globalSettings.show_snapshots) return versions.value
-  const releases = versions.value.filter((v) => v.type === 'release')
-  return releases.length > 0 ? releases : versions.value
+  if (showSnapshots.value) return versions.value
+  return versions.value.filter((v) => v.type === 'release')
+})
+
+const loaderName = computed(() => loaderLabel(loader.value))
+
+const suggestedName = computed(() => {
+  if (!minecraftVersion.value) return 'My instance'
+  return loader.value === 'vanilla' ? `Minecraft ${minecraftVersion.value}` : `${loaderName.value} ${minecraftVersion.value}`
 })
 
 const loaderHint = computed(() => {
-  switch (loader.value) {
-    case 'vanilla':
-      return 'Pure Minecraft. Mods are not supported on this instance.'
-    case 'fabric':
-      return 'Lightweight, modern mod loader. Most Modrinth mods target Fabric.'
-    case 'quilt':
-      return 'Fabric-compatible, community-driven fork.'
-    case 'forge':
-      return 'Classic mod loader. Heavy modpacks still target Forge.'
-    case 'neoforge':
-      return 'Modern fork of Forge for Minecraft 1.20.2+.'
-    default:
-      return ''
-  }
+  if (loadingLoaderVersions.value) return 'Checking which builds support this Minecraft version.'
+  if (loaderVersions.value.length === 0) return `Pick another Minecraft version or loader; ${loaderName.value} has no build for ${minecraftVersion.value}.`
+  return 'The recommended build is picked for you. You can change it later.'
 })
 
-const loaderVersionPlaceholder = computed(() => {
-  switch (loader.value) {
-    case 'fabric':
-      return 'latest'
-    case 'quilt':
-      return 'latest'
-    case 'forge':
-      return 'e.g. 47.2.0'
-    case 'neoforge':
-      return 'e.g. 20.4.237'
-    default:
-      return ''
-  }
-})
-
-const loaderVersionHint = computed(() => {
-  switch (loader.value) {
-    case 'fabric':
-    case 'quilt':
-      return 'Leave blank to use the latest stable loader version.'
-    case 'forge':
-    case 'neoforge':
-      return 'Required. Provide the exact loader version to install.'
-    default:
-      return ''
-  }
-})
+const modpackFileName = computed(() => modpackPath.value?.split(/[\\/]/).pop() ?? '')
 
 const canSubmit = computed(() => {
   if (creating.value) return false
-  if (!name.value.trim()) return false
+  if (mode.value === 'import') return !!modpackPath.value
   if (!minecraftVersion.value) return false
-  if (loader.value === 'forge' || loader.value === 'neoforge') {
-    return loaderVersion.value.trim().length > 0
-  }
+  if (loader.value !== 'vanilla' && !loaderVersion.value) return false
   return true
 })
+
+async function refreshLoaderVersions() {
+  const requestId = ++loaderRequest
+  loaderVersions.value = []
+  loaderVersion.value = ''
+  if (loader.value === 'vanilla' || !minecraftVersion.value) return
+  loadingLoaderVersions.value = true
+  try {
+    const list = await getLoaderVersions(loader.value, minecraftVersion.value)
+    if (requestId !== loaderRequest) return
+    loaderVersions.value = list
+    const preferred = list.find((v) => v.recommended) ?? list.find((v) => v.stable) ?? list[0]
+    loaderVersion.value = preferred?.version ?? ''
+  } catch (e) {
+    if (requestId === loaderRequest) submitError.value = `Could not load ${loaderName.value} versions: ${String(e)}`
+  } finally {
+    if (requestId === loaderRequest) loadingLoaderVersions.value = false
+  }
+}
+
+watch([minecraftVersion, loader], () => {
+  submitError.value = null
+  refreshLoaderVersions()
+})
+
+watch(showSnapshots, () => {
+  if (!filteredVersions.value.some((v) => v.id === minecraftVersion.value)) {
+    minecraftVersion.value = filteredVersions.value[0]?.id ?? ''
+  }
+})
+
+async function pickModpack() {
+  try {
+    const selected = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }]
+    })
+    if (typeof selected === 'string') modpackPath.value = selected
+  } catch (e) {
+    notifications.notifyError('Could not open file picker', String(e))
+  }
+}
 
 async function submit() {
   if (!canSubmit.value) return
   submitError.value = null
   creating.value = true
-
   try {
-    const trimmedLoaderVersion = loaderVersion.value.trim()
-
-    await instanceStore.create({
-      name: name.value.trim(),
-      description: description.value.trim(),
-      minecraft_version: minecraftVersion.value,
-      mod_loader: loader.value,
-      loader_version: loader.value === 'vanilla'
-        ? null
-        : trimmedLoaderVersion.length > 0
-          ? trimmedLoaderVersion
-          : null
-    })
-
-    notifications.notifySuccess(
-      'Instance created',
-      `${name.value.trim()} is ready to configure.`
-    )
-    emit('created')
+    let instance: Instance
+    if (mode.value === 'import' && modpackPath.value) {
+      instance = await importModpackFile(modpackPath.value, importName.value.trim() || null)
+      installs.begin(instance.id, 'Preparing installation')
+      await instanceStore.load(true)
+      notifications.notifyInfo('Importing modpack', `${instance.name} is being installed in the background.`)
+    } else {
+      instance = await instanceStore.create({
+        name: name.value.trim() || suggestedName.value,
+        description: description.value.trim(),
+        minecraft_version: minecraftVersion.value,
+        mod_loader: loader.value,
+        loader_version: loader.value === 'vanilla' ? null : loaderVersion.value
+      })
+      if (group.value.trim()) {
+        await instanceStore.update(instance.id, { group_name: group.value.trim() })
+      }
+      notifications.notifySuccess('Instance created', `${instance.name} is ready. Press Play to download and start it.`)
+    }
+    emit('created', instance)
     emit('close')
   } catch (e) {
     submitError.value = String(e)
-    notifications.notifyError('Instance creation failed', String(e))
   } finally {
     creating.value = false
   }
 }
 
 function handleClose() {
-  if (creating.value) return
-  emit('close')
+  if (!creating.value) emit('close')
 }
 
 onMounted(async () => {
   loadingVersions.value = true
-  versionsError.value = null
   try {
     versions.value = await fetchVersions()
-    if (versions.value.length > 0) {
-      const releases = versions.value.filter((v) => v.type === 'release')
-      minecraftVersion.value = releases[0]?.id ?? versions.value[0].id
-    }
+    minecraftVersion.value = filteredVersions.value[0]?.id ?? versions.value[0]?.id ?? ''
   } catch (e) {
-    versionsError.value = String(e)
-    notifications.notifyError('Could not load versions', String(e))
+    versionsError.value = `Could not load Minecraft versions: ${String(e)}`
   } finally {
     loadingVersions.value = false
   }
@@ -252,108 +322,67 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-@use '@/assets/styles/_mixins' as *;
+.create__mode {
+  align-self: flex-start;
+}
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+.create__row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 3000;
-}
-
-.modal {
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  width: 90%;
-  max-width: 520px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 2px solid var(--border-color);
-  background-color: var(--bg-tertiary);
-}
-
-.modal__title {
-  font-family: var(--font-pixel);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.modal__close {
-  font-size: 1.75rem;
-  line-height: 1;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: color var(--transition-fast);
-}
-
-.modal__close:hover {
-  color: var(--text-primary);
-}
-
-.modal__body {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.form-label {
-  font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.form-label-optional {
-  font-size: 0.6rem;
-  color: var(--text-secondary);
-  opacity: 0.75;
-}
-
-.form-hint {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.form-error {
-  font-size: 0.85rem;
-  color: #e74c3c;
-}
-
-.form-error--block {
-  padding: 0.75rem 1rem;
-  background-color: rgba(231, 76, 60, 0.12);
-  border: 2px solid #e74c3c;
-  border-radius: var(--edge-radius);
-}
-
-.modal__actions {
-  display: flex;
-  justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+
+  .input {
+    flex: 1;
+  }
+}
+
+.create__snapshots {
+  flex-shrink: 0;
+}
+
+.create__advanced {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--edge-radius);
+  padding: 0.6rem 0.8rem;
+
+  summary {
+    cursor: pointer;
+    font-family: var(--font-pixel);
+    font-size: 0.55rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+}
+
+.create__advanced-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 0.8rem;
+}
+
+.create__import {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--accent);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.create__import-text {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.25;
+}
+
+.create__import-file {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  word-break: break-all;
 }
 </style>

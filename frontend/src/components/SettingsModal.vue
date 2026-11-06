@@ -7,8 +7,8 @@
       </div>
 
       <div class="modal__body">
-        <section class="modal__section">
-          <h3>Theme</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Theme</h3>
           <div class="theme-toggle">
             <button
               class="theme-toggle__btn"
@@ -27,8 +27,8 @@
           </div>
         </section>
 
-        <section class="modal__section">
-          <h3>Accent Color</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Accent Color</h3>
           <div class="color-presets">
             <button
               v-for="color in presetColors"
@@ -49,8 +49,8 @@
           </div>
         </section>
 
-        <section class="modal__section">
-          <h3>Corner Style</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Corner Style</h3>
           <div class="corner-toggle">
             <button
               class="corner-toggle__btn"
@@ -90,8 +90,8 @@
           </div>
         </section>
 
-        <section class="modal__section">
-          <h3>Minecraft Versions</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Minecraft Versions</h3>
           <label class="settings-checkbox">
             <input v-model="showSnapshots" type="checkbox" class="settings-checkbox__input" />
             <span class="settings-checkbox__box" aria-hidden="true"></span>
@@ -99,21 +99,42 @@
           </label>
         </section>
 
-        <section class="modal__section">
-          <h3>Updates</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Updates</h3>
           <label class="settings-checkbox">
             <input v-model="autoUpdate" type="checkbox" class="settings-checkbox__input" />
             <span class="settings-checkbox__box" aria-hidden="true"></span>
             <span class="settings-checkbox__label">Automatically check for updates</span>
           </label>
 
-          <button class="btn btn--ghost btn--small" :disabled="updaterStore.checking" @click="checkForUpdates">
-            {{ updaterStore.checking ? 'Checking...' : 'Check for Updates' }}
-          </button>
+          <div v-if="updaterStore.updateAvailable && updaterStore.updateInfo" class="update-banner">
+            <div class="update-banner__info">
+              <span class="update-banner__version">Pretupid {{ updaterStore.updateInfo.version }}</span>
+              <span class="update-banner__status">Ready to install</span>
+            </div>
+            <div class="update-banner__actions">
+              <button class="btn btn--ghost btn--small" @click="updaterStore.deferUpdate">Remind me later</button>
+              <button class="btn btn--small" :disabled="updaterStore.installing" @click="checkForUpdates">
+                {{ updaterStore.installing ? 'Installing...' : 'Install Now' }}
+              </button>
+            </div>
+            <div v-if="updaterStore.installing" class="update-progress">
+              <div class="update-progress__bar">
+                <div class="update-progress__fill" :style="{ width: `${updaterStore.downloadProgress}%` }" />
+              </div>
+              <span class="update-progress__text">{{ updaterStore.downloadProgress }}%</span>
+            </div>
+          </div>
+
+          <div v-else class="update-actions">
+            <button class="btn btn--ghost btn--small" :disabled="updaterStore.checking" @click="checkForUpdates">
+              {{ updaterStore.checking ? 'Checking...' : 'Check for Updates' }}
+            </button>
+          </div>
         </section>
 
-        <section class="modal__section">
-          <h3>Java</h3>
+        <section class="section">
+          <h3 class="section__title section__title--sm">Java</h3>
           <div class="java-settings">
             <div class="form-group">
               <label class="form-label">Default Java Path</label>
@@ -135,7 +156,7 @@
           </div>
         </section>
 
-        <section class="modal__section">
+        <section class="section">
           <button class="btn btn--danger" @click="resetSettings">Reset to Defaults</button>
         </section>
 
@@ -328,19 +349,6 @@ function close() {
   padding: 1.5rem;
 }
 
-.modal__section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.modal__section h3 {
-  font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  margin: 0;
-}
-
 .theme-toggle,
 .corner-toggle {
   display: flex;
@@ -396,6 +404,7 @@ function close() {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .custom-color input {
@@ -423,6 +432,7 @@ function close() {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .rounding-slider {
@@ -448,19 +458,6 @@ function close() {
   color: var(--text-secondary);
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
 .java-settings {
   display: flex;
   flex-direction: column;
@@ -475,60 +472,6 @@ function close() {
 
 .java-path-row .input {
   flex: 1;
-}
-
-.settings-checkbox {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 1.1rem;
-  color: var(--text-primary);
-  user-select: none;
-  min-height: 32px;
-}
-
-.settings-checkbox__input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.settings-checkbox__box {
-  position: relative;
-  width: 50px;
-  height: 28px;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
-  flex-shrink: 0;
-}
-
-.settings-checkbox__box::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  background-color: var(--text-secondary);
-  border-radius: var(--edge-radius);
-  transition: transform var(--transition-fast), background-color var(--transition-fast);
-}
-
-.settings-checkbox__input:checked + .settings-checkbox__box {
-  background-color: var(--accent);
-  border-color: var(--accent);
-}
-
-.settings-checkbox__input:checked + .settings-checkbox__box::after {
-  transform: translateX(22px);
-  background-color: var(--accent-text);
 }
 
 .modal__footer {
@@ -552,5 +495,72 @@ function close() {
   font-size: 0.6rem;
   text-transform: uppercase;
   color: var(--accent);
+}
+
+.update-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--bg-tertiary);
+  border: 2px solid var(--accent);
+  border-radius: var(--edge-radius);
+  margin-top: 0.5rem;
+}
+
+.update-banner__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.update-banner__version {
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.update-banner__status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.update-banner__actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.update-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.update-progress__bar {
+  flex: 1;
+  height: 8px;
+  background-color: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--edge-radius);
+  overflow: hidden;
+}
+
+.update-progress__fill {
+  height: 100%;
+  background-color: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.update-progress__text {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  min-width: 40px;
+}
+
+.update-actions {
+  margin-top: 0.5rem;
 }
 </style>
