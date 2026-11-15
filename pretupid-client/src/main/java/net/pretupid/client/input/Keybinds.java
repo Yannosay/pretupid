@@ -1,0 +1,79 @@
+package net.pretupid.client.input;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import java.util.HashMap;
+import java.util.Map;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
+import net.pretupid.client.PretupidClient;
+import net.pretupid.client.module.Module;
+import net.pretupid.client.ui.screen.ClientMenuScreen;
+import net.pretupid.client.ui.screen.EmoteWheelScreen;
+import net.pretupid.client.ui.screen.HudEditorScreen;
+
+public final class Keybinds {
+	private final PretupidClient client;
+	private final Map<Module, Boolean> held = new HashMap<>();
+	private KeyMapping openMenu;
+	private KeyMapping openHudEditor;
+	private KeyMapping zoom;
+	private KeyMapping emoteWheel;
+
+	public Keybinds(PretupidClient client) {
+		this.client = client;
+	}
+
+	public void register() {
+		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "main"));
+		openMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_RSHIFT, category));
+		openHudEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.hud_editor", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), category));
+		zoom = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.zoom", InputConstants.Type.KEYBOARD, InputConstants.KEY_C, category));
+		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, category));
+	}
+
+	public KeyMapping emoteWheel() {
+		return emoteWheel;
+	}
+
+	public KeyMapping zoom() {
+		return zoom;
+	}
+
+	public KeyMapping openMenu() {
+		return openMenu;
+	}
+
+	public void tick(Minecraft minecraft) {
+		while (openMenu.consumeClick()) {
+			if (minecraft.gui.screen() == null) {
+				minecraft.gui.setScreen(new ClientMenuScreen(null));
+			}
+		}
+		while (emoteWheel.consumeClick()) {
+			if (minecraft.gui.screen() == null && minecraft.player != null) {
+				minecraft.gui.setScreen(new EmoteWheelScreen());
+			}
+		}
+		while (openHudEditor.consumeClick()) {
+			if (minecraft.gui.screen() == null && minecraft.level != null) {
+				minecraft.gui.setScreen(new HudEditorScreen(null));
+			}
+		}
+		boolean inGame = minecraft.gui.screen() == null && minecraft.level != null;
+		for (Module module : client.modules().all()) {
+			if (!module.toggleKey().isBound()) {
+				held.remove(module);
+				continue;
+			}
+			boolean down = inGame && InputConstants.isKeyDown(module.toggleKey().get());
+			boolean wasDown = held.getOrDefault(module, false);
+			if (down && !wasDown) {
+				module.toggle();
+				client.notifications().moduleToggled(module);
+			}
+			held.put(module, down);
+		}
+	}
+}
