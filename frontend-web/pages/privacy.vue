@@ -64,10 +64,10 @@
 
 .legal-page__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 2.5rem;
   text-align: center;
   margin-bottom: 2rem;
-  text-transform: uppercase;
 }
 
 .legal-page__section {
@@ -80,8 +80,8 @@
 
 .legal-page__section h2 {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 1.3rem;
-  text-transform: uppercase;
   margin-bottom: 1rem;
 }
 

@@ -120,7 +120,8 @@ const hosts = [
 
 .security-page__eyebrow {
   padding: 0.4rem 0.8rem;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -133,8 +134,8 @@ const hosts = [
 .security-page__title {
   margin: 0;
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(1.5rem, 3.5vw, 2.3rem);
-  text-transform: uppercase;
 }
 
 .security-page__subtitle {
@@ -176,9 +177,9 @@ const hosts = [
 .security-page__panel-title {
   margin: 0;
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 0.8rem;
   line-height: 1.4;
-  text-transform: uppercase;
 }
 
 .security-page__card-text {

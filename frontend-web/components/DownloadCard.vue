@@ -85,7 +85,8 @@ const platformLabel = computed(() => {
 }
 
 .download-card__platform {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -93,7 +94,9 @@ const platformLabel = computed(() => {
 }
 
 .download-card__badge {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.08em;
   font-size: 0.55rem;
   text-transform: uppercase;
   color: var(--accent-text);
@@ -110,8 +113,8 @@ const platformLabel = computed(() => {
 
 .download-card__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 1.25rem;
-  text-transform: uppercase;
   margin: 0;
 }
 

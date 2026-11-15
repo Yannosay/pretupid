@@ -493,12 +493,13 @@ onMounted(async () => {
 
 .browse__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
 
 .browse__card {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 0.65rem;
   min-height: 190px;
@@ -578,9 +579,15 @@ onMounted(async () => {
 
 .browse__card-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
   margin-top: auto;
+}
+
+.browse__card-footer .btn {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .browse__card-stat {

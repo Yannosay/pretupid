@@ -1,11 +1,7 @@
 <template>
   <header class="navbar" :class="{ 'navbar--scrolled': scrolled }">
     <NuxtLink to="/" class="navbar__brand">
-      <img
-        src="/assets/showcase-ptd-launcher.webp"
-        alt="Pretupid Launcher"
-        class="navbar__logo"
-      />
+      <img :src="logo" alt="" width="32" height="32" class="navbar__logo" />
       <span class="navbar__brand-text">Pretupid</span>
     </NuxtLink>
 
@@ -42,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import logo from '@shared/branding/logo.png'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
@@ -106,10 +103,9 @@ onBeforeUnmount(() => {
 
 .navbar__brand-text {
   font-family: var(--font-pixel);
-  font-size: 0.9rem;
-  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 1rem;
   color: var(--accent);
-  letter-spacing: 0.05em;
 }
 
 .navbar__nav {

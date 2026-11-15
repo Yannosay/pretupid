@@ -71,9 +71,9 @@ defineProps<{
 .feature-card__title {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 0.8rem;
+  font-weight: 700;
+  font-size: 1.05rem;
   line-height: 1.4;
-  text-transform: uppercase;
 }
 
 .feature-card__description {

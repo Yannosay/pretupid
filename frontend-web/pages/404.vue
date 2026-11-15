@@ -21,6 +21,7 @@
 
 .error-page__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 5rem;
   color: var(--accent);
 }

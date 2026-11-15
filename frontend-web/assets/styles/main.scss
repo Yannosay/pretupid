@@ -1,5 +1,41 @@
 @use 'design-system';
 @use '_accent';
+
+:root,
+:root[data-font='press-start'],
+:root[data-font='custom'] {
+  --font-pixel: 'Monocraft', 'Courier New', monospace;
+  --font-body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+p,
+li {
+  color: inherit;
+}
+
+.btn {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
 .markdown {
   line-height: 1.6;
   overflow-wrap: anywhere;

@@ -56,6 +56,7 @@ function formatDate(seconds: number): string {
 .news-page__title {
   margin: 0;
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 2.2rem;
 }
 

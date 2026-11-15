@@ -3,15 +3,11 @@
     <div class="footer__inner">
       <div class="footer__brand">
         <div class="footer__brand-row">
-          <img
-            src="/assets/showcase-ptd-launcher.webp"
-            alt="Pretupid Launcher"
-            class="footer__logo"
-          />
+          <img :src="logo" alt="" width="32" height="32" class="footer__logo" />
           <span class="footer__brand-name">Pretupid Launcher</span>
         </div>
         <p class="footer__tagline">
-          The modern Minecraft launcher built with Tauri and Rust.
+          A fast, safe Minecraft launcher and client.
         </p>
         <div class="footer__cta">
           <NuxtLink to="/download" class="btn btn--small">Download</NuxtLink>
@@ -56,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import logo from '@shared/branding/logo.png'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
 const { openLauncher } = useLauncherBridge()
@@ -95,8 +92,8 @@ const year = new Date().getFullYear()
 
 .footer__brand-name {
   font-family: var(--font-pixel);
-  font-size: 0.85rem;
-  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 1rem;
   color: var(--accent);
 }
 
@@ -126,7 +123,8 @@ const year = new Date().getFullYear()
 }
 
 .footer__title {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -165,7 +163,8 @@ const year = new Date().getFullYear()
 
 .footer__disclaimer {
   margin: 0;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.55rem;
   letter-spacing: 0.05em;
   color: var(--text-secondary);

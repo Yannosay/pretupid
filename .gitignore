@@ -28,7 +28,7 @@ frontend-web/.dev.vars
 /.wrangler/
 /pretupid/
 /build-final.ps1
-claude_todo.txt
+todo.txt
 .claude/
 pretupid-client/build/
 pretupid-client/run/

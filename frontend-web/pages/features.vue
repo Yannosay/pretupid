@@ -68,7 +68,8 @@ useSeoMeta({
 
 .features-page__eyebrow {
   display: inline-block;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -81,8 +82,8 @@ useSeoMeta({
 
 .features-page__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(1.8rem, 4vw, 2.6rem);
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -133,8 +134,8 @@ useSeoMeta({
 .features-page__group-title {
   margin: 0;
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(1rem, 2vw, 1.3rem);
-  text-transform: uppercase;
 }
 
 .features-page__group-subtitle {

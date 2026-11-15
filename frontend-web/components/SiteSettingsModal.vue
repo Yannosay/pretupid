@@ -277,8 +277,8 @@ onMounted(() => {
 
 .modal__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 1rem;
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -302,7 +302,8 @@ onMounted(() => {
 }
 
 .modal__section-title {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;

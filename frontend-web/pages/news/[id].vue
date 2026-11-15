@@ -67,6 +67,7 @@ useHead(() => ({
 .news-post__title {
   margin: 0;
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 2rem;
   line-height: 1.3;
 }

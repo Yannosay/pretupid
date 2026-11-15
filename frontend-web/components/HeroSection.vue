@@ -3,7 +3,7 @@
     <div class="hero__glow" aria-hidden="true"></div>
 
     <div class="hero__content">
-      <span class="hero__eyebrow">Built with Tauri, Rust, and Vue 3</span>
+      <span class="hero__eyebrow">Free Minecraft launcher for Windows</span>
       <h1 class="hero__title">Pretupid Launcher</h1>
       <p class="hero__subtitle">
         A fast, safe Minecraft launcher for Windows. Fabric, Quilt, Forge and NeoForge, Modrinth mods that install with
@@ -33,10 +33,13 @@
     <div class="hero__visual">
       <div class="hero__visual-frame">
         <img
-          src="/assets/showcase-ptd-launcher.webp"
-          alt="Pretupid Launcher interface"
+          src="/screenshots/launcher-home.webp"
+          alt="The Pretupid Launcher home screen with recent instances and a 3D skin preview"
           class="hero__image"
+          width="1600"
+          height="1000"
           loading="eager"
+          fetchpriority="high"
         />
         <div class="hero__visual-chrome" aria-hidden="true">
           <span class="hero__visual-dot"></span>
@@ -91,7 +94,8 @@ const { openLauncher } = useLauncherBridge()
 .hero__eyebrow {
   display: inline-block;
   align-self: flex-start;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -104,9 +108,9 @@ const { openLauncher } = useLauncherBridge()
 
 .hero__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(2.4rem, 5vw, 3.6rem);
   line-height: 1.1;
-  text-transform: uppercase;
   color: var(--text-primary);
   margin: 0;
 }
@@ -172,11 +176,11 @@ const { openLauncher } = useLauncherBridge()
 .hero__visual-frame {
   position: relative;
   width: 100%;
-  max-width: 560px;
+  max-width: 640px;
   background-color: var(--bg-secondary);
   border: 2px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 0.75rem;
+  padding: 1.75rem 0.75rem 0.75rem;
   @include block-shadow(var(--shadow-color));
   transition: transform var(--transition-normal);
 }
@@ -187,8 +191,8 @@ const { openLauncher } = useLauncherBridge()
 
 .hero__visual-chrome {
   position: absolute;
-  top: 0.4rem;
-  left: 0.6rem;
+  top: 0.6rem;
+  left: 0.75rem;
   display: flex;
   gap: 0.35rem;
 }

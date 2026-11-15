@@ -77,7 +77,8 @@ const channels: { icon: SiteIconName; label: string; hint: string; href: string 
 
 .contact-page__eyebrow {
   display: inline-block;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -90,8 +91,8 @@ const channels: { icon: SiteIconName; label: string; hint: string; href: string 
 
 .contact-page__title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(1.8rem, 4vw, 2.4rem);
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -111,8 +112,8 @@ const channels: { icon: SiteIconName; label: string; hint: string; href: string 
 
 .contact-page__card-title {
   font-family: var(--font-pixel);
-  font-size: 0.95rem;
-  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 1.1rem;
   margin: 0 0 1.25rem;
 }
 
@@ -145,7 +146,9 @@ const channels: { icon: SiteIconName; label: string; hint: string; href: string 
 }
 
 .contact-page__link-label {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: 0.08em;
   font-size: 0.85rem;
   text-transform: uppercase;
   color: var(--accent);

@@ -27,6 +27,22 @@
       </div>
     </section>
 
+    <section class="home__gallery" aria-labelledby="gallery-title">
+      <header class="home__section-header">
+        <span class="home__section-eyebrow">A closer look</span>
+        <h2 id="gallery-title" class="home__section-title">Built to get you playing</h2>
+      </header>
+      <div class="home__gallery-grid">
+        <figure v-for="shot in screenshots" :key="shot.src" class="home__shot">
+          <img :src="shot.src" :alt="shot.alt" width="1600" height="1000" loading="lazy" class="home__shot-image" />
+          <figcaption class="home__shot-caption">
+            <strong>{{ shot.title }}</strong>
+            <span>{{ shot.text }}</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
     <section class="home__trust">
       <div class="home__trust-copy">
         <span class="home__section-eyebrow">Security first</span>
@@ -79,6 +95,21 @@
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 import { highlightedFeatures } from '~/composables/features'
 
+const screenshots = [
+  {
+    src: '/screenshots/launcher-browse.webp',
+    alt: 'Browsing Modrinth mods inside Pretupid Launcher',
+    title: 'Browse Modrinth',
+    text: 'Mods, modpacks, resource packs and shaders install straight into an instance, with their dependencies.'
+  },
+  {
+    src: '/screenshots/launcher-library.webp',
+    alt: 'The instance library in Pretupid Launcher',
+    title: 'Your library',
+    text: 'Every instance with its loader, version and playtime, ready to launch in one click.'
+  }
+]
+
 const { openLauncher } = useLauncherBridge()
 
 const faqItems = [
@@ -121,6 +152,50 @@ const faqItems = [
 <style scoped lang="scss">
 @use 'design-system/mixins' as *;
 
+.home__gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.home__gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 1.5rem;
+}
+
+.home__shot {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0.75rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.home__shot-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--edge-radius);
+}
+
+.home__shot-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.25rem 0.25rem;
+  color: var(--text-secondary);
+
+  strong {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+}
+
+
 .home {
   display: flex;
   flex-direction: column;
@@ -145,7 +220,8 @@ const faqItems = [
 
 .home__section-eyebrow {
   display: inline-block;
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -158,8 +234,8 @@ const faqItems = [
 
 .home__section-title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: clamp(1.5rem, 3vw, 2.2rem);
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -263,7 +339,8 @@ const faqItems = [
 }
 
 .home__cta-eyebrow {
-  font-family: var(--font-pixel);
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -272,8 +349,8 @@ const faqItems = [
 
 .home__cta-title {
   font-family: var(--font-pixel);
+  font-weight: 700;
   font-size: 1.6rem;
-  text-transform: uppercase;
   margin: 0;
 }
 
