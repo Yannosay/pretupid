@@ -1,0 +1,39 @@
+{
+	"schemaVersion": 1,
+	"id": "pretupid",
+	"version": "${version}",
+	"name": "Pretupid Client",
+	"description": "A fast, polished all-in-one client: glass mod menu, draggable HUD, FPS boosters, zoom, quality-of-life tools, profiles, a mod manager and animated nametags with the Pretupid badge.",
+	"authors": [
+		"Yannosay Productions"
+	],
+	"contact": {
+		"homepage": "https://pretupid.net",
+		"sources": "https://github.com/yannosay/pretupid-launcher",
+		"issues": "https://github.com/yannosay/pretupid-launcher/issues"
+	},
+	"license": "AGPL-3.0-only",
+	"icon": "assets/pretupid/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"net.pretupid.client.PretupidClient"
+		]
+	},
+	"mixins": [
+		"pretupid.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=${loader_version}",
+		"minecraft": "~${minecraft_version}",
+		"java": ">=25",
+		"fabric-api": "*"
+	},
+	"custom": {
+		"modmenu": {
+			"links": {
+				"modmenu.website": "https://pretupid.net"
+			}
+		}
+	}
+}

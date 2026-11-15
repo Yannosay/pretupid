@@ -1,0 +1,59 @@
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft-light.woff2') format('woff2');
+  font-weight: 100 350;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft.woff2') format('woff2');
+  font-weight: 351 550;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft-semibold.woff2') format('woff2');
+  font-weight: 551 650;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft-bold.woff2') format('woff2');
+  font-weight: 651 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft-italic.woff2') format('woff2');
+  font-weight: 100 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monocraft';
+  src: url('@shared/fonts/monocraft-bold-italic.woff2') format('woff2');
+  font-weight: 601 1000;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('@shared/fonts/press-start-2p.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'VT323';
+  src: url('@shared/fonts/vt323.woff2') format('woff2');
+  font-display: swap;
+}

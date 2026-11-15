@@ -15,20 +15,28 @@
           <span class="badge" :class="instance.mod_loader === 'vanilla' ? '' : 'badge--accent'">{{ loaderLabel(instance.mod_loader) }}</span>
         </div>
       </div>
-      <div class="instance-card__menu-anchor" @click.stop>
-        <button class="icon-btn icon-btn--small" aria-label="More actions" @click="menuOpen = !menuOpen">
-          <AppIcon name="more" :size="16" />
-        </button>
-        <div v-if="menuOpen" class="menu instance-card__menu" @mouseleave="menuOpen = false">
-          <button class="menu__item" @click="run(open)"><AppIcon name="sliders" :size="14" />Manage</button>
-          <button class="menu__item" @click="run(openFolder)"><AppIcon name="folder" :size="14" />Open folder</button>
-          <button class="menu__item" :disabled="busy" @click="run(duplicate)"><AppIcon name="copy" :size="14" />Duplicate</button>
+      <DropdownMenu @keydown.enter.stop>
+        <template #trigger="{ toggle, open: menuOpen }">
+          <button
+            class="icon-btn icon-btn--small"
+            aria-label="More actions"
+            aria-haspopup="menu"
+            :aria-expanded="menuOpen"
+            @click="toggle"
+          >
+            <AppIcon name="more" :size="16" />
+          </button>
+        </template>
+        <template #default="{ close }">
+          <button class="menu__item" role="menuitem" @click="run(close, open)"><AppIcon name="sliders" :size="14" />Manage</button>
+          <button class="menu__item" role="menuitem" @click="run(close, openFolder)"><AppIcon name="folder" :size="14" />Open folder</button>
+          <button class="menu__item" role="menuitem" :disabled="busy" @click="run(close, duplicate)"><AppIcon name="copy" :size="14" />Duplicate</button>
           <div class="menu__divider" />
-          <button class="menu__item menu__item--danger" :disabled="busy" @click="run(() => emit('delete', instance))">
+          <button class="menu__item menu__item--danger" role="menuitem" :disabled="busy" @click="run(close, () => emit('delete', instance))">
             <AppIcon name="trash" :size="14" />Delete
           </button>
-        </div>
-      </div>
+        </template>
+      </DropdownMenu>
     </div>
 
     <p v-if="installing" class="instance-card__status">
@@ -51,9 +59,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
+import DropdownMenu from '@/components/DropdownMenu.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
 import PlayButton from '@/components/PlayButton.vue'
 import { useLaunchStore } from '@/stores/launch'
@@ -72,7 +81,6 @@ const launchStore = useLaunchStore()
 const installs = useInstallsStore()
 const instanceStore = useInstanceStore()
 const notifications = useNotificationsStore()
-const menuOpen = ref(false)
 
 const state = computed(() => launchStore.getState(props.instance.id))
 const installState = computed(() => installs.getState(props.instance.id))
@@ -83,8 +91,8 @@ function open() {
   router.push({ name: 'instance-detail', params: { id: props.instance.id } })
 }
 
-function run(action: () => unknown) {
-  menuOpen.value = false
+function run(close: () => void, action: () => unknown) {
+  close()
   action()
 }
 
@@ -114,7 +122,7 @@ async function duplicate() {
   gap: 0.75rem;
   padding: 1rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
@@ -124,12 +132,12 @@ async function duplicate() {
     outline: none;
     border-color: var(--accent);
     transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 0 var(--shadow-color);
+    box-shadow: 0 6px 18px var(--shadow-color);
   }
 }
 
 .instance-card--running {
-  border-color: #2ecc71;
+  border-color: var(--success);
 }
 
 .instance-card--installing {
@@ -156,7 +164,7 @@ async function duplicate() {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   line-height: 1.3;
   text-transform: none;
 }
@@ -165,16 +173,6 @@ async function duplicate() {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
-}
-
-.instance-card__menu-anchor {
-  position: relative;
-}
-
-.instance-card__menu {
-  top: 100%;
-  right: 0;
-  margin-top: 0.25rem;
 }
 
 .instance-card__meta,
@@ -195,7 +193,7 @@ async function duplicate() {
 }
 
 .instance-card__status--running {
-  color: #2ecc71;
+  color: var(--success);
 }
 
 .instance-card__pulse {

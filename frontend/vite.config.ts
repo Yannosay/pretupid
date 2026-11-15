@@ -5,12 +5,14 @@ import path from 'node:path'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const packagesRoot = path.resolve(projectRoot, '..', 'packages')
+const sharedRoot = path.resolve(projectRoot, '..', 'assets')
 
 export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@shared': sharedRoot
     }
   },
   css: {
@@ -26,6 +28,9 @@ export default defineConfig({
   },
   server: {
     port: 1420,
-    strictPort: true
+    strictPort: true,
+    fs: {
+      allow: [projectRoot, sharedRoot, packagesRoot]
+    }
   }
 })

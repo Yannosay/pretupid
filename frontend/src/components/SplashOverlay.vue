@@ -2,7 +2,7 @@
   <div v-if="splash.visible" class="splash-overlay">
     <div class="splash-overlay__card">
       <img
-        src="@/assets/branding/ptd_logo_main.webp"
+        src="@shared/branding/logo.png"
         alt="Pretupid Launcher"
         class="splash-overlay__logo"
       />
@@ -59,7 +59,7 @@ const splash = useSplashStore()
   width: min(420px, 90vw);
   padding: 2rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   box-shadow: 8px 8px 0 0 var(--shadow-color);
 }
@@ -68,14 +68,13 @@ const splash = useSplashStore()
   width: 96px;
   height: 96px;
   border-radius: var(--edge-radius);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
 }
 
 .splash-overlay__title {
   font-family: var(--font-pixel);
   font-size: 1.4rem;
   color: var(--accent);
-  text-transform: uppercase;
 }
 
 .splash-overlay__progress {
@@ -89,7 +88,7 @@ const splash = useSplashStore()
   flex: 1;
   height: 20px;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   overflow: hidden;
 }
@@ -102,7 +101,7 @@ const splash = useSplashStore()
 
 .splash-overlay__progress-text {
   font-family: var(--font-pixel);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   white-space: nowrap;
 }

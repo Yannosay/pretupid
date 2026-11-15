@@ -110,7 +110,7 @@ async function stop() {
 .play-btn__spinner {
   width: 10px;
   height: 10px;
-  border: 2px solid currentColor;
+  border: 1px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
   animation: play-spin 0.8s linear infinite;

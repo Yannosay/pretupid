@@ -121,7 +121,7 @@ const hosts = [
 .security-page__eyebrow {
   padding: 0.4rem 0.8rem;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent);

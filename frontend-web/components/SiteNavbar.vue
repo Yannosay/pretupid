@@ -13,6 +13,7 @@
       <NuxtLink to="/" class="navbar__link">Home</NuxtLink>
       <NuxtLink to="/features" class="navbar__link">Features</NuxtLink>
       <NuxtLink to="/security" class="navbar__link">Security</NuxtLink>
+      <NuxtLink to="/news" class="navbar__link">News</NuxtLink>
       <NuxtLink to="/download" class="navbar__link">Download</NuxtLink>
       <NuxtLink to="/about" class="navbar__link">About</NuxtLink>
     </nav>

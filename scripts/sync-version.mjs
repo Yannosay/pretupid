@@ -62,6 +62,24 @@ function writeTauriConfVersion(relativePath, version) {
   console.log(`  set  ${relativePath} -> ${version}`)
 }
 
+function writeGradleVersion(relativePath, version) {
+  const full = resolve(root, relativePath)
+  if (!existsSync(full)) {
+    console.log(`  skip ${relativePath} (not present)`)
+    return
+  }
+
+  const raw = readFileSync(full, 'utf8')
+  const next = raw.replace(/^mod_version=.*$/m, `mod_version=${version}`)
+  if (next === raw) {
+    console.log(`  ok   ${relativePath} already at ${version}`)
+    return
+  }
+
+  writeFileSync(full, next, 'utf8')
+  console.log(`  set  ${relativePath} -> ${version}`)
+}
+
 const version = readWorkspaceVersion()
 console.log(`workspace version: ${version}`)
 
@@ -69,3 +87,4 @@ writeJsonVersion('package.json', version, 'package.json (root)')
 writeJsonVersion('frontend/package.json', version, 'frontend/package.json')
 writeJsonVersion('frontend-web/package.json', version, 'frontend-web/package.json')
 writeTauriConfVersion('crates/tauri-app/tauri.conf.json', version)
+writeGradleVersion('pretupid-client/gradle.properties', version)

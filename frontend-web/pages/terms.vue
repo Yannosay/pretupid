@@ -24,6 +24,19 @@
       </ul>
     </section>
     <section class="legal-page__section">
+      <h2>Community Rules</h2>
+      <p>Pretupid Client lets you share capes, chat with friends and invite them to play. When you use these features:</p>
+      <ul>
+        <li>Do not upload capes or send messages that are sexual, hateful, violent, harassing, illegal or that infringe someone else's rights.</li>
+        <li>Do not impersonate other people or the Pretupid team, and do not spam.</li>
+        <li>Only invite friends to servers and worlds you are allowed to share.</li>
+      </ul>
+      <p>
+        We may remove content and suspend access to Pretupid online services for accounts that break these rules.
+        Report a cape in game with <code>/pretupid reportcape &lt;player&gt;</code> or through the Contact page.
+      </p>
+    </section>
+    <section class="legal-page__section">
       <h2>Disclaimer</h2>
       <p>
         Pretupid Launcher is not an official Minecraft service. It is not approved by or associated with Mojang or Microsoft.

@@ -1,7 +1,16 @@
 body {
   font-family: var(--font-body);
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
+  font-size: 1rem;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+strong,
+b {
+  font-weight: 700;
 }
 
 h1,
@@ -11,27 +20,27 @@ h4,
 h5,
 h6 {
   font-family: var(--font-pixel);
-  line-height: 1.3;
-  text-transform: uppercase;
+  line-height: 1.25;
+  margin: 0;
 }
 
 h1 {
-  font-size: 2.5rem;
+  font-size: 1.9rem;
 }
 
 h2 {
-  font-size: 1.75rem;
+  font-size: 1.45rem;
 }
 
 h3 {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
 }
 
 p {
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 code,
 pre {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }

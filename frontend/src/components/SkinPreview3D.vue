@@ -1,11 +1,17 @@
 <template>
   <div class="skin-preview">
-    <canvas
-      ref="canvasRef"
-      class="skin-preview__canvas"
-      :class="{ 'skin-preview__canvas--plain': compact }"
+    <div
+      class="skin-preview__stage"
+      :class="{ 'skin-preview__stage--plain': compact, 'skin-preview__stage--grabbing': dragging }"
       :style="{ width: `${width}px`, height: `${height}px` }"
-    ></canvas>
+      @pointerdown="onPointerDown"
+      @mousedown.prevent
+      @dragstart.prevent
+      @selectstart.prevent
+      @contextmenu.prevent
+    >
+      <canvas ref="canvasRef" class="skin-preview__canvas" draggable="false"></canvas>
+    </div>
 
     <div v-if="!compact" class="skin-preview__controls">
       <button
@@ -31,17 +37,13 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import {
-  SkinViewer,
-  IdleAnimation,
-  WalkingAnimation,
-  FlyingAnimation
-} from 'skinview3d'
+import { SkinViewer, IdleAnimation, WalkingAnimation, FlyingAnimation } from 'skinview3d'
+
+type AnimationType = 'idle' | 'walk' | 'fly'
 
 const props = withDefaults(
   defineProps<{
     skinUrl: string
-    modelType: 'classic' | 'slim'
     width?: number
     height?: number
     compact?: boolean
@@ -49,95 +51,108 @@ const props = withDefaults(
   { width: 300, height: 480, compact: false }
 )
 
-const canvasRef = ref<HTMLCanvasElement | null>(null)
-const activeAnimation = ref<'idle' | 'walk' | 'fly'>('idle')
 const DEFAULT_SKIN_URL = 'https://mc-heads.net/skin/MHF_Steve'
-
-let viewer: SkinViewer | null = null
-
-const animations = [
-  { type: 'idle' as const, label: 'Idle' },
-  { type: 'walk' as const, label: 'Walk' },
-  { type: 'fly' as const, label: 'Fly' }
-]
-
-function applyModelType() {
-  if (!viewer) return
-  viewer.playerObject.skin.modelType = props.modelType === 'slim' ? 'slim' : 'default'
+const CAMERA_POSITIONS: Record<AnimationType, [number, number, number]> = {
+  idle: [36, 16, 36],
+  walk: [34, 14, 34],
+  fly: [34, 24, 34]
 }
 
-function applyAnimation(type: 'idle' | 'walk' | 'fly') {
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+const activeAnimation = ref<AnimationType>('idle')
+const dragging = ref(false)
+
+const animations: { type: AnimationType; label: string }[] = [
+  { type: 'idle', label: 'Idle' },
+  { type: 'walk', label: 'Walk' },
+  { type: 'fly', label: 'Fly' }
+]
+
+let viewer: SkinViewer | null = null
+let loadGeneration = 0
+
+function placeCamera(type: AnimationType) {
   if (!viewer) return
-
-  activeAnimation.value = type
-
-  if (type === 'walk') {
-    viewer.animation = new WalkingAnimation()
-    viewer.camera.position.set(34, 14, 34)
-  } else if (type === 'fly') {
-    viewer.animation = new FlyingAnimation()
-    viewer.camera.position.set(34, 24, 34)
-  } else {
-    viewer.animation = new IdleAnimation()
-    viewer.camera.position.set(36, 16, 36)
-  }
-
+  const [x, y, z] = CAMERA_POSITIONS[type]
+  viewer.camera.position.set(x, y, z)
   viewer.controls.target.set(0, 0, 0)
   viewer.camera.lookAt(0, 0, 0)
   viewer.controls.update()
+}
+
+function applyAnimation(type: AnimationType) {
+  if (!viewer) return
+  activeAnimation.value = type
+  if (type === 'walk') {
+    viewer.animation = new WalkingAnimation()
+  } else if (type === 'fly') {
+    viewer.animation = new FlyingAnimation()
+  } else {
+    viewer.animation = new IdleAnimation()
+  }
+  placeCamera(type)
 }
 
 function resetCamera() {
+  placeCamera(activeAnimation.value)
+}
+
+async function loadSkin(url: string) {
   if (!viewer) return
-  viewer.camera.position.set(36, 16, 36)
-  viewer.controls.target.set(0, 0, 0)
-  viewer.camera.lookAt(0, 0, 0)
-  viewer.controls.update()
+  const generation = ++loadGeneration
+  try {
+    await viewer.loadSkin(url || DEFAULT_SKIN_URL, { model: 'auto-detect' })
+  } catch {
+    if (viewer && generation === loadGeneration && url !== DEFAULT_SKIN_URL) {
+      await viewer.loadSkin(DEFAULT_SKIN_URL, { model: 'auto-detect' }).catch(() => undefined)
+    }
+  }
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return
+  window.getSelection()?.removeAllRanges()
+  dragging.value = true
+  window.addEventListener('pointerup', onPointerEnd, { once: true })
+  window.addEventListener('pointercancel', onPointerEnd, { once: true })
+}
+
+function onPointerEnd() {
+  dragging.value = false
+  window.removeEventListener('pointerup', onPointerEnd)
+  window.removeEventListener('pointercancel', onPointerEnd)
 }
 
 onMounted(() => {
   if (!canvasRef.value) return
-
   viewer = new SkinViewer({
     canvas: canvasRef.value,
     width: props.width,
     height: props.height,
-    skin: props.skinUrl || DEFAULT_SKIN_URL,
-    model: props.modelType === 'slim' ? 'slim' : 'default',
     zoom: 1.2
   })
-
-  applyAnimation('idle')
   viewer.controls.enableZoom = !props.compact
   viewer.controls.enablePan = false
   viewer.controls.enableRotate = true
-  resetCamera()
+  applyAnimation('idle')
+  void loadSkin(props.skinUrl)
 })
 
 watch(
   () => props.skinUrl,
-  (url) => {
-    if (viewer) {
-      viewer
-        .loadSkin(url || DEFAULT_SKIN_URL, {
-          model: props.modelType === 'slim' ? 'slim' : 'default'
-        })
-        .catch(() => {})
-      applyModelType()
-    }
-  }
+  (url) => void loadSkin(url)
 )
 
 watch(
-  () => props.modelType,
-  () => applyModelType()
+  () => [props.width, props.height] as const,
+  ([width, height]) => viewer?.setSize(width, height)
 )
 
 onBeforeUnmount(() => {
-  if (viewer) {
-    viewer.dispose()
-    viewer = null
-  }
+  loadGeneration++
+  onPointerEnd()
+  viewer?.dispose()
+  viewer = null
 })
 </script>
 
@@ -149,18 +164,34 @@ onBeforeUnmount(() => {
   gap: 1rem;
 }
 
-.skin-preview__canvas {
-  max-width: none;
-  display: block;
+.skin-preview__stage {
+  position: relative;
   margin: 0 auto;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
 }
 
-.skin-preview__canvas--plain {
+.skin-preview__stage--plain {
   background-color: transparent;
   border-color: transparent;
+}
+
+.skin-preview__stage--grabbing {
+  cursor: grabbing;
+}
+
+.skin-preview__canvas {
+  display: block;
+  max-width: none;
+  pointer-events: auto;
+  -webkit-user-drag: none;
 }
 
 .skin-preview__controls {

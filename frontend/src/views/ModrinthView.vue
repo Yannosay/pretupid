@@ -419,8 +419,7 @@ onMounted(async () => {
 
 .browse__target-label {
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -505,7 +504,7 @@ onMounted(async () => {
   min-height: 190px;
   padding: 1rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
@@ -515,7 +514,7 @@ onMounted(async () => {
     outline: none;
     border-color: var(--accent);
     transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 0 var(--shadow-color);
+    box-shadow: 0 6px 18px var(--shadow-color);
   }
 }
 
@@ -557,7 +556,7 @@ onMounted(async () => {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   line-height: 1.3;
   text-transform: none;
 }

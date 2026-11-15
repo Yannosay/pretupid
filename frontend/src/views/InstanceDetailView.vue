@@ -29,33 +29,35 @@
           <button class="icon-btn" title="Open folder" aria-label="Open instance folder" @click="openFolder()">
             <AppIcon name="folder" :size="18" />
           </button>
-          <div class="instance-view__menu-anchor">
-            <button class="icon-btn" aria-label="More actions" title="More actions" @click.stop="menuOpen = !menuOpen">
-              <AppIcon name="more" :size="18" />
-            </button>
-            <div v-if="menuOpen" class="menu instance-view__menu" @click.stop>
-              <button class="menu__item" :disabled="locked" @click="runMenu(downloadNow)">
+          <DropdownMenu>
+            <template #trigger="{ toggle, open: menuOpen }">
+              <button class="icon-btn" aria-label="More actions" title="More actions" aria-haspopup="menu" :aria-expanded="menuOpen" @click="toggle">
+                <AppIcon name="more" :size="18" />
+              </button>
+            </template>
+            <template #default="{ close }">
+              <button class="menu__item" :disabled="locked" @click="run(close, downloadNow)">
                 <AppIcon name="download" :size="14" />Download game files now
               </button>
-              <button class="menu__item" :disabled="locked" @click="runMenu(repair)">
+              <button class="menu__item" :disabled="locked" @click="run(close, repair)">
                 <AppIcon name="wrench" :size="14" />Repair files
               </button>
-              <button class="menu__item" :disabled="locked" @click="runMenu(exportPack)">
+              <button class="menu__item" :disabled="locked" @click="run(close, exportPack)">
                 <AppIcon name="upload" :size="14" />Export as .mrpack
               </button>
-              <button class="menu__item" :disabled="locked" @click="runMenu(duplicate)">
+              <button class="menu__item" :disabled="locked" @click="run(close, duplicate)">
                 <AppIcon name="copy" :size="14" />Duplicate
               </button>
               <div class="menu__divider" />
-              <button class="menu__item" @click="runMenu(() => openFolder('mods'))"><AppIcon name="folder" :size="14" />Mods folder</button>
-              <button class="menu__item" @click="runMenu(() => openFolder('saves'))"><AppIcon name="folder" :size="14" />Worlds folder</button>
-              <button class="menu__item" @click="runMenu(() => openFolder('screenshots'))"><AppIcon name="image" :size="14" />Screenshots</button>
+              <button class="menu__item" @click="run(close, () => openFolder('mods'))"><AppIcon name="folder" :size="14" />Mods folder</button>
+              <button class="menu__item" @click="run(close, () => openFolder('saves'))"><AppIcon name="folder" :size="14" />Worlds folder</button>
+              <button class="menu__item" @click="run(close, () => openFolder('screenshots'))"><AppIcon name="image" :size="14" />Screenshots</button>
               <div class="menu__divider" />
-              <button class="menu__item menu__item--danger" :disabled="locked" @click="runMenu(() => (confirmDelete = true))">
+              <button class="menu__item menu__item--danger" :disabled="locked" @click="run(close, () => (confirmDelete = true))">
                 <AppIcon name="trash" :size="14" />Delete instance
               </button>
-            </div>
-          </div>
+            </template>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -142,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
@@ -170,7 +172,6 @@ const notifications = useNotificationsStore()
 
 const instance = ref<Instance | null>(null)
 const loadError = ref<string | null>(null)
-const menuOpen = ref(false)
 const confirmDelete = ref(false)
 const deleting = ref(false)
 const repairReport = ref<RepairReport | null>(null)
@@ -226,13 +227,9 @@ async function refresh() {
   instance.value = loaded
 }
 
-function runMenu(action: () => unknown) {
-  menuOpen.value = false
+function run(close: () => void, action: () => unknown) {
+  close()
   action()
-}
-
-function closeMenu() {
-  menuOpen.value = false
 }
 
 async function openFolder(folder?: string) {
@@ -314,7 +311,6 @@ async function handleDelete() {
 }
 
 onMounted(async () => {
-  document.addEventListener('click', closeMenu)
   await launchStore.initListeners()
   try {
     await refresh()
@@ -323,9 +319,6 @@ onMounted(async () => {
   }
 })
 
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closeMenu)
-})
 </script>
 
 <style scoped lang="scss">
@@ -341,8 +334,7 @@ onBeforeUnmount(() => {
   gap: 0.4rem;
   align-self: flex-start;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   text-decoration: none;
 
@@ -360,7 +352,7 @@ onBeforeUnmount(() => {
   background:
     linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
     var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -408,17 +400,6 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
 }
 
-.instance-view__menu-anchor {
-  position: relative;
-}
-
-.instance-view__menu {
-  top: 100%;
-  right: 0;
-  margin-top: 0.35rem;
-  min-width: 250px;
-}
-
 .instance-view__banner {
   display: flex;
   align-items: center;
@@ -454,6 +435,6 @@ onBeforeUnmount(() => {
 .instance-view__live {
   width: 8px;
   height: 8px;
-  background-color: #2ecc71;
+  background-color: var(--success);
 }
 </style>

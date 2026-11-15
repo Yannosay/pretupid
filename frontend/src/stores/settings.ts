@@ -1,13 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { emit } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 import { getGlobalSettings } from '@/api'
 
 export type Theme = 'dark' | 'light'
+export type FontChoice = 'minecraft' | 'press-start' | 'custom'
 
 interface SettingsState {
   theme: Theme
   accentColor: string
+  font: FontChoice
+  customFontPath: string | null
   edgeRadius: number
   lastRoundedRadius: number
   globalSettings: {
@@ -55,27 +59,21 @@ function darken(hex: string, amount: number): string {
 function applySettings(state: SettingsState) {
   const root = document.documentElement
 
-  const dark = state.theme === 'dark'
-  const bgPrimary = dark ? '#0d0d0d' : '#f5f5f5'
-  const bgSecondary = dark ? '#1a1a1a' : '#ffffff'
-  const bgTertiary = dark ? '#262626' : '#e0e0e0'
-  const textPrimary = dark ? '#ffffff' : '#1a1a1a'
-  const textSecondary = dark ? '#b3b3b3' : '#666666'
-  const borderColor = dark ? '#404040' : '#cccccc'
-  const shadowColor = dark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.1)'
+  const palette = state.theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE
 
   const accent = state.accentColor
   const accentHover = darken(accent, 0.1)
   const accentText = getContrastingText(accent)
   const edgeRadius = `${state.edgeRadius}px`
 
-  root.style.setProperty('--bg-primary', bgPrimary)
-  root.style.setProperty('--bg-secondary', bgSecondary)
-  root.style.setProperty('--bg-tertiary', bgTertiary)
-  root.style.setProperty('--text-primary', textPrimary)
-  root.style.setProperty('--text-secondary', textSecondary)
-  root.style.setProperty('--border-color', borderColor)
-  root.style.setProperty('--shadow-color', shadowColor)
+  for (const [name, value] of Object.entries(palette)) {
+    root.style.setProperty(name, value)
+  }
+  root.dataset.theme = state.theme
+  root.dataset.font = state.font === 'custom' && !customFontReady ? 'minecraft' : state.font
+  if (state.font === 'custom' && state.customFontPath && state.customFontPath !== loadedFontPath) {
+    void loadCustomFont(state.customFontPath)
+  }
   root.style.setProperty('--accent', accent)
   root.style.setProperty('--accent-hover', accentHover)
   root.style.setProperty('--accent-text', accentText)
@@ -83,11 +81,66 @@ function applySettings(state: SettingsState) {
 }
 
 const STORAGE_KEY = 'pretupid-settings'
+const CUSTOM_FONT_FAMILY = 'PretupidCustom'
+
+const DARK_PALETTE: Record<string, string> = {
+  '--bg-primary': '#07090d',
+  '--bg-secondary': 'rgba(16, 20, 28, 0.86)',
+  '--bg-tertiary': 'rgba(255, 255, 255, 0.06)',
+  '--bg-elevated': 'rgba(22, 27, 37, 0.94)',
+  '--surface-hover': 'rgba(255, 255, 255, 0.1)',
+  '--text-primary': '#f2f4f8',
+  '--text-secondary': '#a3abb9',
+  '--text-dim': '#6c7584',
+  '--border-color': 'rgba(255, 255, 255, 0.1)',
+  '--border-strong': 'rgba(255, 255, 255, 0.18)',
+  '--highlight': 'rgba(255, 255, 255, 0.07)',
+  '--shadow-color': 'rgba(0, 0, 0, 0.45)'
+}
+
+const LIGHT_PALETTE: Record<string, string> = {
+  '--bg-primary': '#e9edf3',
+  '--bg-secondary': 'rgba(255, 255, 255, 0.82)',
+  '--bg-tertiary': 'rgba(10, 20, 40, 0.05)',
+  '--bg-elevated': 'rgba(255, 255, 255, 0.95)',
+  '--surface-hover': 'rgba(10, 20, 40, 0.09)',
+  '--text-primary': '#111722',
+  '--text-secondary': '#4b5565',
+  '--text-dim': '#7b8494',
+  '--border-color': 'rgba(10, 20, 40, 0.12)',
+  '--border-strong': 'rgba(10, 20, 40, 0.22)',
+  '--highlight': 'rgba(255, 255, 255, 0.7)',
+  '--shadow-color': 'rgba(10, 20, 40, 0.15)'
+}
+
+let loadedFontPath: string | null = null
+let customFontReady = false
+let customFontFace: FontFace | null = null
+
+async function loadCustomFont(path: string) {
+  loadedFontPath = path
+  try {
+    const bytes = await invoke<ArrayBuffer>('read_font_file', { path })
+    const face = new FontFace(CUSTOM_FONT_FAMILY, bytes)
+    await face.load()
+    if (customFontFace) document.fonts.delete(customFontFace)
+    document.fonts.add(face)
+    customFontFace = face
+    customFontReady = true
+    document.documentElement.dataset.font = 'custom'
+  } catch (error) {
+    customFontReady = false
+    document.documentElement.dataset.font = 'minecraft'
+    console.error('[pretupid] custom font failed to load:', error)
+  }
+}
 
 function defaultSettings(): SettingsState {
   return {
     theme: 'dark',
     accentColor: DEFAULT_ACCENT,
+    font: 'minecraft',
+    customFontPath: null,
     edgeRadius: 0,
     lastRoundedRadius: 8,
     globalSettings: {
@@ -108,6 +161,8 @@ function loadSettingsFromStorage(): SettingsState {
     return {
       theme: parsed.theme ?? base.theme,
       accentColor: parsed.accentColor ?? base.accentColor,
+      font: parsed.font === 'press-start' || parsed.font === 'custom' ? parsed.font : 'minecraft',
+      customFontPath: typeof parsed.customFontPath === 'string' ? parsed.customFontPath : null,
       edgeRadius: typeof parsed.edgeRadius === 'number' ? parsed.edgeRadius : base.edgeRadius,
       lastRoundedRadius:
         typeof parsed.lastRoundedRadius === 'number'
@@ -156,6 +211,15 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setAccentColor(color: string) {
     settings.value.accentColor = color
+  }
+
+  function setFont(font: FontChoice) {
+    settings.value.font = font
+  }
+
+  function setCustomFontPath(path: string | null) {
+    settings.value.customFontPath = path
+    settings.value.font = path ? 'custom' : 'minecraft'
   }
 
   function setEdgeStyle(style: 'blocky' | 'rounded') {
@@ -222,6 +286,8 @@ export const useSettingsStore = defineStore('settings', () => {
     settings,
     setTheme,
     setAccentColor,
+    setFont,
+    setCustomFontPath,
     setEdgeStyle,
     setEdgeRadius,
     setGlobalSettings,

@@ -9,6 +9,7 @@ import type {
   UpdateInstanceRequest,
   LoaderVersion,
   InstallResult,
+  PretupidClientStatus,
   ModUpdate,
   SystemInfo
 } from '@/types'
@@ -127,6 +128,22 @@ export async function addInstanceMod(
   installDependencies = true
 ): Promise<InstallResult> {
   return invoke('add_instance_mod', { instanceId, projectId, versionId, installDependencies })
+}
+
+export async function openExternalLink(url: string): Promise<void> {
+  return invoke('open_external_link', { url })
+}
+
+export async function pretupidClientStatus(instanceId: string): Promise<PretupidClientStatus> {
+  return invoke('pretupid_client_status', { instanceId })
+}
+
+export async function installPerformancePack(instanceId: string): Promise<InstallResult> {
+  return invoke('install_performance_pack', { instanceId })
+}
+
+export async function installPretupidClient(instanceId: string): Promise<InstallResult> {
+  return invoke('install_pretupid_client', { instanceId })
 }
 
 export async function removeInstanceMod(modId: string): Promise<boolean> {

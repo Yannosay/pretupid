@@ -127,7 +127,7 @@ const year = new Date().getFullYear()
 
 .footer__title {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);

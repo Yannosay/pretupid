@@ -50,6 +50,24 @@
         </section>
 
         <section class="section">
+          <h3 class="section__title section__title--sm">Font</h3>
+          <div class="theme-toggle">
+            <button
+              v-for="option in fontOptions"
+              :key="option.value"
+              class="theme-toggle__btn"
+              :class="{ 'theme-toggle__btn--active': settings.font === option.value }"
+              @click="chooseFont(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          <p v-if="settings.font === 'custom' && settings.customFontPath" class="settings-font__path">
+            {{ settings.customFontPath.split(/[\/]/).pop() }}
+          </p>
+        </section>
+
+        <section class="section">
           <h3 class="section__title section__title--sm">Corner Style</h3>
           <div class="corner-toggle">
             <button
@@ -114,7 +132,7 @@
             </div>
             <div class="update-banner__actions">
               <button class="btn btn--ghost btn--small" @click="updaterStore.deferUpdate">Remind me later</button>
-              <button class="btn btn--small" :disabled="updaterStore.installing" @click="checkForUpdates">
+              <button class="btn btn--small" :disabled="updaterStore.installing" @click="updaterStore.installPending()">
                 {{ updaterStore.installing ? 'Installing...' : 'Install Now' }}
               </button>
             </div>
@@ -163,6 +181,11 @@
         <footer v-if="appInfo" class="modal__footer">
           <span class="modal__footer-text">{{ appInfo.name }}</span>
           <span class="modal__footer-version">v{{ appInfo.version }}</span>
+          <nav class="settings-legal" aria-label="Legal">
+            <button v-for="link in LEGAL_LINKS" :key="link.url" class="settings-legal__link" @click="openLink(link.url)">
+              {{ link.label }}
+            </button>
+          </nav>
         </footer>
       </div>
     </div>
@@ -171,10 +194,13 @@
 
 <script setup lang="ts">
 import { useSettingsStore } from '@/stores/settings'
-import { getGlobalSettings, saveGlobalSettings, getAppInfo } from '@/api'
+import { getGlobalSettings, saveGlobalSettings, getAppInfo, openExternalLink } from '@/api'
+import { LEGAL_LINKS } from '@/config'
 import { useUpdaterStore } from '@/stores/updater'
 import { useNotificationsStore } from '@/stores/notifications'
 import { computed, ref, onMounted } from 'vue'
+import { open } from '@tauri-apps/plugin-dialog'
+import type { FontChoice } from '@/stores/settings'
 
 const props = defineProps<{
   modelValue: boolean
@@ -189,7 +215,40 @@ const updaterStore = useUpdaterStore()
 const notifications = useNotificationsStore()
 const settings = computed(() => settingsStore.settings)
 
-const presetColors = ['#ffffff', '#4aff9e', '#5a9eff', '#ff9eb5', '#b47aff']
+const presetColors = ['#4a9eff', '#7c5cff', '#e879f9', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf']
+
+const fontOptions: { value: FontChoice; label: string }[] = [
+  { value: 'minecraft', label: 'Minecraft (Recommended)' },
+  { value: 'press-start', label: 'Press Start' },
+  { value: 'custom', label: 'Custom font' }
+]
+
+async function openLink(url: string) {
+  try {
+    await openExternalLink(url)
+  } catch (e) {
+    notifications.notifyError('Could not open link', String(e))
+  }
+}
+
+async function chooseFont(font: FontChoice) {
+  if (font !== 'custom') {
+    settingsStore.setFont(font)
+    return
+  }
+  try {
+    const selected = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: 'Fonts', extensions: ['ttf', 'otf', 'woff', 'woff2'] }]
+    })
+    if (typeof selected === 'string') {
+      settingsStore.setCustomFontPath(selected)
+    }
+  } catch (e) {
+    notifications.notifyError('Could not open file picker', String(e))
+  }
+}
 
 const edgeStyle = computed(() => (settings.value.edgeRadius === 0 ? 'blocky' : 'rounded'))
 
@@ -301,7 +360,7 @@ function close() {
 
 .modal {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   width: 90%;
   max-width: 560px;
@@ -316,14 +375,13 @@ function close() {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-tertiary);
 }
 
 .modal__title {
   font-family: var(--font-pixel);
   font-size: 0.9rem;
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -366,7 +424,7 @@ function close() {
   font-family: var(--font-body);
   font-size: 1rem;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   color: var(--text-primary);
   cursor: pointer;
@@ -390,7 +448,7 @@ function close() {
   width: 36px;
   height: 36px;
   border-radius: var(--edge-radius);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast);
 }
@@ -450,7 +508,7 @@ function close() {
   width: 48px;
   height: 48px;
   background-color: var(--accent);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
 }
 
 .rounding-preview__value {
@@ -480,20 +538,18 @@ function close() {
   justify-content: space-between;
   gap: 0.75rem;
   padding-top: 1rem;
-  border-top: 2px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
 }
 
 .modal__footer-text {
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
 .modal__footer-version {
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
 }
 
@@ -503,7 +559,7 @@ function close() {
   gap: 0.75rem;
   padding: 1rem;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--accent);
+  border: 1px solid var(--accent);
   border-radius: var(--edge-radius);
   margin-top: 0.5rem;
 }
@@ -516,8 +572,7 @@ function close() {
 
 .update-banner__version {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
 }
 
@@ -542,7 +597,7 @@ function close() {
   flex: 1;
   height: 8px;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   overflow: hidden;
 }
@@ -562,5 +617,32 @@ function close() {
 
 .update-actions {
   margin-top: 0.5rem;
+}
+
+.settings-font__path {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.settings-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.settings-legal__link {
+  padding: 0;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 </style>

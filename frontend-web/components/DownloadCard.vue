@@ -86,7 +86,7 @@ const platformLabel = computed(() => {
 
 .download-card__platform {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);

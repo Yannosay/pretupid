@@ -49,7 +49,6 @@
             <span class="profile-view__preview-name">{{ authStore.profile?.name }}</span>
             <SkinPreview3D
               :skin-url="previewSkinUrl"
-              :model-type="previewModelType"
             />
           </div>
 
@@ -151,10 +150,6 @@ const mcHeadsSkinUrl = computed(() =>
 
 const previewSkinUrl = computed(
   () => profileStore.previewUrl || profileStore.currentPreviewUrl || mcHeadsSkinUrl.value
-)
-
-const previewModelType = computed(
-  () => activeSlot.value?.model_type || profileStore.currentModelType
 )
 
 async function loadProfileData() {
@@ -265,29 +260,29 @@ onMounted(loadProfileData)
   gap: 1rem;
   padding: 2rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
 .profile-view__error {
   padding: 1rem;
-  background-color: #e74c3c;
+  background-color: var(--danger);
   color: white;
-  border: 2px solid #c0392b;
+  border: 1px solid var(--danger);
   border-radius: var(--edge-radius);
 }
 
 .profile-view__success {
   padding: 1rem;
-  background-color: #2ecc71;
+  background-color: var(--success);
   color: white;
-  border: 2px solid #27ae60;
+  border: 1px solid var(--success);
   border-radius: var(--edge-radius);
 }
 
 .profile-card {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   padding: 1.5rem;
 }
@@ -304,7 +299,7 @@ onMounted(loadProfileData)
   height: 72px;
   flex-shrink: 0;
   border-radius: var(--edge-radius);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   image-rendering: pixelated;
 }
 
@@ -321,8 +316,7 @@ onMounted(loadProfileData)
 
 .profile-card__label {
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 0.35rem;
 }
@@ -337,7 +331,7 @@ onMounted(loadProfileData)
 }
 
 .profile-card__uuid {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   color: var(--text-secondary);
   word-break: break-all;
 }
@@ -358,7 +352,7 @@ onMounted(loadProfileData)
 
 .profile-view__panel {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   padding: 1.5rem;
 }
@@ -389,7 +383,7 @@ onMounted(loadProfileData)
 }
 
 .profile-view__panel-hint {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -402,12 +396,11 @@ onMounted(loadProfileData)
 
 .profile-view__preview-name {
   font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-primary);
   background-color: var(--bg-tertiary);
   padding: 0.5rem 1rem;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -415,7 +408,7 @@ onMounted(loadProfileData)
   padding: 2rem;
   text-align: center;
   color: var(--text-secondary);
-  border: 2px dashed var(--border-color);
+  border: 1px dashed var(--border-color);
   border-radius: var(--edge-radius);
 }
 

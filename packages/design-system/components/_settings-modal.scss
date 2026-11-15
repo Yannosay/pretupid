@@ -15,11 +15,10 @@
 .theme-toggle__btn {
   padding: 0.6rem 1.2rem;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   background-color: var(--bg-tertiary);
   color: var(--text-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: background-color var(--transition-fast),
@@ -52,7 +51,7 @@
 .color-preset {
   width: 30px;
   height: 30px;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast);
@@ -75,7 +74,7 @@
 .custom-color input[type='color'] {
   width: 30px;
   height: 30px;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   background: none;
   cursor: pointer;
@@ -93,11 +92,10 @@
   gap: 0.5rem;
   padding: 0.6rem 1rem;
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   background-color: var(--bg-tertiary);
   color: var(--text-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: background-color var(--transition-fast),
@@ -125,7 +123,7 @@
   width: 18px;
   height: 18px;
   background-color: transparent;
-  border: 2px solid currentColor;
+  border: 1px solid currentColor;
   display: inline-block;
 }
 
@@ -148,7 +146,7 @@
   height: 6px;
   appearance: none;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -158,7 +156,7 @@
   width: 18px;
   height: 18px;
   background-color: var(--accent);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -167,7 +165,7 @@
   width: 18px;
   height: 18px;
   background-color: var(--accent);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: 3px;
   cursor: pointer;
 }
@@ -182,7 +180,7 @@
   width: 60px;
   height: 40px;
   background-color: var(--accent);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   transition: border-radius var(--transition-normal);
 }
 

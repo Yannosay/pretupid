@@ -4,21 +4,25 @@
   @include card-base;
 
   &:hover {
-    @include block-shadow(var(--shadow-color));
-    transform: translate(-2px, -2px);
+    background-color: var(--bg-elevated);
+    border-color: var(--border-strong);
   }
 
   &.card--interactive {
     cursor: pointer;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
   }
 
   .card__header {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .card__title {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
   }
 
   .card__content {

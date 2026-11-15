@@ -17,7 +17,7 @@ reqwest = { workspace = true }
 url = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-keyring = "3"
+keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service", "crypto-rust"] }
 base64 = "0.22"
 sha2 = "0.10"
 rand = "0.9"

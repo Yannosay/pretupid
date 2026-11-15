@@ -32,20 +32,26 @@ export const useInstanceStore = defineStore('instances', () => {
     }
   }
 
-  async function load(silent = false) {
-    if (loading.value) return
-    if (!silent) loading.value = true
+  let inflight: Promise<void> | null = null
+
+  function load(silent = false): Promise<void> {
+    if (inflight) return inflight
+    if (!silent || !loaded.value) loading.value = true
     error.value = null
     ensureListening().catch(() => void 0)
-    try {
-      const result = await api.listInstances()
-      instances.value = Array.isArray(result) ? result : []
-      loaded.value = true
-    } catch (e) {
-      error.value = String(e)
-    } finally {
-      loading.value = false
-    }
+    inflight = (async () => {
+      try {
+        const result = await api.listInstances()
+        instances.value = Array.isArray(result) ? result : []
+        loaded.value = true
+      } catch (e) {
+        error.value = String(e)
+      } finally {
+        loading.value = false
+        inflight = null
+      }
+    })()
+    return inflight
   }
 
   async function create(request: Parameters<typeof api.createInstance>[0]) {

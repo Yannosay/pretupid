@@ -29,6 +29,13 @@ pub fn run() {
         .init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
@@ -108,6 +115,11 @@ pub fn run() {
             commands::instances::get_system_info,
             commands::content::list_instance_mods,
             commands::content::add_instance_mod,
+            commands::pretupid_client::pretupid_client_status,
+            commands::settings::read_font_file,
+            commands::app_info::open_external_link,
+            commands::pretupid_client::install_pretupid_client,
+            commands::pretupid_client::install_performance_pack,
             commands::content::remove_instance_mod,
             commands::content::set_instance_mod_enabled,
             commands::content::check_instance_updates,

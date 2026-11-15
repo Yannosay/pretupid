@@ -152,7 +152,7 @@ function submit() {
 
 .modal {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   width: 90%;
   max-width: 520px;
@@ -186,8 +186,7 @@ function submit() {
 
 .form-label {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -209,9 +208,9 @@ function submit() {
 
 .error {
   padding: 1rem;
-  background-color: #e74c3c;
+  background-color: var(--danger);
   color: white;
   border-radius: var(--edge-radius);
-  border: 2px solid #c0392b;
+  border: 1px solid var(--danger);
 }
 </style>

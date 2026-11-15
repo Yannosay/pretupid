@@ -45,6 +45,8 @@
       </button>
     </div>
 
+    <PretupidClientCard :instance="instance" :locked="busy" :revision="revision" @installed="load" />
+
     <p v-if="instance.mod_loader === 'vanilla'" class="content-tab__note">
       <AppIcon name="info" :size="14" />
       This is a vanilla instance, so it can use resource packs but not mods. Create a Fabric or Forge instance to add
@@ -138,6 +140,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
+import PretupidClientCard from '@/components/instance/PretupidClientCard.vue'
 import {
   checkInstanceUpdates,
   importInstanceFiles,
@@ -167,6 +170,7 @@ const dropping = ref(false)
 const search = ref('')
 const typeFilter = ref<Filter>('all')
 const pendingIds = ref(new Set<string>())
+const revision = ref(0)
 let unlistenDrop: UnlistenFn | null = null
 
 const busy = computed(() => props.locked || checking.value || updating.value || importing.value)
@@ -214,6 +218,7 @@ async function load() {
   loading.value = true
   try {
     entries.value = await listInstanceMods(props.instance.id)
+    revision.value++
     emit('count', entries.value.length)
   } catch (e) {
     notifications.notifyError('Could not read content', String(e))
@@ -377,8 +382,7 @@ defineExpose({ reload: load })
   gap: 0.75rem;
   color: var(--accent);
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   background-color: color-mix(in srgb, var(--bg-primary) 88%, transparent);
   border: 3px dashed var(--accent);
   border-radius: var(--edge-radius);

@@ -16,14 +16,13 @@
 
 .form-label {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   letter-spacing: 0.03em;
   color: var(--text-secondary);
 }
 
 .form-label-optional {
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   opacity: 0.75;
   text-transform: none;
@@ -37,13 +36,13 @@
 
 .form-error {
   font-size: 0.9rem;
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .form-error--block {
   padding: 0.75rem 1rem;
   background-color: rgba(231, 76, 60, 0.12);
-  border: 2px solid #e74c3c;
+  border: 1px solid var(--danger);
   border-radius: var(--edge-radius);
 }
 

@@ -66,7 +66,7 @@ defineEmits<{
   gap: 1rem;
   padding: 0.75rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: border-color var(--transition-fast), transform var(--transition-fast);
@@ -90,7 +90,7 @@ defineEmits<{
   align-items: center;
   justify-content: center;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   overflow: hidden;
 }
@@ -121,8 +121,7 @@ defineEmits<{
 
 .skin-slot-card__name {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -131,7 +130,7 @@ defineEmits<{
 
 .skin-slot-card__active {
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
+  font-size: 0.85rem;
   color: var(--accent-text);
   background-color: var(--accent);
   padding: 0.2rem 0.4rem;
@@ -152,7 +151,7 @@ defineEmits<{
 
 .btn--danger {
   color: #fff;
-  border-color: #c0392b;
-  background-color: #e74c3c;
+  border-color: var(--danger);
+  background-color: var(--danger);
 }
 </style>

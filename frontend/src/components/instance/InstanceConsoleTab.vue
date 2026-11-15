@@ -142,8 +142,8 @@ async function openLogs() {
 .console-tab__crash {
   display: flex;
   gap: 0.75rem;
-  color: #f39c12;
-  border-color: #f39c12;
+  color: var(--warning);
+  border-color: var(--warning);
 }
 
 .console-tab__crash-body {

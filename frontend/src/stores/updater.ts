@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { check } from '@tauri-apps/plugin-updater'
+import { REPOSITORY } from '@/config'
 import { useSettingsStore } from '@/stores/settings'
 import { useSplashStore } from '@/stores/splash'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -15,19 +16,21 @@ export interface PendingReleaseNotes {
   htmlUrl: string
 }
 
+type DownloadEvent =
+  | { event: 'Started'; data?: { contentLength?: number } }
+  | { event: 'Progress'; data?: { chunkLength?: number } }
+  | { event: 'Finished'; data?: unknown }
+
 interface TauriUpdate {
   version: string
   body?: string
   date?: string
-  downloadAndInstall: (callback: (event: any) => void) => Promise<void>
+  downloadAndInstall: (callback: (event: DownloadEvent) => void) => Promise<void>
 }
 
-function detectRepo(): string {
-  return 'Yannosay/pretupid'
-}
 
 async function fetchReleaseNotes(version: string): Promise<PendingReleaseNotes | null> {
-  const repo = detectRepo()
+  const repo = REPOSITORY
   const cleanVersion = version.replace(/^v/, '')
   const candidates = [`v${cleanVersion}`, cleanVersion]
 
@@ -108,6 +111,7 @@ export const useUpdaterStore = defineStore('updater', () => {
   const updateInfo = ref<{ version: string; body: string; date: string } | null>(null)
   const error = ref<string | null>(null)
   const downloadProgress = ref(0)
+  let pendingUpdate: TauriUpdate | null = null
 
   async function checkForUpdates(manual = false) {
     const settingsStore = useSettingsStore()
@@ -132,17 +136,7 @@ export const useUpdaterStore = defineStore('updater', () => {
         return
       }
 
-      const deferredVersion = getDeferredVersion()
-      if (!manual && deferredVersion === update.version) {
-        updateAvailable.value = true
-        updateInfo.value = {
-          version: update.version,
-          body: update.body || '',
-          date: update.date || new Date().toISOString()
-        }
-        return
-      }
-
+      pendingUpdate = update
       updateAvailable.value = true
       updateInfo.value = {
         version: update.version,
@@ -151,16 +145,14 @@ export const useUpdaterStore = defineStore('updater', () => {
       }
 
       if (!manual) {
-        notifications.notifyInfo(
-          'Update available',
-          `Pretupid ${update.version} is ready to install.`
-        )
+        if (getDeferredVersion() !== update.version) {
+          notifications.notifyInfo('Update available', `Pretupid ${update.version} is ready to install from Settings.`)
+        }
         return
       }
 
       await installUpdate(update)
     } catch (e) {
-      console.error('Update check failed:', e)
       error.value = String(e)
       clearPendingNotes()
       if (manual) {
@@ -188,29 +180,24 @@ export const useUpdaterStore = defineStore('updater', () => {
     clearDeferredVersion()
 
     try {
-      await update.downloadAndInstall((event) => {
-        switch (event.event) {
-          case 'Started':
-            downloadProgress.value = 0
-            splashStore.updateProgress(0)
-            break
-          case 'Progress': {
-            const data = event.data as
-              | { chunkLength?: number; contentLength?: number }
-              | undefined
-            const current = data?.chunkLength ?? 0
-            const total = data?.contentLength ?? 0
-            if (total > 0) {
-              const percent = Math.min(100, Math.round((current / total) * 100))
-              downloadProgress.value = percent
-              splashStore.updateProgress(percent)
-            }
-            break
+      let total = 0
+      let received = 0
+      await update.downloadAndInstall((event: DownloadEvent) => {
+        if (event.event === 'Started') {
+          total = event.data?.contentLength ?? 0
+          received = 0
+          downloadProgress.value = 0
+          splashStore.updateProgress(0)
+        } else if (event.event === 'Progress') {
+          received += event.data?.chunkLength ?? 0
+          if (total > 0) {
+            const percent = Math.min(99, Math.floor((received / total) * 100))
+            downloadProgress.value = percent
+            splashStore.updateProgress(percent)
           }
-          case 'Finished':
-            downloadProgress.value = 100
-            splashStore.updateProgress(100)
-            break
+        } else if (event.event === 'Finished') {
+          downloadProgress.value = 100
+          splashStore.updateProgress(100)
         }
       })
 
@@ -219,12 +206,22 @@ export const useUpdaterStore = defineStore('updater', () => {
         'Restart Pretupid to finish applying the update.'
       )
     } catch (e) {
-      console.error('Update failed:', e)
       error.value = String(e)
       clearPendingNotes()
+      splashStore.hide()
+      notifications.notifyError('Update failed', String(e))
     } finally {
       installing.value = false
       downloadProgress.value = 0
+    }
+  }
+
+  async function installPending() {
+    if (installing.value) return
+    if (pendingUpdate) {
+      await installUpdate(pendingUpdate)
+    } else {
+      await checkForUpdates(true)
     }
   }
 
@@ -257,6 +254,7 @@ export const useUpdaterStore = defineStore('updater', () => {
     error,
     downloadProgress,
     checkForUpdates,
+    installPending,
     deferUpdate,
     takePendingReleaseNotes
   }

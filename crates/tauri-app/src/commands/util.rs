@@ -9,7 +9,7 @@ use tokio::io::AsyncWriteExt;
 pub const USER_AGENT: &str = concat!(
     "pretupid-launcher/",
     env!("CARGO_PKG_VERSION"),
-    " (github.com/yannosay/pretupid-launcher)"
+    " (github.com/Yannosay/pretupid)"
 );
 pub const MAX_DOWNLOAD_BYTES: u64 = 1024 * 1024 * 1024;
 

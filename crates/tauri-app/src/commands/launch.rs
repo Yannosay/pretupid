@@ -52,7 +52,12 @@ async fn build_settings(
             .filter(|p| !p.trim().is_empty())
             .or(global.default_java_path.clone()),
         auto_install_java: global.auto_install_java,
-        extra_jvm_args: instance_settings.extra_jvm_args.clone(),
+        extra_jvm_args: instance_settings
+            .extra_jvm_args
+            .iter()
+            .cloned()
+            .chain(super::pretupid_client::launch_properties(instance))
+            .collect(),
         extra_game_args: instance_settings.extra_game_args.clone(),
         verify_files: verify,
         quick_play_server: instance_settings.quick_play_server.clone(),
@@ -183,6 +188,12 @@ pub async fn launch_instance(
         .map_err(|e| e.to_string())?
         .profile
         .ok_or_else(|| "No Minecraft profile found for this account.".to_string())?;
+
+    match super::pretupid_client::update_if_outdated(&state, &instance).await {
+        Ok(Some(version)) => tracing::info!("updated Pretupid Client to {version} before launch"),
+        Ok(None) => {}
+        Err(error) => tracing::warn!("Pretupid Client update check skipped: {error}"),
+    }
 
     let settings = build_settings(&state, &instance, verify_files.unwrap_or(false)).await?;
     let cancel_rx = register_run(&state, &instance_id)?;

@@ -19,6 +19,7 @@ tracing-appender = { workspace = true }
 tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
 tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }

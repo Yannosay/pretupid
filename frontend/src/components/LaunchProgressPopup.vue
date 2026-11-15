@@ -57,9 +57,9 @@ function cancel() {
   gap: 0.6rem;
   padding: 0.9rem 1rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--accent);
+  border: 1px solid var(--accent);
   border-radius: var(--edge-radius);
-  box-shadow: 4px 4px 0 0 var(--shadow-color);
+  box-shadow: 0 6px 18px var(--shadow-color);
 }
 
 .launch-popup__header {
@@ -74,8 +74,7 @@ function cancel() {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.62rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
 }
 
@@ -92,7 +91,7 @@ function cancel() {
 .launch-popup__percent {
   flex-shrink: 0;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
+  font-size: 0.85rem;
 }
 
 .launch-popup-enter-active,

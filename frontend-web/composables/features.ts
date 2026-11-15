@@ -14,7 +14,7 @@ export interface FeatureGroup {
   features: Feature[]
 }
 
-export const REPOSITORY_URL = 'https://github.com/yannosay/pretupid-launcher'
+export const REPOSITORY_URL = 'https://github.com/Yannosay/pretupid'
 
 export const featureGroups: FeatureGroup[] = [
   {

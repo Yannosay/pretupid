@@ -164,7 +164,7 @@ onMounted(async () => {
 
 .modal {
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   width: 90%;
   max-width: 520px;
@@ -179,14 +179,13 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-tertiary);
 }
 
 .modal__title {
   font-family: var(--font-pixel);
   font-size: 0.9rem;
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -224,8 +223,7 @@ onMounted(async () => {
 
 .form-label {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -236,13 +234,13 @@ onMounted(async () => {
 
 .form-error {
   font-size: 0.9rem;
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .form-error--block {
   padding: 0.75rem 1rem;
   background-color: rgba(231, 76, 60, 0.12);
-  border: 2px solid #e74c3c;
+  border: 1px solid var(--danger);
   border-radius: var(--edge-radius);
 }
 

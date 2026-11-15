@@ -1,0 +1,28 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "net.pretupid.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"AvatarRendererMixin",
+		"AvatarRenderStateMixin",
+		"BlockEntityRenderDispatcherMixin",
+		"CameraMixin",
+		"ChatComponentMixin",
+		"EntityRendererMixin",
+		"FramerateLimitTrackerMixin",
+		"GameRendererMixin",
+		"GameRendererPostEffectMixin",
+		"LevelMixin",
+		"LightmapRenderStateExtractorMixin",
+		"MouseHandlerMixin",
+		"ParticleEngineMixin",
+		"PlayerListMixin",
+		"PlayerModelMixin",
+		"PlayerTabOverlayMixin",
+		"ScreenEffectRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

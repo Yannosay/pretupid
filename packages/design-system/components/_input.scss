@@ -1,12 +1,13 @@
 @use '../mixins' as *;
 
 .input {
+  @include chamfer(2px);
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.85rem;
   font-family: var(--font-body);
-  font-size: 1.1rem;
-  background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  font-size: 0.95rem;
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   color: var(--text-primary);
   transition: border-color var(--transition-fast),
@@ -20,7 +21,7 @@
 .input:focus {
   outline: none;
   border-color: var(--accent);
-  @include block-shadow(var(--shadow-color));
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 .input::placeholder {
@@ -29,7 +30,7 @@
 }
 
 select.input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b3b3b3' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a3abb9' stroke-width='2' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 1rem center;
   padding-right: 2.5rem;
@@ -37,7 +38,7 @@ select.input {
 }
 
 select.input option {
-  background-color: var(--bg-secondary);
+  background-color: #10141c;
   color: var(--text-primary);
   padding: 0.5rem;
 }

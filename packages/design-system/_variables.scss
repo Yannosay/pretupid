@@ -1,14 +1,34 @@
 :root {
-  --bg-primary: #0d0d0d;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #262626;
-  --text-primary: #ffffff;
-  --text-secondary: #b3b3b3;
-  --border-color: #404040;
-  --shadow-color: rgba(0, 0, 0, 0.5);
+  --bg-primary: #07090d;
+  --bg-secondary: rgba(16, 20, 28, 0.86);
+  --bg-tertiary: rgba(255, 255, 255, 0.06);
+  --bg-elevated: rgba(22, 27, 37, 0.94);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  --text-primary: #f2f4f8;
+  --text-secondary: #a3abb9;
+  --text-dim: #6c7584;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --highlight: rgba(255, 255, 255, 0.07);
+  --shadow-color: rgba(0, 0, 0, 0.45);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
   --edge-radius: 0px;
+  --chamfer: 3px;
+  --font-pixel: 'Monocraft', 'Courier New', monospace;
+  --font-body: 'Monocraft', 'Courier New', monospace;
+  --font-mono: 'Monocraft', 'Courier New', monospace;
+  --transition-fast: 0.12s ease;
+  --transition-normal: 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-font='press-start'] {
   --font-pixel: 'Press Start 2P', 'Courier New', monospace;
   --font-body: 'VT323', 'Courier New', monospace;
-  --transition-fast: 0.1s ease;
-  --transition-normal: 0.2s ease;
+}
+
+:root[data-font='custom'] {
+  --font-pixel: 'PretupidCustom', 'Monocraft', monospace;
+  --font-body: 'PretupidCustom', 'Monocraft', monospace;
 }

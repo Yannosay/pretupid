@@ -1,0 +1,14 @@
+name = "pretupid"
+pages_build_output_dir = ".output"
+compatibility_date = "2026-09-12"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pretupid"
+database_id = "88dadaaf-ad3e-43e4-aad4-f1cd4e2ef1d8"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "CONTENT"
+bucket_name = "pretupid-content"

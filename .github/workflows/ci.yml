@@ -41,3 +41,22 @@ jobs:
         run: npm run build:desktop
       - name: Build web
         run: npm run build:web
+
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pretupid-client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build Pretupid Client
+        run: ./gradlew build --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pretupid-client
+          path: pretupid-client/build/libs/*.jar

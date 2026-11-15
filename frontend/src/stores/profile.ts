@@ -158,17 +158,13 @@ export const useProfileStore = defineStore('profile', () => {
   }
 
   async function setActive(slotId: string) {
-    console.log('setActive called:', profileId.value, slotId)
     if (!profileId.value) return
     error.value = null
 
     try {
       await profileApi.setActiveSkinSlot(profileId.value, slotId)
-      console.log('setActive backend success')
       await load(profileId.value)
-      console.log('setActive reload done')
     } catch (e) {
-      console.error('setActive failed:', e)
       error.value = String(e)
     }
   }

@@ -12,7 +12,7 @@
       <DownloadCard
         title="Linux"
         description="Distribution-agnostic AppImage and tarball. Coming soon."
-        url="https://github.com/yannosay/pretupid-launcher"
+        :url="repositoryUrl"
         button-text="Follow progress"
         meta="In development"
         :featured="false"
@@ -20,7 +20,7 @@
       <DownloadCard
         title="Windows"
         description="Native installer for Windows 10 and 11, 64-bit."
-        :url="config.public.downloadUrl"
+        :url="`${repositoryUrl}/releases/latest`"
         button-text="Download for Windows"
         meta="Free and open source"
         :featured="true"
@@ -28,7 +28,7 @@
       <DownloadCard
         title="macOS"
         description="Universal build for Apple Silicon and Intel Macs. Coming soon."
-        url="https://github.com/yannosay/pretupid-launcher"
+        :url="repositoryUrl"
         button-text="Follow progress"
         meta="In development"
         :featured="false"
@@ -73,6 +73,7 @@
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
 const config = useRuntimeConfig()
+const repositoryUrl = `https://github.com/${config.public.repository}`
 const { openLauncher } = useLauncherBridge()
 </script>
 
@@ -98,7 +99,7 @@ const { openLauncher } = useLauncherBridge()
 .download-page__eyebrow {
   display: inline-block;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);
@@ -159,7 +160,7 @@ const { openLauncher } = useLauncherBridge()
 
 .download-page__requirement-label {
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);

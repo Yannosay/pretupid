@@ -1,8 +1,11 @@
 <template>
   <aside class="sidebar">
     <RouterLink to="/" class="sidebar__logo" aria-label="Pretupid Launcher home">
-      <img src="@/assets/branding/ptd_logo_main.webp" alt="" />
-      <span class="sidebar__logo-text">Pretupid</span>
+      <img src="@shared/branding/logo.png" alt="" />
+      <span class="sidebar__logo-text">
+        <span class="sidebar__logo-name">Pretupid</span>
+        <span class="sidebar__logo-sub">Launcher</span>
+      </span>
     </RouterLink>
 
     <nav class="sidebar__nav" aria-label="Main">
@@ -14,10 +17,7 @@
         :class="{ 'sidebar__link--active': isActive(item.to) }"
       >
         <AppIcon :name="item.icon" :size="18" />
-        <span class="sidebar__link-text">
-          <span class="sidebar__link-label">{{ item.label }}</span>
-          <span class="sidebar__link-hint">{{ item.hint }}</span>
-        </span>
+        <span class="sidebar__link-label">{{ item.label }}</span>
       </RouterLink>
     </nav>
 
@@ -79,11 +79,11 @@ const launchStore = useLaunchStore()
 const instanceStore = useInstanceStore()
 const route = useRoute()
 
-const items: { to: string; label: string; hint: string; icon: IconName }[] = [
-  { to: '/', label: 'Home', hint: 'Jump back in', icon: 'home' },
-  { to: '/library', label: 'Library', hint: 'Your instances', icon: 'library' },
-  { to: '/browse', label: 'Browse', hint: 'Mods & modpacks', icon: 'compass' },
-  { to: '/profile', label: 'Skins', hint: 'Look & profile', icon: 'user' }
+const items: { to: string; label: string; icon: IconName }[] = [
+  { to: '/', label: 'Home', icon: 'home' },
+  { to: '/library', label: 'Library', icon: 'library' },
+  { to: '/browse', label: 'Browse', icon: 'compass' },
+  { to: '/profile', label: 'Skins', icon: 'user' }
 ]
 
 function isActive(path: string): boolean {
@@ -117,110 +117,120 @@ async function handleLogout() {
 </script>
 
 <style scoped lang="scss">
+@use 'design-system/mixins' as *;
+
 .sidebar {
-  width: 232px;
+  width: 216px;
   height: 100vh;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem 0.85rem;
+  gap: 1.1rem;
+  padding: 1.1rem 0.75rem;
   overflow-y: auto;
-  background-color: var(--bg-secondary);
-  border-right: 2px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.28);
+  border-right: 1px solid var(--border-color);
+  backdrop-filter: blur(14px);
 }
 
 .sidebar__logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0 0.35rem 0.5rem;
+  gap: 0.7rem;
+  padding: 0.2rem 0.4rem 0.4rem;
   color: inherit;
   text-decoration: none;
 
   img {
-    width: 38px;
-    height: 38px;
-    border-radius: var(--edge-radius);
+    width: 36px;
+    height: 36px;
+    image-rendering: pixelated;
   }
 }
 
 .sidebar__logo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sidebar__logo-name {
   font-family: var(--font-pixel);
-  font-size: 0.95rem;
-  color: var(--accent);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sidebar__logo-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
 }
 
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .sidebar__link {
+  @include chamfer;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
   color: var(--text-secondary);
   text-decoration: none;
-  border: 2px solid transparent;
-  border-radius: var(--edge-radius);
-  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  transition: background-color var(--transition-normal), color var(--transition-fast), padding-left var(--transition-normal);
 
   &:hover {
     color: var(--text-primary);
     background-color: var(--bg-tertiary);
+    padding-left: 0.95rem;
   }
 }
 
 .sidebar__link--active {
   color: var(--text-primary);
-  background-color: var(--bg-tertiary);
-  border-color: var(--border-color);
-  box-shadow: inset 3px 0 0 0 var(--accent);
+  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 22%;
+    bottom: 22%;
+    width: 3px;
+    background-color: var(--accent);
+  }
 
   .app-icon {
     color: var(--accent);
   }
 }
 
-.sidebar__link-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
 .sidebar__link-label {
   font-family: var(--font-pixel);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-}
-
-.sidebar__link-hint {
-  font-size: 0.9rem;
-  line-height: 1;
-  color: var(--text-secondary);
+  font-size: 0.92rem;
 }
 
 .sidebar__playing {
+  @include chamfer;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   padding: 0.6rem 0.75rem;
   color: inherit;
   text-decoration: none;
-  background-color: var(--bg-tertiary);
-  border: 2px solid #2ecc71;
-  border-radius: var(--edge-radius);
+  background-color: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
 }
 
 .sidebar__playing-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   flex-shrink: 0;
-  background-color: #2ecc71;
+  background-color: var(--success);
   animation: sidebar-pulse 1.4s ease-in-out infinite;
 }
 
@@ -231,10 +241,8 @@ async function handleLogout() {
 }
 
 .sidebar__playing-label {
-  font-family: var(--font-pixel);
-  font-size: 0.5rem;
-  text-transform: uppercase;
-  color: #2ecc71;
+  font-size: 0.85rem;
+  color: var(--success);
 }
 
 .sidebar__playing-name {
@@ -251,13 +259,13 @@ async function handleLogout() {
 }
 
 .sidebar__account {
+  @include chamfer;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   padding: 0.55rem;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
+  border: 1px solid var(--border-color);
 }
 
 .sidebar__avatar {
@@ -265,7 +273,6 @@ async function handleLogout() {
   height: 32px;
   flex-shrink: 0;
   image-rendering: pixelated;
-  border-radius: var(--edge-radius);
 }
 
 .sidebar__account-meta {
@@ -280,35 +287,32 @@ async function handleLogout() {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  color: var(--accent);
+  font-size: 0.9rem;
+  color: var(--text-primary);
 }
 
 .sidebar__account-type {
   font-size: 0.85rem;
-  line-height: 1;
-  color: var(--text-secondary);
+  color: var(--text-dim);
 }
 
 .sidebar__settings {
+  @include chamfer;
   display: flex;
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.55rem 0.75rem;
+  padding: 0.55rem 0.8rem;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  text-transform: uppercase;
+  font-size: 0.88rem;
   color: var(--text-secondary);
   background: none;
-  border: 2px solid transparent;
-  border-radius: var(--edge-radius);
+  border: none;
   cursor: pointer;
 
   &:hover {
     color: var(--text-primary);
-    border-color: var(--border-color);
+    background-color: var(--bg-tertiary);
   }
 }
 

@@ -256,10 +256,9 @@ impl OAuthClient {
 
     pub async fn get_tokens(&self) -> CoreResult<AuthTokens> {
         self.ensure_tables().await?;
-        let stored = self
-            .load_tokens_from_db()
-            .await?
-            .ok_or_else(|| CoreError::NotFound("No Microsoft account logged in".to_string()))?;
+        let stored = self.load_tokens_from_db().await?.ok_or_else(|| {
+            CoreError::NotFound("You are signed out. Sign in with Microsoft to play.".to_string())
+        })?;
 
         if chrono::Utc::now().timestamp() >= stored.expires_at {
             self.refresh().await
@@ -297,9 +296,19 @@ impl OAuthClient {
             Some(r) => r,
             None => return Ok(None),
         };
+        let opened = super::token_store::open_secret(&access_raw)
+            .and_then(|access| Ok((access, super::token_store::open_secret(&refresh_raw)?)));
+        let (access_token, refresh_token) = match opened {
+            Ok(pair) => pair,
+            Err(error) => {
+                tracing::warn!("discarding unreadable stored session: {error}");
+                self.delete_tokens_from_db().await?;
+                return Ok(None);
+            }
+        };
         let tokens = AuthTokens {
-            access_token: super::token_store::open_secret(&access_raw)?,
-            refresh_token: super::token_store::open_secret(&refresh_raw)?,
+            access_token,
+            refresh_token,
             expires_at,
         };
         if !super::token_store::is_sealed(&access_raw)
@@ -341,6 +350,13 @@ impl OAuthClient {
                 .fetch_optional(&self.pool)
                 .await?;
 
+        if row.is_some() && self.load_tokens_from_db().await?.is_none() {
+            self.delete_profile_from_db().await?;
+            return Ok(super::models::AuthStatus {
+                authenticated: false,
+                profile: None,
+            });
+        }
         Ok(super::models::AuthStatus {
             authenticated: row.is_some(),
             profile: row.map(|(id, name)| MinecraftProfile { id, name }),

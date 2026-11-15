@@ -3,7 +3,7 @@
     <header class="tray-panel__header">
       <div class="tray-panel__brand">
         <img
-          src="@/assets/branding/ptd_logo_main.webp"
+          src="@shared/branding/logo.png"
           alt="Pretupid"
           class="tray-panel__brand-logo"
         />
@@ -227,7 +227,7 @@ onBeforeUnmount(() => {
   width: 100vw;
   height: 100vh;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   box-sizing: border-box;
   overflow: hidden;
   color: var(--text-primary);
@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   background-color: var(--bg-tertiary);
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -266,15 +266,14 @@ onBeforeUnmount(() => {
 
 .tray-panel__brand-main {
   font-family: var(--font-pixel);
-  font-size: 0.7rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
   letter-spacing: 0.03em;
 }
 
 .tray-panel__brand-sub {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -284,7 +283,7 @@ onBeforeUnmount(() => {
   padding: 0.1rem 0.4rem;
   color: var(--text-secondary);
   background: none;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast);
@@ -315,7 +314,7 @@ onBeforeUnmount(() => {
 }
 
 .tray-panel__state--error {
-  color: #e74c3c;
+  color: var(--danger);
 }
 
 .tray-panel__section {
@@ -330,24 +329,22 @@ onBeforeUnmount(() => {
   display: block;
   padding: 0 0.5rem 0.4rem;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
+  font-size: 0.85rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-secondary);
 }
 
 .tray-panel__empty {
   padding: 1rem 0.75rem;
   text-align: center;
-  border: 2px dashed var(--border-color);
+  border: 1px dashed var(--border-color);
   border-radius: var(--edge-radius);
   margin: 0 0.25rem;
 }
 
 .tray-panel__empty-title {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-primary);
   margin: 0 0 0.25rem;
 }
@@ -375,7 +372,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.6rem;
   background-color: transparent;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--edge-radius);
   cursor: pointer;
   text-align: left;
@@ -396,10 +393,10 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   font-family: var(--font-pixel);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--accent-text);
   background-color: var(--accent);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -413,8 +410,7 @@ onBeforeUnmount(() => {
 
 .tray-panel__instance-name {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -434,7 +430,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.55rem;
   background-color: transparent;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--edge-radius);
   cursor: pointer;
   text-align: left;
@@ -461,7 +457,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 0.4rem;
   padding: 0.6rem 0.5rem;
-  border-top: 2px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
   background-color: var(--bg-tertiary);
   flex-shrink: 0;
 }
@@ -470,12 +466,11 @@ onBeforeUnmount(() => {
   flex: 1;
   padding: 0.55rem 0.6rem;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   letter-spacing: 0.05em;
   color: var(--text-primary);
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
@@ -487,12 +482,12 @@ onBeforeUnmount(() => {
 
 .tray-panel__footer-btn--danger {
   color: #ffffff;
-  background-color: #e74c3c;
-  border-color: #c0392b;
+  background-color: var(--danger);
+  border-color: var(--danger);
 }
 
 .tray-panel__footer-btn--danger:hover {
-  background-color: #c0392b;
+  background-color: var(--danger);
   border-color: #a93226;
 }
 </style>

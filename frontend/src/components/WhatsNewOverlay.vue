@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useUpdaterStore, type PendingReleaseNotes } from '@/stores/updater'
+import { REPOSITORY_URL } from '@/config'
 
 interface NotesSection {
   title: string
@@ -55,7 +56,7 @@ const release = ref<PendingReleaseNotes>({
   version: '',
   body: '',
   publishedAt: null,
-  htmlUrl: 'https://github.com/Yannosay/pretupid/releases'
+  htmlUrl: `${REPOSITORY_URL}/releases`
 })
 
 const displayVersion = computed(() => release.value.version.replace(/^v/, ''))
@@ -148,7 +149,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   box-shadow: 8px 8px 0 0 var(--shadow-color);
   overflow: hidden;
@@ -161,14 +162,13 @@ onMounted(() => {
   gap: 1rem;
   padding: 1.5rem;
   background-color: var(--bg-tertiary);
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .whats-new__eyebrow {
   display: block;
   font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   letter-spacing: 0.1em;
   color: var(--accent);
   margin-bottom: 0.35rem;
@@ -177,7 +177,6 @@ onMounted(() => {
 .whats-new__title {
   font-family: var(--font-pixel);
   font-size: 1rem;
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -218,8 +217,7 @@ onMounted(() => {
 
 .whats-new__section-title {
   font-family: var(--font-pixel);
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
   margin: 0 0 0.5rem;
 }
@@ -273,7 +271,7 @@ onMounted(() => {
 
 .whats-new__footer {
   padding: 1rem 1.5rem;
-  border-top: 2px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
   background-color: var(--bg-tertiary);
   display: flex;
   justify-content: flex-end;

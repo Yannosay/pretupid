@@ -73,7 +73,7 @@ const quickInstance = computed(() => {
   gap: 0.75rem;
   min-height: 58px;
   padding: 0.6rem 1.75rem;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
   background-color: var(--bg-secondary);
   flex-shrink: 0;
 }

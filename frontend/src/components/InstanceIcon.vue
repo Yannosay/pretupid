@@ -36,7 +36,7 @@ const iconStyle = computed(() => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   background-color: var(--tile-a);
   background-image:

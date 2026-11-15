@@ -1,10 +1,15 @@
-import '@fontsource/press-start-2p'
-import '@fontsource/vt323'
 import './assets/styles/main.scss'
+import logoUrl from '@shared/branding/logo.png'
 import { createApp, type App as VueApp } from 'vue'
 import { createPinia } from 'pinia'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
+
+const favicon = document.createElement('link')
+favicon.rel = 'icon'
+favicon.type = 'image/png'
+favicon.href = logoUrl
+document.head.appendChild(favicon)
 
 const currentWindow = getCurrentWindow()
 const isTrayPanel = currentWindow.label === 'tray-panel'

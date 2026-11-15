@@ -6,6 +6,7 @@ pub mod instances;
 pub mod launch;
 pub mod modpack;
 pub mod modrinth;
+pub mod pretupid_client;
 pub mod profile;
 pub mod settings;
 pub mod tray;

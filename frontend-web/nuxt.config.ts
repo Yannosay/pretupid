@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const packagesRoot = path.resolve(projectRoot, '..', 'packages')
+const sharedAssetsRoot = path.resolve(projectRoot, '..', 'assets')
 const isProduction = process.env.NODE_ENV === 'production'
 
 const securityHeaders = {
@@ -24,17 +25,28 @@ export default defineNuxtConfig({
     preset: 'cloudflare-pages',
     cloudflare: {
       nodeCompat: true,
-      deployConfig: true
+      deployConfig: false
     },
     output: {
       dir: '.output'
     }
   },
+  alias: {
+    '@shared': sharedAssetsRoot
+  },
   css: ['~/assets/styles/main.scss'],
-  routeRules: isProduction ? { '/**': { headers: securityHeaders } } : {},
+  routeRules: {
+    ...(isProduction ? { '/**': { headers: securityHeaders } } : {}),
+    '/admin': { ssr: false, headers: { ...(isProduction ? securityHeaders : {}), 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' } },
+    '/api/**': { headers: { 'X-Content-Type-Options': 'nosniff' } }
+  },
   runtimeConfig: {
+    presenceSecret: '',
+    adminKey: '',
+    adminSessionSecret: '',
     public: {
-      downloadUrl: 'https://github.com/yannosay/pretupid-launcher/releases/latest'
+      repository: 'Yannosay/pretupid',
+      siteUrl: 'https://pretupid.yannosay.com'
     }
   },
   vite: {

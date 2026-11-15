@@ -421,7 +421,7 @@ defineExpose({ dirty })
   gap: 0.9rem;
 
   .panel__title {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
   }
 }
 
@@ -459,7 +459,7 @@ defineExpose({ dirty })
 }
 
 .settings-tab__warn {
-  color: #f39c12;
+  color: var(--warning);
 }
 
 .settings-tab__pair {
@@ -478,7 +478,7 @@ defineExpose({ dirty })
 }
 
 .settings-tab__mono {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
 }
 
@@ -490,8 +490,7 @@ defineExpose({ dirty })
   summary {
     cursor: pointer;
     font-family: var(--font-pixel);
-    font-size: 0.55rem;
-    text-transform: uppercase;
+    font-size: 0.85rem;
     color: var(--accent);
   }
 
@@ -519,9 +518,9 @@ defineExpose({ dirty })
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--accent);
+  border: 1px solid var(--accent);
   border-radius: var(--edge-radius);
-  box-shadow: 4px 4px 0 0 var(--shadow-color);
+  box-shadow: 0 6px 18px var(--shadow-color);
   transform: translateY(150%);
   opacity: 0;
   pointer-events: none;

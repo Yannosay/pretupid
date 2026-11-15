@@ -1,7 +1,7 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
     "productName": "Pretupid Launcher",
-    "version": "0.0.1",
+    "version": "0.0.2-alpha",
     "identifier": "com.yannosayproductions.pretupid-launcher",
     "build": {
         "beforeDevCommand": "npm run dev --prefix frontend",
@@ -30,9 +30,10 @@
     },
     "plugins": {
         "updater": {
-            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFQkFCMzQxMzJEMTcwMUQKUldRZGNORXlRYk82L2o2VDVJcGV2bTFFMnNwNHJPZ00wcXJFNjI2c0Jjd3BFSHZiZE82TTlYUWsK",
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQzMkVEQ0U0Qjk4RDJGQUEKUldTcUw0MjU1Tnd1UStCYXdVUThyUnpuSmIyRkEzUUxzeDdRZVpKRGRXSjAyKzV1bmdGdUZzYVkK",
             "endpoints": [
-                "https://github.com/yannosay/pretupid-launcher/releases/latest/download/latest.json"
+                "https://pretupid.yannosay.com/api/launcher/latest.json",
+                "https://github.com/Yannosay/pretupid/releases/latest/download/latest.json"
             ],
             "windows": {
                 "installMode": "passive"

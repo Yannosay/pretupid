@@ -81,7 +81,7 @@ const { openLauncher } = useLauncherBridge()
 .about-page__eyebrow {
   display: inline-block;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent);

@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <section v-if="!authStore.authenticated" class="home__guest">
-      <img src="@/assets/branding/ptd_logo_main.webp" alt="Pretupid Launcher" class="home__logo" />
+      <img src="@shared/branding/logo.png" alt="Pretupid Launcher" class="home__logo" />
       <h1 class="home__guest-title">Pretupid Launcher</h1>
       <p class="home__guest-tagline">Fast, safe and simple Minecraft — with mods and modpacks one click away.</p>
       <button class="btn btn--large" :disabled="authStore.loading" @click="signIn">
@@ -42,6 +42,15 @@
             </div>
           </template>
 
+          <div v-else-if="instanceStore.error && !instanceStore.loaded" class="home__error">
+            <h1 class="home__hero-title">Instances could not be loaded</h1>
+            <p class="home__hero-text">{{ instanceStore.error }}</p>
+            <button class="btn" :disabled="instanceStore.loading" @click="retryLoad">
+              <AppIcon name="refresh" :size="16" />
+              Try again
+            </button>
+          </div>
+
           <template v-else-if="instanceStore.loaded">
             <h1 class="home__hero-title">Let's set you up</h1>
             <p class="home__hero-text">Pick how you want to play. You can always add more later.</p>
@@ -66,7 +75,7 @@
         </div>
 
         <RouterLink to="/profile" class="home__skin" title="Change skin">
-          <SkinPreview3D :skin-url="previewSkinUrl" :model-type="previewModelType" :width="200" :height="280" compact />
+          <SkinPreview3D :skin-url="previewSkinUrl" :width="200" :height="280" compact />
           <span class="home__skin-label">Change skin</span>
         </RouterLink>
       </section>
@@ -77,7 +86,7 @@
           <RouterLink to="/library" class="btn btn--ghost btn--small">View all</RouterLink>
         </div>
         <div class="home__grid">
-          <InstanceCard v-for="instance in others" :key="instance.id" :instance="instance" @delete="goToLibrary" />
+          <InstanceCard v-for="instance in others" :key="instance.id" :instance="instance" @delete="pendingDelete = $event" />
         </div>
       </section>
 
@@ -97,12 +106,23 @@
       </section>
     </template>
 
+    <ConfirmDialog
+      v-if="pendingDelete"
+      title="Delete instance"
+      :message="`Delete “${pendingDelete.name}” with all its worlds, mods and settings? This cannot be undone.`"
+      confirm-label="Delete"
+      danger
+      :busy="deleting"
+      @cancel="pendingDelete = null"
+      @confirm="confirmDelete"
+    />
+
     <CreateInstanceModal v-if="createOpen" @close="createOpen = false" @created="openInstance" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
@@ -110,6 +130,7 @@ import InstanceCard from '@/components/InstanceCard.vue'
 import PlayButton from '@/components/PlayButton.vue'
 import SkinPreview3D from '@/components/SkinPreview3D.vue'
 import CreateInstanceModal from '@/components/CreateInstanceModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useInstanceStore } from '@/stores/instances'
 import { useProfileStore } from '@/stores/profile'
@@ -125,6 +146,8 @@ const instanceStore = useInstanceStore()
 const profileStore = useProfileStore()
 const notifications = useNotificationsStore()
 const createOpen = ref(false)
+const pendingDelete = ref<Instance | null>(null)
+const deleting = ref(false)
 
 const DEFAULT_SKIN_URL = 'https://mc-heads.net/skin/MHF_Steve'
 
@@ -146,7 +169,6 @@ const previewSkinUrl = computed(
     profileStore.currentSkinDataUrl ||
     (authStore.profile?.id ? `https://mc-heads.net/skin/${authStore.profile.id}` : DEFAULT_SKIN_URL)
 )
-const previewModelType = computed(() => profileStore.activeSlot?.model_type || profileStore.currentModelType)
 
 async function signIn() {
   try {
@@ -160,17 +182,36 @@ function openInstance(instance: Instance) {
   router.push({ name: 'instance-detail', params: { id: instance.id } })
 }
 
-function goToLibrary() {
-  router.push({ name: 'library' })
+function retryLoad() {
+  instanceStore.load().catch(() => void 0)
 }
 
-onMounted(async () => {
-  await authStore.check()
-  if (authStore.authenticated) {
-    await instanceStore.load(instanceStore.loaded)
-    if (authStore.profile?.id) profileStore.load(authStore.profile.id).catch(() => void 0)
+async function confirmDelete() {
+  const target = pendingDelete.value
+  if (!target || deleting.value) return
+  deleting.value = true
+  try {
+    await instanceStore.remove(target.id)
+    notifications.notifySuccess('Instance deleted', `${target.name} was removed.`)
+    pendingDelete.value = null
+  } catch (e) {
+    notifications.notifyError('Delete failed', String(e))
+  } finally {
+    deleting.value = false
   }
-})
+}
+
+function loadAccountData() {
+  if (!authStore.authenticated) return
+  instanceStore.load(instanceStore.loaded).catch(() => void 0)
+  if (authStore.profile?.id && profileStore.profileId !== authStore.profile.id && !profileStore.loading) {
+    profileStore.load(authStore.profile.id).catch(() => void 0)
+  }
+}
+
+onMounted(loadAccountData)
+
+watch(() => authStore.profile?.id, loadAccountData)
 </script>
 
 <style scoped lang="scss">
@@ -193,7 +234,7 @@ onMounted(async () => {
 .home__logo {
   width: 96px;
   height: 96px;
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -239,7 +280,7 @@ onMounted(async () => {
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
     var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -253,8 +294,7 @@ onMounted(async () => {
 .home__eyebrow {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--accent);
 }
 
@@ -262,7 +302,13 @@ onMounted(async () => {
   margin: 0;
   font-family: var(--font-pixel);
   font-size: 1.4rem;
-  text-transform: uppercase;
+}
+
+.home__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .home__hero-text {
@@ -278,7 +324,7 @@ onMounted(async () => {
   color: var(--text-primary);
   text-decoration: none;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   transition: border-color var(--transition-fast);
 
@@ -332,7 +378,7 @@ onMounted(async () => {
   color: var(--text-primary);
   text-decoration: none;
   background-color: var(--bg-tertiary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
@@ -344,14 +390,13 @@ onMounted(async () => {
   &:hover {
     border-color: var(--accent);
     transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 0 var(--shadow-color);
+    box-shadow: 0 6px 18px var(--shadow-color);
   }
 }
 
 .home__start-title {
   font-family: var(--font-pixel);
-  font-size: 0.65rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
 }
 
 .home__start-hint {
@@ -375,8 +420,7 @@ onMounted(async () => {
 
 .home__skin-label {
   font-family: var(--font-pixel);
-  font-size: 0.5rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
 }
 
 .home__section {
@@ -395,7 +439,6 @@ onMounted(async () => {
   margin: 0;
   font-family: var(--font-pixel);
   font-size: 0.8rem;
-  text-transform: uppercase;
 }
 
 .home__grid {
@@ -418,7 +461,7 @@ onMounted(async () => {
   color: var(--text-primary);
   text-decoration: none;
   background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
 }
 

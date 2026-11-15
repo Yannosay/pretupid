@@ -82,6 +82,24 @@
             <span class="form-hint">{{ loaderHint }}</span>
           </div>
 
+          <label v-if="loader === 'fabric' || loader === 'quilt'" class="toggle create__client">
+            <input v-model="withClient" type="checkbox" class="toggle__input" :disabled="creating" />
+            <span class="toggle__track" />
+            <span class="create__client-text">
+              <strong>Install Pretupid Client</strong>
+              <span class="form-hint">Mod menu, HUD, FPS boost, zoom and the Pretupid badge. You can remove it any time.</span>
+            </span>
+          </label>
+
+          <label v-if="loader === 'fabric' || loader === 'quilt'" class="toggle create__client">
+            <input v-model="withPerformance" type="checkbox" class="toggle__input" :disabled="creating" />
+            <span class="toggle__track" />
+            <span class="create__client-text">
+              <strong>Install performance mods</strong>
+              <span class="form-hint">Sodium, Lithium, FerriteCore, ImmediatelyFast and Entity Culling. Often doubles your FPS.</span>
+            </span>
+          </label>
+
           <div class="form-group">
             <label class="form-label" for="instance-name">Name</label>
             <input
@@ -150,7 +168,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import AppIcon from '@/components/AppIcon.vue'
-import { fetchVersions, getLoaderVersions, importModpackFile } from '@/api'
+import { fetchVersions, getLoaderVersions, importModpackFile, installPerformancePack, installPretupidClient } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -184,6 +202,8 @@ const loader = ref<LoaderChoice>('fabric')
 const loaderVersion = ref('')
 const loaderVersions = ref<LoaderVersion[]>([])
 const loadingLoaderVersions = ref(false)
+const withClient = ref(true)
+const withPerformance = ref(true)
 let loaderRequest = 0
 
 const modpackPath = ref<string | null>(null)
@@ -294,6 +314,9 @@ async function submit() {
         await instanceStore.update(instance.id, { group_name: group.value.trim() })
       }
       notifications.notifySuccess('Instance created', `${instance.name} is ready. Press Play to download and start it.`)
+      if (loader.value === 'fabric' || loader.value === 'quilt') {
+        void installExtras(instance, withClient.value, withPerformance.value)
+      }
     }
     emit('created', instance)
     emit('close')
@@ -301,6 +324,27 @@ async function submit() {
     submitError.value = String(e)
   } finally {
     creating.value = false
+  }
+}
+
+async function installExtras(created: Instance, client: boolean, performance: boolean) {
+  if (performance) {
+    try {
+      const result = await installPerformancePack(created.id)
+      if (result.installed.length > 0) {
+        notifications.notifySuccess('Performance mods added', result.installed.map((m) => m.title).join(', '))
+      }
+    } catch (e) {
+      notifications.notifyWarning('Performance mods not installed', String(e))
+    }
+  }
+  if (client) {
+    try {
+      await installPretupidClient(created.id)
+      notifications.notifySuccess('Pretupid Client added', `Press Right Shift in ${created.name} to open the menu.`)
+    } catch (e) {
+      notifications.notifyWarning('Pretupid Client not installed', String(e))
+    }
   }
 }
 
@@ -341,15 +385,14 @@ onMounted(async () => {
 }
 
 .create__advanced {
-  border: 2px dashed var(--border-color);
+  border: 1px dashed var(--border-color);
   border-radius: var(--edge-radius);
   padding: 0.6rem 0.8rem;
 
   summary {
     cursor: pointer;
     font-family: var(--font-pixel);
-    font-size: 0.55rem;
-    text-transform: uppercase;
+    font-size: 0.85rem;
     color: var(--text-secondary);
   }
 }
@@ -369,7 +412,7 @@ onMounted(async () => {
   padding: 1.5rem;
   text-align: center;
   color: var(--accent);
-  border: 2px dashed var(--border-color);
+  border: 1px dashed var(--border-color);
   border-radius: var(--edge-radius);
 }
 
@@ -380,9 +423,26 @@ onMounted(async () => {
 }
 
 .create__import-file {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9rem;
   color: var(--text-primary);
   word-break: break-all;
+}
+
+.create__client {
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--edge-radius);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  cursor: pointer;
+}
+
+.create__client-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  color: var(--text-primary);
 }
 </style>

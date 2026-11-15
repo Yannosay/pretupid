@@ -121,16 +121,15 @@ function viewInstance() {
   gap: 0.75rem;
   padding: 0.75rem;
   background-color: var(--bg-tertiary);
-  border: 2px solid #f39c12;
+  border: 1px solid var(--warning);
   border-radius: var(--edge-radius);
-  color: #f39c12;
+  color: var(--warning);
 }
 
 .crash__hint-title {
   display: block;
   font-family: var(--font-pixel);
-  font-size: 0.6rem;
-  text-transform: uppercase;
+  font-size: 0.85rem;
   color: var(--text-primary);
 }
 
@@ -143,11 +142,11 @@ function viewInstance() {
 .crash__message {
   margin: 0;
   padding: 0.6rem 0.75rem;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   color: var(--text-secondary);
   background-color: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
   word-break: break-word;
 }

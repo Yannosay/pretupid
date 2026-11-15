@@ -232,6 +232,15 @@ export interface LoaderVersion {
   latest: boolean
 }
 
+export interface PretupidClientStatus {
+  supported: boolean
+  installed: boolean
+  enabled: boolean
+  mod_id: string | null
+  version_name: string | null
+  latest_version: string | null
+}
+
 export interface InstallResult {
   installed: InstanceMod[]
   warnings: string[]
