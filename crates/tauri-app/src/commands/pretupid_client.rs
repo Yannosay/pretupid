@@ -369,15 +369,26 @@ mod tests {
 
     #[test]
     fn orders_versions() {
-        assert_eq!(compare_versions("0.1.0-alpha", "0.0.2-alpha"), Ordering::Greater);
+        assert_eq!(
+            compare_versions("0.1.0-alpha", "0.0.2-alpha"),
+            Ordering::Greater
+        );
         assert_eq!(compare_versions("0.1.0", "0.1.0-alpha"), Ordering::Greater);
-        assert_eq!(compare_versions("0.1.0-alpha+mc26.3", "0.1.0-alpha"), Ordering::Equal);
-        assert_eq!(compare_versions("0.1.0-alpha", "0.1.0-beta"), Ordering::Less);
+        assert_eq!(
+            compare_versions("0.1.0-alpha+mc26.3", "0.1.0-alpha"),
+            Ordering::Equal
+        );
+        assert_eq!(
+            compare_versions("0.1.0-alpha", "0.1.0-beta"),
+            Ordering::Less
+        );
     }
 
     #[test]
     fn rejects_untrusted_hosts() {
-        assert!(is_release_host("https://github.com/Yannosay/pretupid/releases/download/x/a.jar"));
+        assert!(is_release_host(
+            "https://github.com/Yannosay/pretupid/releases/download/x/a.jar"
+        ));
         assert!(!is_release_host("http://github.com/a.jar"));
         assert!(!is_release_host("https://evil.example/a.jar"));
     }
