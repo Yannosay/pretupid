@@ -20,7 +20,9 @@ Pretupid Client: `cd pretupid-client && ./gradlew build` (JDK 25). `./gradlew ru
 
 ## Online services
 
-The website in `frontend-web/` also serves the client API (`server/api`). It runs on Cloudflare Pages with a D1 database (`DB`) and an R2 bucket (`CONTENT`), configured in `frontend-web/wrangler.toml`. Database migrations live in `frontend-web/migrations`.
+The website in `frontend-web/` also serves the client API (`server/api`). It runs as the Cloudflare Worker `pretupid-web` with a D1 database (`DB`) and an R2 bucket (`CONTENT`), configured in `frontend-web/wrangler.toml`. Database migrations live in `frontend-web/migrations`.
+
+Real-time events (emotes, cosmetic changes, friend notifications) go through the `pretupid-realtime` Worker in `frontend-web/realtime`. Every client keeps one WebSocket open. Each player is a `Peer` Durable Object, and players on the same server share a `Room` Durable Object that relays events to everyone in it. The API pushes friend events to a player's `Peer`. Deploy it with `npx wrangler deploy -c realtime/wrangler.toml`; it needs the `PRESENCE_SECRET` secret with the same value as `NUXT_PRESENCE_SECRET`.
 
 Local run:
 
@@ -28,10 +30,10 @@ Local run:
 cd frontend-web
 npm run build
 npx wrangler d1 migrations apply pretupid --local
-npx wrangler pages dev .output
+npx wrangler dev
 ```
 
-Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_SECRET`, `NUXT_ADMIN_SESSION_SECRET` and `NUXT_ADMIN_KEY`, each at least 32 random characters. In production they are Pages secrets. The admin console is at `/admin`.
+Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_SECRET`, `NUXT_ADMIN_SESSION_SECRET` and `NUXT_ADMIN_KEY`, each at least 32 random characters. In production they are Worker secrets (`npx wrangler secret bulk <file>`). The admin console is at `/admin`.
 
 ## Releases
 

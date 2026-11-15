@@ -23,5 +23,6 @@ export default defineEventHandler(async (event) => {
     )
   }
   await db(event).batch(statements)
+  pushToPlayer(event, body.uuid, { t: 'social' })
   return { ok: true, accepted: body.accept === true }
 })

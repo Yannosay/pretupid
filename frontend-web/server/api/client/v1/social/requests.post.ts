@@ -33,6 +33,7 @@ export default defineEventHandler(async (event) => {
       db(event).prepare('INSERT OR IGNORE INTO friendships (uuid, friend, created_at) VALUES (?, ?, ?)').bind(player.uuid, target.uuid, now),
       db(event).prepare('INSERT OR IGNORE INTO friendships (uuid, friend, created_at) VALUES (?, ?, ?)').bind(target.uuid, player.uuid, now)
     ])
+    pushToPlayer(event, target.uuid, { t: 'social' })
     return { status: 'friends', uuid: target.uuid, name: target.name }
   }
   if (!target.allow_requests) {
@@ -43,5 +44,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: `${target.name} has too many pending requests` })
   }
   await db(event).prepare('INSERT OR IGNORE INTO friend_requests (from_uuid, to_uuid, created_at) VALUES (?, ?, ?)').bind(player.uuid, target.uuid, now).run()
+  pushToPlayer(event, target.uuid, { t: 'social' })
   return { status: 'requested', uuid: target.uuid, name: target.name }
 })

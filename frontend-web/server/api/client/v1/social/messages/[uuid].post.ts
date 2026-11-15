@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
     .prepare('INSERT INTO messages (from_uuid, to_uuid, kind, body, created_at) VALUES (?, ?, ?, ?, ?)')
     .bind(player.uuid, friend, kind, stored, now)
     .run()
+  pushToPlayer(event, friend, { t: 'social' })
   return {
     message: {
       id: result.meta.last_row_id ?? 0,

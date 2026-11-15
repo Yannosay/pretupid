@@ -22,7 +22,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   ssr: true,
   nitro: {
-    preset: 'cloudflare-pages',
+    preset: 'cloudflare_module',
     cloudflare: {
       nodeCompat: true,
       deployConfig: false
@@ -35,6 +35,11 @@ export default defineNuxtConfig({
     '@shared': sharedAssetsRoot
   },
   css: ['~/assets/styles/main.scss'],
+  typescript: {
+    tsConfig: {
+      exclude: ['../realtime']
+    }
+  },
   routeRules: {
     ...(isProduction ? { '/**': { headers: securityHeaders } } : {}),
     '/admin': { ssr: false, headers: { ...(isProduction ? securityHeaders : {}), 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' } },

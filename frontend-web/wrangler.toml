@@ -1,7 +1,16 @@
-name = "pretupid"
-pages_build_output_dir = ".output"
+name = "pretupid-web"
+main = ".output/server/index.mjs"
 compatibility_date = "2026-09-12"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+routes = [{ pattern = "pretupid.yannosay.com", custom_domain = true }]
+
+[assets]
+directory = ".output/public"
+binding = "ASSETS"
+
+[observability]
+enabled = true
 
 [[d1_databases]]
 binding = "DB"
@@ -12,3 +21,8 @@ migrations_dir = "migrations"
 [[r2_buckets]]
 binding = "CONTENT"
 bucket_name = "pretupid-content"
+
+[[durable_objects.bindings]]
+name = "PEER"
+class_name = "Peer"
+script_name = "pretupid-realtime"
