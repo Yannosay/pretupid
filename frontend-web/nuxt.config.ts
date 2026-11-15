@@ -49,6 +49,7 @@ export default defineNuxtConfig({
     presenceSecret: '',
     adminKey: '',
     adminSessionSecret: '',
+    githubToken: '',
     public: {
       repository: 'Yannosay/pretupid',
       siteUrl: 'https://pretupid.yannosay.com'

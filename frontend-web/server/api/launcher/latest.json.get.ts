@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   if (!release) {
     throw createError({ statusCode: 404, statusMessage: 'No launcher release available' })
   }
-  const manifest = await releaseAssetJson<Record<string, unknown>>(release, 'latest.json')
+  const manifest = await releaseAssetJson<Record<string, unknown>>(event, release, 'latest.json')
   if (!manifest) {
     throw createError({ statusCode: 404, statusMessage: 'No launcher release available' })
   }

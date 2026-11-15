@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     if (!release.tag_name.startsWith('client-v')) {
       continue
     }
-    const manifest = await releaseAssetJson<ClientManifest>(release, 'client-manifest.json').catch(() => null)
+    const manifest = await releaseAssetJson<ClientManifest>(event, release, 'client-manifest.json').catch(() => null)
     if (
       !manifest ||
       manifest.minecraft !== minecraft ||
