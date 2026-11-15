@@ -30,6 +30,29 @@
         </div>
 
         <template v-if="mode === 'new'">
+          <div class="create__preview">
+            <button class="create__preview-icon" title="Try another icon" aria-label="Try another icon" :disabled="creating" @click="shuffleIcon">
+              <InstanceIcon :instance="previewInstance" :size="64" />
+              <span class="create__preview-shuffle"><AppIcon name="refresh" :size="12" /></span>
+            </button>
+            <div class="create__preview-text">
+              <input
+                id="instance-name"
+                v-model="name"
+                type="text"
+                class="create__name"
+                maxlength="64"
+                :placeholder="suggestedName"
+                aria-label="Instance name"
+                :disabled="creating"
+                @keyup.enter="submit"
+              />
+              <span class="create__summary">
+                {{ summary }}
+              </span>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label" for="instance-version">Minecraft version</label>
             <div class="create__row">
@@ -59,6 +82,7 @@
                 :disabled="creating"
                 @click="loader = option.value"
               >
+                <img v-if="blockTexture(option.block)" class="create__loader-art" :src="blockTexture(option.block) ?? undefined" alt="" />
                 <span class="option-card__title">{{ option.label }}</span>
                 <span class="option-card__hint">{{ option.hint }}</span>
               </button>
@@ -99,20 +123,6 @@
               <span class="form-hint">Sodium, Lithium, FerriteCore, ImmediatelyFast and Entity Culling. Often doubles your FPS.</span>
             </span>
           </label>
-
-          <div class="form-group">
-            <label class="form-label" for="instance-name">Name</label>
-            <input
-              id="instance-name"
-              v-model="name"
-              type="text"
-              class="input"
-              maxlength="64"
-              :placeholder="suggestedName"
-              :disabled="creating"
-              @keyup.enter="submit"
-            />
-          </div>
 
           <details class="create__advanced">
             <summary>More options</summary>
@@ -168,6 +178,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import AppIcon from '@/components/AppIcon.vue'
+import InstanceIcon from '@/components/InstanceIcon.vue'
+import { BLOCK_MATERIALS, blockTexture } from '@/utils/instanceIcon'
 import { fetchVersions, getLoaderVersions, importModpackFile, installPerformancePack, installPretupidClient } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useSettingsStore } from '@/stores/settings'
@@ -212,13 +224,34 @@ const importName = ref('')
 const creating = ref(false)
 const submitError = ref<string | null>(null)
 
-const loaderOptions: { value: LoaderChoice; label: string; hint: string }[] = [
-  { value: 'vanilla', label: 'Vanilla', hint: 'Plain Minecraft, no mods' },
-  { value: 'fabric', label: 'Fabric', hint: 'Fast, most popular for mods' },
-  { value: 'quilt', label: 'Quilt', hint: 'Runs Fabric mods too' },
-  { value: 'forge', label: 'Forge', hint: 'Classic big modpacks' },
-  { value: 'neoforge', label: 'NeoForge', hint: 'Modern Forge successor' }
+const loaderOptions: { value: LoaderChoice; label: string; hint: string; block: string }[] = [
+  { value: 'vanilla', label: 'Vanilla', hint: 'Plain Minecraft, no mods', block: 'grass' },
+  { value: 'fabric', label: 'Fabric', hint: 'Fast, most popular for mods', block: 'planks' },
+  { value: 'quilt', label: 'Quilt', hint: 'Runs Fabric mods too', block: 'amethyst' },
+  { value: 'forge', label: 'Forge', hint: 'Classic big modpacks', block: 'stone' },
+  { value: 'neoforge', label: 'NeoForge', hint: 'Modern Forge successor', block: 'gold' }
 ]
+
+const summary = computed(() => {
+  const loaderPart = loader.value !== 'vanilla' && loaderVersion.value ? `${loaderName.value} ${loaderVersion.value}` : loaderName.value
+  return `Minecraft ${minecraftVersion.value || '…'} · ${loaderPart}`
+})
+
+const ICON_CHOICES = Object.keys(BLOCK_MATERIALS)
+const previewSeed = crypto.randomUUID()
+const iconMaterial = ref(ICON_CHOICES[Math.floor(Math.random() * ICON_CHOICES.length)])
+
+const previewInstance = computed(() => ({
+  id: previewSeed,
+  name: name.value.trim() || suggestedName.value,
+  icon_url: null,
+  icon_style: `block:${iconMaterial.value}`
+}))
+
+function shuffleIcon() {
+  const index = ICON_CHOICES.indexOf(iconMaterial.value)
+  iconMaterial.value = ICON_CHOICES[(index + 1) % ICON_CHOICES.length]
+}
 
 const filteredVersions = computed(() => {
   if (showSnapshots.value) return versions.value
@@ -310,9 +343,11 @@ async function submit() {
         mod_loader: loader.value,
         loader_version: loader.value === 'vanilla' ? null : loaderVersion.value
       })
-      if (group.value.trim()) {
-        await instanceStore.update(instance.id, { group_name: group.value.trim() })
-      }
+      const updated = await instanceStore.update(instance.id, {
+        icon_style: `block:${iconMaterial.value}`,
+        ...(group.value.trim() ? { group_name: group.value.trim() } : {})
+      })
+      if (updated) instance = updated
       notifications.notifySuccess('Instance created', `${instance.name} is ready. Press Play to download and start it.`)
       if (loader.value === 'fabric' || loader.value === 'quilt') {
         void installExtras(instance, withClient.value, withPerformance.value)
@@ -368,6 +403,89 @@ onMounted(async () => {
 <style scoped lang="scss">
 .create__mode {
   align-self: flex-start;
+}
+
+.create__preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.create__preview-icon {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    transform: rotate(-4deg) scale(1.04);
+  }
+}
+
+.create__preview-shuffle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--accent-text);
+  background-color: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--bg-elevated);
+}
+
+.create__preview-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.create__name {
+  width: 100%;
+  padding: 0.2rem 0;
+  font-family: var(--font-pixel);
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  border-bottom: 1px dashed var(--border-strong);
+  outline: none;
+
+  &::placeholder {
+    color: var(--text-dim);
+  }
+
+  &:focus {
+    border-bottom-color: var(--accent);
+  }
+}
+
+.create__summary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.create__loader-art {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0.25rem;
+  image-rendering: pixelated;
+  border-radius: var(--edge-radius);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .create__row {

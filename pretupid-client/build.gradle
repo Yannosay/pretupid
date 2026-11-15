@@ -53,17 +53,18 @@ abstract class GenerateBranding extends DefaultTask {
 		}
 		File root = outputDirectory.get().asFile
 		root.deleteDir()
-		write(source, 128, false, new File(root, "assets/pretupid/icon.png"))
-		write(source, 64, false, new File(root, "assets/pretupid/textures/gui/logo.png"))
-		write(source, 16, true, new File(root, "assets/pretupid/textures/gui/sprites/icon/pretupid.png"))
-		writeBadge(source, new File(root, "assets/pretupid/textures/font/badge.png"))
+		BufferedImage mark = trim(source)
+		write(mark, 128, new File(root, "assets/pretupid/icon.png"))
+		write(mark, 64, new File(root, "assets/pretupid/textures/gui/logo.png"))
+		write(mark, 16, new File(root, "assets/pretupid/textures/gui/sprites/icon/pretupid.png"))
+		write(mark, 32, new File(root, "assets/pretupid/textures/font/badge.png"))
 	}
 
-	private static void writeBadge(BufferedImage source, File target) {
+	private static BufferedImage trim(BufferedImage source) {
 		int minX = source.width, minY = source.height, maxX = -1, maxY = -1
 		for (int y = 0; y < source.height; y++) {
 			for (int x = 0; x < source.width; x++) {
-				if (isMark(source.getRGB(x, y))) {
+				if (((source.getRGB(x, y) >>> 24) & 0xFF) > 0) {
 					minX = Math.min(minX, x)
 					minY = Math.min(minY, y)
 					maxX = Math.max(maxX, x)
@@ -72,55 +73,43 @@ abstract class GenerateBranding extends DefaultTask {
 			}
 		}
 		if (maxX < 0) {
-			throw new GradleException("Logo has no visible mark for the badge")
+			throw new GradleException("Logo is fully transparent")
 		}
-		int cells = 7
-		double cellWidth = (maxX - minX + 1) / (double) cells
-		double cellHeight = (maxY - minY + 1) / (double) cells
-		BufferedImage badge = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
-		for (int cy = 0; cy < cells; cy++) {
-			for (int cx = 0; cx < cells; cx++) {
-				int sx = (int) Math.floor(minX + (cx + 0.5) * cellWidth)
-				int sy = (int) Math.floor(minY + (cy + 0.5) * cellHeight)
-				if (isMark(source.getRGB(sx, sy))) {
-					badge.setRGB(cx, cy, (int) 0xFFFFFFFFL)
-				}
-			}
-		}
-		target.parentFile.mkdirs()
-		ImageIO.write(badge, "png", target)
+		int side = Math.max(maxX - minX + 1, maxY - minY + 1)
+		BufferedImage square = new BufferedImage(side, side, BufferedImage.TYPE_INT_ARGB)
+		def graphics = square.createGraphics()
+		graphics.drawImage(source.getSubimage(minX, minY, maxX - minX + 1, maxY - minY + 1),
+			(int) ((side - (maxX - minX + 1)) / 2), (int) ((side - (maxY - minY + 1)) / 2), null)
+		graphics.dispose()
+		return square
 	}
 
-	private static boolean isMark(int argb) {
-		int alpha = (argb >>> 24) & 0xFF
-		int luminance = (((argb >> 16) & 0xFF) * 299 + ((argb >> 8) & 0xFF) * 587 + (argb & 0xFF) * 114) / 1000
-		return alpha > 128 && luminance >= 128
+	private static void write(BufferedImage source, int size, File target) {
+		BufferedImage current = source
+		while (current.width / 2 >= size) {
+			current = resize(current, (int) (current.width / 2))
+		}
+		if (current.width != size) {
+			current = resize(current, size)
+		}
+		target.parentFile.mkdirs()
+		ImageIO.write(current, "png", target)
 	}
 
-	private static void write(BufferedImage source, int size, boolean knockout, File target) {
-		target.parentFile.mkdirs()
+	private static BufferedImage resize(BufferedImage source, int size) {
 		BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
 		def graphics = scaled.createGraphics()
-		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR)
+		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+		graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
 		graphics.drawImage(source, 0, 0, size, size, null)
 		graphics.dispose()
-		if (knockout) {
-			for (int y = 0; y < size; y++) {
-				for (int x = 0; x < size; x++) {
-					int argb = scaled.getRGB(x, y)
-					int luminance = (((argb >> 16) & 0xFF) * 299 + ((argb >> 8) & 0xFF) * 587 + (argb & 0xFF) * 114) / 1000
-					if (luminance < 128) {
-						scaled.setRGB(x, y, 0)
-					}
-				}
-			}
-		}
-		ImageIO.write(scaled, "png", target)
+		return scaled
 	}
 }
 
 def generateBranding = tasks.register("generateBranding", GenerateBranding) {
-	logo = rootProject.layout.projectDirectory.file("../assets/branding/logo.png")
+	logo = rootProject.layout.projectDirectory.file("../assets/branding/pretupid_logo_512x.png")
 	outputDirectory = layout.buildDirectory.dir("generated/branding")
 }
 

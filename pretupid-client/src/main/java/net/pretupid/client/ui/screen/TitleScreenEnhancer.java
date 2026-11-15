@@ -29,6 +29,7 @@ public final class TitleScreenEnhancer {
 	private static final int SLIDE = 14;
 
 	private final List<Entry> entries = new ArrayList<>();
+	private final TitleScreenPanels panels = new TitleScreenPanels();
 	private long animationStart;
 	private long lastInit;
 	private Button newsButton;
@@ -43,6 +44,7 @@ public final class TitleScreenEnhancer {
 				return;
 			}
 			PretupidClient client = PretupidClient.get();
+			panels.init(screen, Screens.getWidgets(screen));
 			addTopRightButtons(screen, width);
 			entries.clear();
 			if (client.settings().enhancedTitleScreen.enabled() && client.settings().animations.enabled()) {
@@ -79,7 +81,7 @@ public final class TitleScreenEnhancer {
 		int y = 6;
 		newsButton = null;
 		updateButton = null;
-		if (client.settings().newsButton.enabled()) {
+		if (client.settings().newsButton.enabled() && !panels.visible()) {
 			newsButton = Button.builder(newsLabel(), button -> NewsPage.openMenu()).bounds(width - 76, y, 70, 20).build();
 			newsButton.setTooltip(Tooltip.create(Component.translatable("pretupid.news.tooltip")));
 			widgets.add(newsButton);
@@ -127,6 +129,11 @@ public final class TitleScreenEnhancer {
 	}
 
 	private void drawBackdrop(GuiGraphicsExtractor graphics, Screen screen) {
+		if (panels.visible()) {
+			boolean animated = PretupidClient.get().settings().animations.enabled();
+			float fade = animated ? Easing.outCubic(Math.clamp((System.currentTimeMillis() - animationStart) / 600f, 0f, 1f)) : 1f;
+			panels.render(graphics, Math.round(fade * 255));
+		}
 		if (!PretupidClient.get().settings().enhancedTitleScreen.enabled()) {
 			return;
 		}
@@ -154,7 +161,7 @@ public final class TitleScreenEnhancer {
 		Component brand = Component.literal("Pretupid Client " + PretupidInfo.displayVersion());
 		int y = screen.height - 20;
 		Draw.text(graphics, font, brand, 2, y, Colors.withAlpha(0xFFFFFF, Math.round(alpha * 0.85f)));
-		if (client.session().status() == AuthSession.Status.ONLINE) {
+		if (client.session().status() == AuthSession.Status.ONLINE && !panels.visible()) {
 			int friendsOnline = (int) client.social().friends().stream().filter(friend -> friend.online()).count();
 			Component status = friendsOnline > 0
 				? Component.translatable("pretupid.title.friends_online", friendsOnline)

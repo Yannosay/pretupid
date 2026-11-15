@@ -12,6 +12,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.news.MarkdownText;
+import net.pretupid.client.news.NewsImages;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.pretupid.client.news.NewsService;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.ScrollState;
@@ -32,6 +34,10 @@ public final class NewsPage implements MenuPage {
 	private String selectedId;
 	private String layoutKey;
 	private List<MarkdownText.Line> layout = List.of();
+	private final NewsImages images = new NewsImages();
+	private static final int BUTTON_HEIGHT = 18;
+	private static final int MAX_IMAGE_HEIGHT = 140;
+	private static final int IMAGE_PLACEHOLDER_HEIGHT = 40;
 
 	public NewsPage(ClientMenuScreen screen) {
 		this.screen = screen;
@@ -107,9 +113,10 @@ public final class NewsPage implements MenuPage {
 		int headerHeight = 0;
 		List<net.minecraft.util.FormattedCharSequence> title = font.split(Component.literal(post.title()).withStyle(style -> style.withBold(true)), w - 14);
 		headerHeight += title.size() * 11 + 14;
+		int contentWidth = w - 18;
 		int contentHeight = headerHeight + 6;
 		for (MarkdownText.Line line : layout) {
-			contentHeight += line.spacingBefore() + 10;
+			contentHeight += line.spacingBefore() + lineHeight(line, contentWidth);
 		}
 		bodyScroll.begin(ui, "news.body", x, y + 2, w, h - 4, contentHeight + 4);
 		int lineY = y + 6 - bodyScroll.offset();
@@ -121,26 +128,95 @@ public final class NewsPage implements MenuPage {
 		lineY += 14;
 		Draw.rect(g, x + 6, lineY - 3, w - 18, 1, Theme.DIVIDER);
 		lineY += 4;
+		int index = 0;
 		for (MarkdownText.Line line : layout) {
 			lineY += line.spacingBefore();
-			if (line.rule()) {
-				Draw.rect(g, x + 6, lineY + 4, w - 18, 1, Theme.DIVIDER);
-			} else {
-				int lineX = x + 6 + line.indent();
-				g.text(font, line.text(), lineX, lineY, line.color(), false);
-				if (ui.hovered(lineX, lineY, w - 12 - line.indent(), 10)) {
-					Style style = styleAt(font, line.text(), ui.mouseX() - lineX);
-					if (style != null && style.getInsertion() != null) {
-						String url = style.getInsertion();
-						ui.interactive(lineX, lineY, w - 12 - line.indent(), 10, UiContext.Handler.onClick(() -> openLink(url)));
+			int height = lineHeight(line, contentWidth);
+			switch (line.kind()) {
+				case RULE -> Draw.rect(g, x + 6, lineY + 4, contentWidth, 1, Theme.DIVIDER);
+				case BUTTON -> {
+					int buttonWidth = Math.min(contentWidth, Math.max(80, font.width(line.label()) + 20));
+					String url = line.url();
+					Widgets.button(ui, "news.button." + post.id() + "." + index, x + 6, lineY, buttonWidth, BUTTON_HEIGHT, Component.literal(line.label()),
+						Widgets.ButtonStyle.PRIMARY, () -> openLink(url));
+					if (ui.hovered(x + 6, lineY, buttonWidth, BUTTON_HEIGHT)) {
 						ui.tooltip(Component.literal(url));
 					}
 				}
+				case IMAGE -> drawImage(ui, line, x + 6, lineY, contentWidth, height);
+				case TEXT -> drawTextLine(ui, line, x + 6, lineY, w);
 			}
-			lineY += 10;
+			lineY += height;
+			index++;
 		}
 		bodyScroll.end(ui, x, y + 2, w, h - 4);
 		PretupidClient.get().news().markAllSeen();
+	}
+
+	private int lineHeight(MarkdownText.Line line, int width) {
+		return switch (line.kind()) {
+			case TEXT -> Math.round(10 * line.scale());
+			case RULE -> 10;
+			case BUTTON -> BUTTON_HEIGHT + 2;
+			case IMAGE -> {
+				NewsImages.Image image = images.get(line.url());
+				if (image.state() == NewsImages.State.READY && image.width() > 0) {
+					float scale = Math.min(1f, Math.min(width / (float) image.width(), MAX_IMAGE_HEIGHT / (float) image.height()));
+					yield Math.max(8, Math.round(image.height() * scale)) + 4;
+				}
+				yield image.state() == NewsImages.State.FAILED ? 12 : IMAGE_PLACEHOLDER_HEIGHT;
+			}
+		};
+	}
+
+	private void drawImage(UiContext ui, MarkdownText.Line line, int x, int y, int width, int height) {
+		var g = ui.g();
+		NewsImages.Image image = images.get(line.url());
+		if (image.state() == NewsImages.State.READY) {
+			float scale = Math.min(1f, Math.min(width / (float) image.width(), MAX_IMAGE_HEIGHT / (float) image.height()));
+			int drawWidth = Math.max(1, Math.round(image.width() * scale));
+			int drawHeight = Math.max(1, Math.round(image.height() * scale));
+			g.blit(RenderPipelines.GUI_TEXTURED, image.texture(), x, y, 0f, 0f, drawWidth, drawHeight, image.width(), image.height(), image.width(), image.height());
+			if (!line.label().isEmpty() && ui.hovered(x, y, drawWidth, drawHeight)) {
+				ui.tooltip(Component.literal(line.label()));
+			}
+			return;
+		}
+		if (image.state() == NewsImages.State.FAILED) {
+			String alt = line.label().isEmpty() ? line.url() : line.label();
+			Draw.text(g, ui.font(), Draw.ellipsize(ui.font(), Component.literal("[" + alt + "]"), width), x, y + 1, Theme.TEXT_DIM);
+			return;
+		}
+		Draw.chamfer(g, x, y, width, height - 4, 0x30000000);
+		Draw.centered(g, ui.font(), Component.translatable("pretupid.news.image_loading"), x + width / 2, y + (height - 4) / 2 - 4, Theme.TEXT_DIM);
+	}
+
+	private void drawTextLine(UiContext ui, MarkdownText.Line line, int x, int y, int w) {
+		var g = ui.g();
+		var font = ui.font();
+		int lineX = x + line.indent();
+		if (line.scale() != 1f) {
+			g.pose().pushMatrix();
+			g.pose().translate(lineX, y);
+			g.pose().scale(line.scale(), line.scale());
+			g.text(font, line.text(), 0, 0, line.color(), false);
+			g.pose().popMatrix();
+			return;
+		}
+		g.text(font, line.text(), lineX, y, line.color(), false);
+		if (ui.hovered(lineX, y, w - 12 - line.indent(), 10)) {
+			Style style = styleAt(font, line.text(), ui.mouseX() - lineX);
+			if (style != null && style.getInsertion() != null) {
+				String url = style.getInsertion();
+				ui.interactive(lineX, y, w - 12 - line.indent(), 10, UiContext.Handler.onClick(() -> openLink(url)));
+				ui.tooltip(Component.literal(url));
+			}
+		}
+	}
+
+	@Override
+	public void release() {
+		images.release();
 	}
 
 	private static Style styleAt(net.minecraft.client.gui.Font font, net.minecraft.util.FormattedCharSequence text, int target) {

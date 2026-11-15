@@ -1,11 +1,7 @@
 <template>
   <aside class="sidebar">
-    <RouterLink to="/" class="sidebar__logo" aria-label="Pretupid Launcher home">
-      <img src="@shared/branding/logo.png" alt="" />
-      <span class="sidebar__logo-text">
-        <span class="sidebar__logo-name">Pretupid</span>
-        <span class="sidebar__logo-sub">Launcher</span>
-      </span>
+    <RouterLink to="/" class="sidebar__brand" aria-label="Pretupid Launcher home">
+      <img src="@shared/branding/pretupid_logo_full.png" alt="Pretupid Launcher" class="sidebar__brand-logo" />
     </RouterLink>
 
     <nav class="sidebar__nav" aria-label="Main">
@@ -15,37 +11,43 @@
         :to="item.to"
         class="sidebar__link"
         :class="{ 'sidebar__link--active': isActive(item.to) }"
+        :aria-current="isActive(item.to) ? 'page' : undefined"
       >
         <AppIcon :name="item.icon" :size="18" />
         <span class="sidebar__link-label">{{ item.label }}</span>
       </RouterLink>
     </nav>
 
+    <div class="sidebar__spacer" />
+
     <RouterLink
       v-if="playing"
       :to="{ name: 'instance-detail', params: { id: playing.id } }"
-      class="sidebar__playing"
+      class="sidebar__now"
     >
-      <span class="sidebar__playing-dot" />
-      <span class="sidebar__playing-text">
-        <span class="sidebar__playing-label">Now playing</span>
-        <span class="sidebar__playing-name">{{ playing.name }}</span>
+      <span class="sidebar__now-dot" />
+      <span class="sidebar__now-text">
+        <span class="sidebar__now-label">Now playing</span>
+        <span class="sidebar__now-name">{{ playing.name }}</span>
       </span>
     </RouterLink>
 
-    <div class="sidebar__bottom">
+    <div v-else-if="quickInstance && route.name !== 'home'" class="sidebar__quick">
+      <RouterLink :to="{ name: 'instance-detail', params: { id: quickInstance.id } }" class="sidebar__quick-link" :title="quickInstance.name">
+        <InstanceIcon :instance="quickInstance" :size="34" />
+        <span class="sidebar__quick-text">
+          <span class="sidebar__quick-label">Last played</span>
+          <span class="sidebar__quick-name">{{ quickInstance.name }}</span>
+        </span>
+      </RouterLink>
+      <PlayButton :instance-id="quickInstance.id" size="small" compact />
+    </div>
+
+    <div class="sidebar__footer">
       <div v-if="authStore.authenticated && authStore.profile" class="sidebar__account">
-        <img
-          class="sidebar__avatar"
-          :src="`https://mc-heads.net/avatar/${authStore.profile.id}/64`"
-          alt=""
-          loading="lazy"
-        />
-        <div class="sidebar__account-meta">
-          <span class="sidebar__account-name">{{ authStore.profile.name }}</span>
-          <span class="sidebar__account-type">Microsoft account</span>
-        </div>
-        <button class="icon-btn icon-btn--small" title="Sign out" aria-label="Sign out" @click="handleLogout">
+        <img class="sidebar__avatar" :src="`https://mc-heads.net/avatar/${authStore.profile.id}/64`" alt="" loading="lazy" />
+        <span class="sidebar__account-name" :title="authStore.profile.name">{{ authStore.profile.name }}</span>
+        <button class="sidebar__icon-btn" title="Sign out" aria-label="Sign out" @click="handleLogout">
           <AppIcon name="logout" :size="16" />
         </button>
       </div>
@@ -54,10 +56,13 @@
         {{ authStore.loading ? 'Signing in' : 'Sign in' }}
       </button>
 
-      <button class="sidebar__settings" @click.stop="$emit('open-settings')">
-        <AppIcon name="settings" :size="16" />
-        Settings
-      </button>
+      <div class="sidebar__tools">
+        <button class="sidebar__icon-btn sidebar__settings" title="Settings" @click.stop="$emit('open-settings')">
+          <AppIcon name="settings" :size="17" />
+          <span>Settings</span>
+        </button>
+        <NotificationChevron />
+      </div>
     </div>
   </aside>
 </template>
@@ -66,6 +71,9 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
+import InstanceIcon from '@/components/InstanceIcon.vue'
+import NotificationChevron from '@/components/NotificationChevron.vue'
+import PlayButton from '@/components/PlayButton.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useLaunchStore } from '@/stores/launch'
@@ -101,6 +109,11 @@ const playing = computed(() => {
   return null
 })
 
+const quickInstance = computed(() => {
+  if (!authStore.authenticated) return null
+  return instanceStore.recent.find((i) => i.last_played) ?? null
+})
+
 async function handleLogin() {
   try {
     await authStore.login()
@@ -117,89 +130,75 @@ async function handleLogout() {
 </script>
 
 <style scoped lang="scss">
-@use 'design-system/mixins' as *;
-
 .sidebar {
-  width: 216px;
+  width: var(--sidebar-width);
   height: 100vh;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-  padding: 1.1rem 0.75rem;
+  gap: 0.35rem;
+  padding: 1rem 0.75rem 0.85rem;
   overflow-y: auto;
-  background-color: rgba(0, 0, 0, 0.28);
+  overflow-x: hidden;
+  background-color: color-mix(in srgb, var(--bg-primary) 72%, transparent);
   border-right: 1px solid var(--border-color);
   backdrop-filter: blur(14px);
 }
 
-.sidebar__logo {
+.sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  padding: 0.2rem 0.4rem 0.4rem;
-  color: inherit;
-  text-decoration: none;
-
-  img {
-    width: 36px;
-    height: 36px;
-    image-rendering: pixelated;
-  }
-}
-
-.sidebar__logo-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.sidebar__logo-name {
-  font-family: var(--font-pixel);
-  font-size: 1rem;
-  font-weight: 700;
+  gap: 0.65rem;
+  padding: 0.25rem 0.5rem 1rem;
   color: var(--text-primary);
+  text-decoration: none;
 }
 
-.sidebar__logo-sub {
-  font-size: 0.8rem;
-  color: var(--text-dim);
+.sidebar__brand-logo {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
 }
 
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .sidebar__link {
-  @include chamfer;
   position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.6rem 0.8rem;
+  padding: 0.6rem 0.75rem;
   color: var(--text-secondary);
   text-decoration: none;
-  transition: background-color var(--transition-normal), color var(--transition-fast), padding-left var(--transition-normal);
+  border-radius: var(--edge-radius);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 
   &:hover {
     color: var(--text-primary);
     background-color: var(--bg-tertiary);
-    padding-left: 0.95rem;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 }
 
 .sidebar__link--active {
   color: var(--text-primary);
-  background-color: color-mix(in srgb, var(--accent) 22%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 18%, transparent);
 
   &::before {
     content: '';
     position: absolute;
-    left: 0;
-    top: 22%;
-    bottom: 22%;
+    left: -0.75rem;
+    top: 20%;
+    bottom: 20%;
     width: 3px;
     background-color: var(--accent);
   }
@@ -211,109 +210,155 @@ async function handleLogout() {
 
 .sidebar__link-label {
   font-family: var(--font-pixel);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
-.sidebar__playing {
-  @include chamfer;
+.sidebar__spacer {
+  flex: 1;
+  min-height: 1rem;
+}
+
+.sidebar__now,
+.sidebar__quick {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.6rem 0.75rem;
-  color: inherit;
-  text-decoration: none;
-  background-color: color-mix(in srgb, var(--success) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--success) 45%, transparent);
+  margin-bottom: 0.5rem;
+  padding: 0.55rem;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
 }
 
-.sidebar__playing-dot {
+.sidebar__now {
+  color: inherit;
+  text-decoration: none;
+  background-color: color-mix(in srgb, var(--success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+.sidebar__now-dot {
   width: 8px;
   height: 8px;
+  margin-left: 0.25rem;
   flex-shrink: 0;
+  border-radius: 50%;
   background-color: var(--success);
   animation: sidebar-pulse 1.4s ease-in-out infinite;
 }
 
-.sidebar__playing-text {
+.sidebar__now-text,
+.sidebar__quick-text {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.sidebar__playing-label {
-  font-size: 0.85rem;
+.sidebar__now-label,
+.sidebar__quick-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.sidebar__now-label {
   color: var(--success);
 }
 
-.sidebar__playing-name {
+.sidebar__now-name,
+.sidebar__quick-name {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.sidebar__bottom {
-  margin-top: auto;
+.sidebar__quick-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .sidebar__quick-name {
+    color: var(--accent);
+  }
+}
+
+.sidebar__footer {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .sidebar__account {
-  @include chamfer;
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.55rem;
-  background-color: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
+  padding: 0.3rem 0.25rem 0.3rem 0.4rem;
 }
 
 .sidebar__avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+  border-radius: var(--edge-radius);
   image-rendering: pixelated;
 }
 
-.sidebar__account-meta {
+.sidebar__account-name {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.sidebar__account-name {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 0.9rem;
-  color: var(--text-primary);
+  font-weight: 600;
 }
 
-.sidebar__account-type {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-}
-
-.sidebar__settings {
-  @include chamfer;
+.sidebar__tools {
   display: flex;
   align-items: center;
+  gap: 0.25rem;
+}
+
+.sidebar__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 0.6rem;
-  width: 100%;
-  padding: 0.55rem 0.8rem;
-  font-family: var(--font-pixel);
-  font-size: 0.88rem;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
   background: none;
   border: none;
+  border-radius: var(--edge-radius);
   cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 
   &:hover {
     color: var(--text-primary);
     background-color: var(--bg-tertiary);
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+}
+
+.sidebar__settings {
+  flex: 1;
+  justify-content: flex-start;
 }
 
 @keyframes sidebar-pulse {

@@ -1,6 +1,8 @@
 <template>
   <section class="settings-tab">
     <div class="settings-tab__grid">
+      <InstanceIconPicker :instance="instance" @updated="emit('updated', $event)" />
+
       <div class="panel settings-tab__card">
         <h3 class="panel__title">General</h3>
         <div class="form-group">
@@ -167,6 +169,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
+import InstanceIconPicker from '@/components/instance/InstanceIconPicker.vue'
 import { fetchVersions, getInstanceSettings, getLoaderVersions, getSystemInfo, saveInstanceSettings } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useNotificationsStore } from '@/stores/notifications'
@@ -316,10 +319,11 @@ async function save() {
 
 async function pickJava() {
   try {
+    const windows = system.value ? system.value.os === 'windows' : navigator.userAgent.includes('Windows')
     const selected = await open({
       multiple: false,
       directory: false,
-      filters: [{ name: 'Java', extensions: ['exe'] }]
+      filters: windows ? [{ name: 'Java', extensions: ['exe'] }] : undefined
     })
     if (typeof selected === 'string') javaPath.value = selected
   } catch (e) {

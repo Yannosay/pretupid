@@ -15,10 +15,11 @@
   --warning: #fbbf24;
   --danger: #f87171;
   --edge-radius: 0px;
+  --sidebar-width: 232px;
   --chamfer: 3px;
-  --font-pixel: 'Monocraft', 'Courier New', monospace;
-  --font-body: 'Monocraft', 'Courier New', monospace;
-  --font-mono: 'Monocraft', 'Courier New', monospace;
+  --font-pixel: 'Monocraft Display', 'Monocraft', 'Courier New', monospace;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
   --transition-fast: 0.12s ease;
   --transition-normal: 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }

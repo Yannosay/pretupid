@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
-import logo from '@shared/branding/logo.png'
+import logo from '@shared/branding/pretupid_logo_512x.png'
 import { installPretupidClient, pretupidClientStatus } from '@/api'
 import { useNotificationsStore } from '@/stores/notifications'
 import type { Instance, PretupidClientStatus } from '@/types'

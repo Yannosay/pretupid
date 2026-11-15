@@ -90,3 +90,20 @@ export interface CurrentSkinDto {
 export async function getCurrentSkin(profileId: string): Promise<CurrentSkinDto> {
   return invoke('get_current_skin', { profileId })
 }
+export async function importSkinFromUsername(
+  profileId: string,
+  slotNumber: number,
+  name: string,
+  username: string
+): Promise<SkinSlotDto> {
+  return invoke('import_skin_from_username', { profileId, slotNumber, name, username })
+}
+
+export interface PlayerSkinPreview {
+  url: string
+  model_type: SkinModelType
+}
+
+export async function lookupPlayerSkin(username: string): Promise<PlayerSkinPreview> {
+  return invoke('lookup_player_skin', { username })
+}

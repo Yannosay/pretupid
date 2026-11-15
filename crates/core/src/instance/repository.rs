@@ -9,7 +9,7 @@ use crate::error::CoreResult;
 
 const RESERVED_FOLDERS: &[&str] = &["skins", "con", "prn", "aux", "nul"];
 
-const INSTANCE_COLUMNS: &str = "id, name, description, minecraft_version, mod_loader, loader_version, folder_name, created_at, updated_at, last_played, playtime_seconds, icon_url, group_name";
+const INSTANCE_COLUMNS: &str = "id, name, description, minecraft_version, mod_loader, loader_version, folder_name, created_at, updated_at, last_played, playtime_seconds, icon_url, group_name, icon_style";
 
 const MOD_COLUMNS: &str = "id, instance_id, project_id, project_type, title, icon_url, version_id, version_name, file_url, file_name, created_at, enabled, sha1";
 
@@ -32,6 +32,7 @@ struct InstanceRow {
     playtime_seconds: i64,
     icon_url: Option<String>,
     group_name: Option<String>,
+    icon_style: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -69,6 +70,7 @@ impl From<InstanceRow> for Instance {
             playtime_seconds: row.playtime_seconds,
             icon_url: row.icon_url,
             group_name: row.group_name.filter(|g| !g.trim().is_empty()),
+            icon_style: row.icon_style.filter(|s| !s.trim().is_empty()),
         }
     }
 }
@@ -128,6 +130,7 @@ impl InstanceRepository {
             .await;
         self.add_column("instances", "icon_url TEXT").await;
         self.add_column("instances", "group_name TEXT").await;
+        self.add_column("instances", "icon_style TEXT").await;
 
         sqlx::query(
             r#"
@@ -243,6 +246,7 @@ impl InstanceRepository {
             playtime_seconds: 0,
             icon_url: None,
             group_name: None,
+            icon_style: None,
         })
     }
 
@@ -297,12 +301,17 @@ impl InstanceRepository {
             Some(v) => Some(v.trim().to_string()),
             None => existing.group_name,
         };
+        let icon_style = match req.icon_style {
+            Some(v) if v.trim().is_empty() => None,
+            Some(v) => Some(v.trim().to_string()),
+            None => existing.icon_style,
+        };
         let updated_at = chrono::Utc::now();
 
         sqlx::query(
             r#"
             UPDATE instances
-            SET name = ?, description = ?, minecraft_version = ?, mod_loader = ?, loader_version = ?, icon_url = ?, group_name = ?, updated_at = ?
+            SET name = ?, description = ?, minecraft_version = ?, mod_loader = ?, loader_version = ?, icon_url = ?, group_name = ?, icon_style = ?, updated_at = ?
             WHERE id = ?
             "#,
         )
@@ -313,6 +322,7 @@ impl InstanceRepository {
         .bind(&loader_version)
         .bind(&icon_url)
         .bind(&group_name)
+        .bind(&icon_style)
         .bind(updated_at.to_rfc3339())
         .bind(id.to_string())
         .execute(&self.pool)

@@ -51,6 +51,7 @@ public final class ClientMenuScreen extends PretupidScreen {
 	}
 
 	private static final int SIDEBAR = 98;
+	private static final int CLOSE_SIZE = 14;
 	private static final Icon HUD_EDITOR_ICON = Icon.item("glow_item_frame");
 	private static Tab lastTab = Tab.MODULES;
 
@@ -131,7 +132,18 @@ public final class ClientMenuScreen extends PretupidScreen {
 		g.pose().translate(Math.round(slide * 14f), 0f);
 		pages.get(tab).draw(ui, contentX, y + 10, contentW, h - 20);
 		g.pose().popMatrix();
+		drawCloseButton(ui, x + w - CLOSE_SIZE - 4, y + 4);
 		g.pose().popMatrix();
+	}
+
+	private void drawCloseButton(UiContext ui, int x, int y) {
+		var g = ui.g();
+		boolean hover = ui.interactive(x, y, CLOSE_SIZE, CLOSE_SIZE, UiContext.Handler.onClick(this::onClose));
+		float t = ui.animate("menu.close", hover ? 1f : 0f, 18f);
+		if (t > 0.01f) {
+			Draw.chamfer(g, x, y, CLOSE_SIZE, CLOSE_SIZE, Colors.withAlpha(Theme.DANGER, Math.round(200 * t)));
+		}
+		UiIcon.CLOSE.draw(g, x + (CLOSE_SIZE - UiIcon.SIZE) / 2, y + (CLOSE_SIZE - UiIcon.SIZE) / 2, Colors.lerp(Theme.TEXT_MUTED, 0xFFFFFFFF, t));
 	}
 
 	private void drawSidebar(UiContext ui, int x, int y, int h) {
@@ -242,7 +254,9 @@ public final class ClientMenuScreen extends PretupidScreen {
 	public void removed() {
 		friendsPage.onClosed();
 		PretupidClient.get().modIcons().release();
-		skinsPage.release();
+		for (MenuPage page : pages.values()) {
+			page.release();
+		}
 		super.removed();
 	}
 }

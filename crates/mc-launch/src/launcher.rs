@@ -500,18 +500,14 @@ impl Launcher {
             )));
         }
 
-        for task in candidates {
-            if !download::file_is_valid(&task.path, task.sha1.as_deref(), task.size, verify).await {
-                tasks.push(task);
-            }
-        }
+        tasks.extend(download::retain_missing(candidates, verify).await);
         download::download_all(
             client,
             tasks,
             "Downloading libraries",
             event_tx,
             cancel_rx,
-            8,
+            16,
         )
         .await
     }
@@ -547,7 +543,7 @@ impl Launcher {
         stage(event_tx, "Checking assets");
         let objects_dir = paths.assets.join("objects");
         let mut seen: HashSet<&str> = HashSet::new();
-        let mut tasks = Vec::new();
+        let mut candidates = Vec::new();
         for object in details.objects.values() {
             if object.hash.len() < 3
                 || !object.hash.chars().all(|c| c.is_ascii_hexdigit())
@@ -557,10 +553,7 @@ impl Launcher {
             }
             let prefix = &object.hash[0..2];
             let path = objects_dir.join(prefix).join(&object.hash);
-            if download::file_is_valid(&path, Some(&object.hash), object.size, verify).await {
-                continue;
-            }
-            tasks.push(DownloadTask::new(
+            candidates.push(DownloadTask::new(
                 format!(
                     "https://resources.download.minecraft.net/{}/{}",
                     prefix, object.hash
@@ -570,7 +563,8 @@ impl Launcher {
                 object.size,
             ));
         }
-        download::download_all(client, tasks, "Downloading assets", event_tx, cancel_rx, 16)
+        let tasks = download::retain_missing(candidates, verify).await;
+        download::download_all(client, tasks, "Downloading assets", event_tx, cancel_rx, 32)
             .await?;
         Ok(details)
     }

@@ -14,6 +14,7 @@ interface SettingsState {
   customFontPath: string | null
   edgeRadius: number
   lastRoundedRadius: number
+  sceneryMotion: boolean
   globalSettings: {
     default_java_path: string | null
     auto_install_java: boolean
@@ -143,6 +144,7 @@ function defaultSettings(): SettingsState {
     customFontPath: null,
     edgeRadius: 0,
     lastRoundedRadius: 8,
+    sceneryMotion: true,
     globalSettings: {
       default_java_path: null,
       auto_install_java: true,
@@ -168,6 +170,7 @@ function loadSettingsFromStorage(): SettingsState {
         typeof parsed.lastRoundedRadius === 'number'
           ? parsed.lastRoundedRadius
           : base.lastRoundedRadius,
+      sceneryMotion: typeof parsed.sceneryMotion === 'boolean' ? parsed.sceneryMotion : base.sceneryMotion,
       globalSettings: {
         default_java_path: parsed.globalSettings?.default_java_path ?? null,
         auto_install_java: parsed.globalSettings?.auto_install_java ?? true,
@@ -230,6 +233,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  function setSceneryMotion(enabled: boolean) {
+    settings.value.sceneryMotion = enabled
+  }
+
   function setEdgeRadius(radius: number) {
     settings.value.edgeRadius = radius
     settings.value.lastRoundedRadius = radius
@@ -290,6 +297,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setCustomFontPath,
     setEdgeStyle,
     setEdgeRadius,
+    setSceneryMotion,
     setGlobalSettings,
     loadLocalSettings,
     applyExternalSettings,

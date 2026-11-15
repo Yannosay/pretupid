@@ -120,6 +120,7 @@
       @close="importModalOpen = false"
       @import-file="handleImportFile"
       @import-url="handleImportUrl"
+      @import-username="handleImportUsername"
     />
   </div>
 </template>
@@ -171,20 +172,26 @@ async function refreshProfile() {
   await loadProfileData()
 }
 
-function handleImportFile(payload: { file: File; name: string; modelType: SkinModelType }) {
-  profileStore
-    .importFromFile(payload.file, payload.name, payload.modelType)
-    .then(() => {
-      importModalOpen.value = false
-    })
+function finishImport() {
+  if (!profileStore.error) {
+    importModalOpen.value = false
+    notifications.notifySuccess('Skin added', 'It is now in your skin library.')
+  }
 }
 
-function handleImportUrl(payload: { url: string; name: string; modelType: SkinModelType }) {
-  profileStore
-    .importFromUrl(payload.url, payload.name, payload.modelType)
-    .then(() => {
-      importModalOpen.value = false
-    })
+async function handleImportFile(payload: { file: File; name: string; modelType: SkinModelType }) {
+  await profileStore.importFromFile(payload.file, payload.name, payload.modelType)
+  finishImport()
+}
+
+async function handleImportUrl(payload: { url: string; name: string; modelType: SkinModelType }) {
+  await profileStore.importFromUrl(payload.url, payload.name, payload.modelType)
+  finishImport()
+}
+
+async function handleImportUsername(payload: { username: string; name: string }) {
+  await profileStore.importFromUsername(payload.username, payload.name)
+  finishImport()
 }
 
 async function handleApplyActive() {

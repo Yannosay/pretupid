@@ -223,3 +223,16 @@ export interface RepairReport {
 export async function repairInstanceMods(instanceId: string): Promise<RepairReport> {
   return invoke('repair_instance_mods', { instanceId })
 }
+
+export interface NewsPost {
+  id: string
+  title: string
+  summary: string
+  category: string
+  pinned: boolean
+  publishedAt: number | null
+}
+
+export async function fetchNews(): Promise<NewsPost[]> {
+  return invoke('fetch_news')
+}

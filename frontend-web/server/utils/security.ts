@@ -8,6 +8,7 @@ export interface SignedToken {
   sub: string
   name?: string
   serverId?: string
+  epoch?: number
   exp: number
 }
 

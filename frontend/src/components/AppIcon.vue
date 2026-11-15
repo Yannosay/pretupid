@@ -54,6 +54,8 @@ export type IconName =
   | 'layers'
   | 'server'
   | 'info'
+  | 'chevron-down'
+  | 'news'
 
 const props = withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 })
 
@@ -88,6 +90,8 @@ const ICONS: Record<IconName, string[]> = {
   terminal: ['M3 4h18v16H3z', 'M7 9l3 3-3 3', 'M12 15h5'],
   sliders: ['M4 6h10', 'M18 6h2', 'M4 12h4', 'M12 12h8', 'M4 18h12', 'M20 18h0', 'M14 4v4', 'M8 10v4', 'M16 16v4'],
   'arrow-up': ['M12 19V5', 'M5 12l7-7 7 7'],
+  'chevron-down': ['M6 9l6 6 6-6'],
+  news: ['M4 5h12v14H6a2 2 0 0 1-2-2z', 'M16 9h4v8a2 2 0 0 1-2 2h-2', 'M8 9h4', 'M8 13h4'],
   login: ['M10 4h10v16H10', 'M3 12h11', 'M10 8l4 4-4 4'],
   logout: ['M14 4H4v16h10', 'M10 12h11', 'M17 8l4 4-4 4'],
   layers: ['M12 3l9 5-9 5-9-5z', 'M3 13l9 5 9-5'],

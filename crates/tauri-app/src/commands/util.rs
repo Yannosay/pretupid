@@ -16,8 +16,11 @@ pub const MAX_DOWNLOAD_BYTES: u64 = 1024 * 1024 * 1024;
 pub fn http_client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)
-        .connect_timeout(std::time::Duration::from_secs(20))
-        .timeout(std::time::Duration::from_secs(600))
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .read_timeout(std::time::Duration::from_secs(25))
+        .timeout(std::time::Duration::from_secs(900))
+        .pool_max_idle_per_host(32)
+        .tcp_keepalive(std::time::Duration::from_secs(30))
         .redirect(reqwest::redirect::Policy::limited(8))
         .build()
         .map_err(|e| e.to_string())

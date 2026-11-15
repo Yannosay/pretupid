@@ -1,8 +1,8 @@
 <template>
   <header class="navbar" :class="{ 'navbar--scrolled': scrolled }">
     <NuxtLink to="/" class="navbar__brand">
-      <img :src="logo" alt="" width="32" height="32" class="navbar__logo" />
-      <span class="navbar__brand-text">Pretupid</span>
+      <img :src="wordmark" alt="Pretupid" width="210" height="19" class="navbar__wordmark" />
+      <img :src="icon" alt="Pretupid" width="34" height="34" class="navbar__icon" />
     </NuxtLink>
 
     <nav class="navbar__nav" aria-label="Primary">
@@ -38,7 +38,8 @@
 </template>
 
 <script setup lang="ts">
-import logo from '@shared/branding/logo.png'
+import wordmark from '@shared/branding/pretupid_logo_full.png'
+import icon from '@shared/branding/pretupid_logo_512x.png'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
@@ -94,18 +95,16 @@ onBeforeUnmount(() => {
   color: inherit;
 }
 
-.navbar__logo {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--edge-radius);
-  border: 2px solid var(--border-color);
+.navbar__wordmark {
+  display: block;
+  width: 210px;
+  height: auto;
 }
 
-.navbar__brand-text {
-  font-family: var(--font-pixel);
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--accent);
+.navbar__icon {
+  display: none;
+  width: 34px;
+  height: 34px;
 }
 
 .navbar__nav {
@@ -192,8 +191,12 @@ onBeforeUnmount(() => {
     font-size: 1rem;
   }
 
-  .navbar__brand-text {
+  .navbar__wordmark {
     display: none;
+  }
+
+  .navbar__icon {
+    display: block;
   }
 }
 </style>

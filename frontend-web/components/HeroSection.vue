@@ -1,19 +1,23 @@
 <template>
   <section class="hero">
-    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="hero__world" aria-hidden="true">
+      <ClientOnly>
+        <PixelScenery seed="pretupid-website" :parallax="scroll" />
+      </ClientOnly>
+    </div>
 
     <div class="hero__content">
-      <span class="hero__eyebrow">Free Minecraft launcher for Windows</span>
+      <span class="hero__eyebrow">Free Minecraft launcher and client</span>
       <h1 class="hero__title">Pretupid Launcher</h1>
       <p class="hero__subtitle">
-        A fast, safe Minecraft launcher for Windows. Fabric, Quilt, Forge and NeoForge, Modrinth mods that install with
-        their dependencies, and downloads that are verified before they run.
+        Fabric, Quilt, Forge and NeoForge in one launcher. Modrinth mods and modpacks install with their dependencies,
+        and Pretupid Client adds a movable HUD, cosmetics and friends to any Fabric instance.
       </p>
 
       <div class="hero__actions">
-        <NuxtLink to="/download" class="btn hero__cta hero__cta--primary">
-          Download for Windows
-        </NuxtLink>
+        <a :href="downloadUrl" class="btn hero__cta hero__cta--primary" rel="nofollow">
+          {{ downloadLabel }}
+        </a>
         <button
           type="button"
           class="btn btn--secondary hero__cta"
@@ -26,7 +30,7 @@
       <ul class="hero__meta">
         <li><span class="hero__meta-dot" aria-hidden="true"></span>Every loader, natively installed</li>
         <li><span class="hero__meta-dot" aria-hidden="true"></span>Mods, packs and one-click updates</li>
-        <li><span class="hero__meta-dot" aria-hidden="true"></span>Verified downloads, no telemetry</li>
+        <li><span class="hero__meta-dot" aria-hidden="true"></span>Windows, macOS and Linux</li>
       </ul>
     </div>
 
@@ -52,9 +56,37 @@
 </template>
 
 <script setup lang="ts">
+import PixelScenery from '@ui/PixelScenery.vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
+import { platformLabel, useVisitorPlatform } from '~/composables/useVisitorPlatform'
 
 const { openLauncher } = useLauncherBridge()
+const { platform } = useVisitorPlatform()
+const downloadLabel = computed(() => `Download for ${platformLabel(platform.value)}`)
+const downloadUrl = computed(() => `/api/download/launcher/${platform.value}`)
+
+const scroll = ref(0)
+let frame = 0
+let reducedMotion = false
+
+function onScroll() {
+  if (frame || reducedMotion) return
+  frame = requestAnimationFrame(() => {
+    frame = 0
+    scroll.value = Math.min(window.scrollY, 1600)
+  })
+}
+
+onMounted(() => {
+  reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  onScroll()
+  window.addEventListener('scroll', onScroll, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', onScroll)
+  if (frame) cancelAnimationFrame(frame)
+})
 </script>
 
 <style scoped lang="scss">
@@ -66,22 +98,27 @@ const { openLauncher } = useLauncherBridge()
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 4rem;
-  min-height: 72vh;
-  padding: 3rem 0;
-  overflow: hidden;
+  min-height: calc(100vh - 7rem);
+  padding: 3rem 0 5rem;
 }
 
-.hero__glow {
+.hero__world {
   position: absolute;
-  top: 20%;
-  right: -10%;
-  width: 620px;
-  height: 620px;
-  background: radial-gradient(closest-side, rgba(74, 158, 255, 0.18), transparent 70%);
-  filter: blur(20px);
-  pointer-events: none;
+  top: -2rem;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  width: 100vw;
   z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
+
+.hero__title,
+.hero__subtitle,
+.hero__meta {
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+}
+
 
 .hero__content {
   position: relative;
@@ -225,9 +262,6 @@ const { openLauncher } = useLauncherBridge()
     padding: 2rem 0;
   }
 
-  .hero__glow {
-    display: none;
-  }
 
   .hero__actions {
     width: 100%;

@@ -49,6 +49,7 @@ onBeforeUnmount(() => {
 
 .site-layout {
   min-height: 100vh;
+  overflow-x: clip;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-primary);

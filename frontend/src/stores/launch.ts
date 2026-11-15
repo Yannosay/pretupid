@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import type { LaunchProgress, LaunchLog, LaunchStarted, LaunchExited, CrashInfo } from '@/types'
 import { cancelLaunch, launchInstance, listRunningInstances, prepareInstance } from '@/api'
+import { hasBlockTextures, loadBlockTextures } from '@/utils/instanceIcon'
 
 export type LaunchPhase = 'idle' | 'preparing' | 'running' | 'installing'
 
@@ -88,6 +89,7 @@ export const useLaunchStore = defineStore('launch', () => {
         current.progress = null
         current.startedAt = Date.now()
         activeInstanceId.value = payload.instance_id
+        if (!hasBlockTextures()) loadBlockTextures(true).catch(() => void 0)
       })
 
       await listen<{ instance_id: string; message: string }>('launch://failed', (event) => {

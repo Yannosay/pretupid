@@ -20,6 +20,8 @@ pub struct Instance {
     pub icon_url: Option<String>,
     #[serde(default)]
     pub group_name: Option<String>,
+    #[serde(default)]
+    pub icon_style: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -89,6 +91,8 @@ pub struct UpdateInstanceRequest {
     pub icon_url: Option<String>,
     #[serde(default)]
     pub group_name: Option<String>,
+    #[serde(default)]
+    pub icon_style: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

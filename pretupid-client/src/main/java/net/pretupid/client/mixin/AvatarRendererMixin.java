@@ -11,6 +11,7 @@ import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.cosmetic.EmotePoseHolder;
+import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.module.visual.OwnNametagModule;
 import net.pretupid.client.network.RemoteProfile;
 import org.spongepowered.asm.mixin.Mixin;
@@ -33,6 +34,12 @@ public abstract class AvatarRendererMixin {
 		}
 		if (state.nameTag != null) {
 			state.nameTag = client.nametags().decorateNametag(player.getUUID(), player.getGameProfile().name(), state.nameTag);
+		}
+		if (client.nametags().isSelf(player.getUUID())) {
+			state.skin = client.localSkin().apply(state.skin);
+			Wearables.apply(player, state, Wearables.own());
+		} else if (client.settings().showCosmetics.enabled()) {
+			client.presence().profileOf(player.getUUID()).ifPresent(profile -> Wearables.apply(player, state, profile.wearables()));
 		}
 		pretupid$applyCape(client, player, state);
 	}

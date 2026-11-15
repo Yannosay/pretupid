@@ -127,9 +127,14 @@
         </div>
         <p class="browse__card-desc">{{ project.description }}</p>
         <div class="browse__card-footer">
-          <span class="browse__card-stat"><AppIcon name="download" :size="12" />{{ formatCount(project.downloads) }}</span>
-          <span class="browse__card-stat"><AppIcon name="clock" :size="12" />{{ formatRelative(project.date_modified) }}</span>
-          <span class="browse__card-spacer" />
+          <div class="browse__card-stats">
+            <span class="browse__card-stat" :title="`${project.downloads.toLocaleString()} downloads`">
+              <AppIcon name="download" :size="12" />{{ formatCount(project.downloads) }}
+            </span>
+            <span class="browse__card-stat" :title="`Updated ${formatDate(project.date_modified)}`">
+              <AppIcon name="clock" :size="12" />{{ formatAge(project.date_modified) }}
+            </span>
+          </div>
           <button
             v-if="installedIds.has(project.project_id)"
             class="btn btn--secondary btn--small"
@@ -201,7 +206,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import { addInstanceMod, listInstanceMods } from '@/api'
 import { compatibility, instanceModLoaders } from '@/utils/compat'
-import { formatCount, formatRelative, loaderLabel } from '@/utils/format'
+import { formatAge, formatCount, formatDate, loaderLabel } from '@/utils/format'
 import type { Instance, ModrinthSearchResult } from '@/types'
 
 type ProjectType = 'mod' | 'modpack' | 'resourcepack' | 'shader'
@@ -557,21 +562,22 @@ onMounted(async () => {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1.3;
   text-transform: none;
 }
 
 .browse__card-author {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
+  font-size: 0.82rem;
+  color: var(--text-dim);
 }
 
 .browse__card-desc {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  line-height: 1.2;
+  font-size: 0.88rem;
+  line-height: 1.45;
   color: var(--text-secondary);
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -579,28 +585,36 @@ onMounted(async () => {
 
 .browse__card-footer {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 0.75rem;
+  gap: 0.75rem;
   margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .browse__card-footer .btn {
   flex-shrink: 0;
-  margin-left: auto;
+}
+
+.browse__card-stats {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 0.85rem;
+  overflow: hidden;
 }
 
 .browse__card-stat {
   display: inline-flex;
-  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
   align-items: center;
   gap: 0.3rem;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-
-.browse__card-spacer {
-  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.82rem;
+  color: var(--text-dim);
 }
 
 .browse__more {

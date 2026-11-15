@@ -2,7 +2,7 @@
   <div v-if="splash.visible" class="splash-overlay">
     <div class="splash-overlay__card">
       <img
-        src="@shared/branding/logo.png"
+        src="@shared/branding/pretupid_logo_512x.png"
         alt="Pretupid Launcher"
         class="splash-overlay__logo"
       />
@@ -48,33 +48,42 @@ const splash = useSplashStore()
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgba(13, 13, 13, 0.92);
+  background:
+    radial-gradient(600px 400px at 50% 40%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    var(--bg-primary);
 }
 
 .splash-overlay__card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
-  width: min(420px, 90vw);
-  padding: 2rem;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  box-shadow: 8px 8px 0 0 var(--shadow-color);
+  gap: 1.1rem;
+  width: min(360px, 90vw);
 }
 
 .splash-overlay__logo {
-  width: 96px;
-  height: 96px;
-  border-radius: var(--edge-radius);
-  border: 1px solid var(--border-color);
+  width: 88px;
+  height: 88px;
+  filter: drop-shadow(0 10px 30px color-mix(in srgb, var(--accent) 40%, transparent));
+  animation: splash-float 2.4s ease-in-out infinite;
+}
+
+@keyframes splash-float {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-overlay__logo {
+    animation: none;
+  }
 }
 
 .splash-overlay__title {
   font-family: var(--font-pixel);
   font-size: 1.4rem;
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 .splash-overlay__progress {

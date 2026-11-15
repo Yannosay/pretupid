@@ -15,6 +15,7 @@
 		"GameRendererPostEffectMixin",
 		"LevelMixin",
 		"LightmapRenderStateExtractorMixin",
+		"MinecraftMixin",
 		"MouseHandlerMixin",
 		"ParticleEngineMixin",
 		"PlayerListMixin",

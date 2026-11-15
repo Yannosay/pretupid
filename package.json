@@ -1,13 +1,13 @@
 {
   "name": "pretupid-launcher",
   "private": true,
-  "version": "0.0.2-alpha",
+  "version": "0.1.1",
   "description": "Pretupid Launcher — Tauri 2, Rust, Vue 3 monorepo",
   "type": "module",
   "scripts": {
     "sync-version": "node scripts/sync-version.mjs",
     "tauri": "tauri dev --config crates/tauri-app/tauri.conf.json",
-    "sync-branding": "tauri icon assets/branding/logo.png --output crates/tauri-app/icons",
+    "sync-branding": "tauri icon assets/branding/pretupid_logo_512x.png --output crates/tauri-app/icons",
     "tauri:build": "npm run sync-version && npm run sync-branding && tauri build --config crates/tauri-app/tauri.conf.json",
     "dev:desktop": "npm run dev --prefix frontend",
     "dev:web": "npm run dev --prefix frontend-web",

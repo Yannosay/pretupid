@@ -33,3 +33,7 @@ todo.txt
 pretupid-client/build/
 pretupid-client/run/
 pretupid-client/.gradle/
+crates/tauri-app/icons/android/
+crates/tauri-app/icons/ios/
+crates/tauri-app/icons/Square*
+crates/tauri-app/icons/StoreLogo.png

@@ -1,11 +1,15 @@
 package net.pretupid.client.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.input.MouseButtonInfo;
+import net.minecraft.client.player.LocalPlayer;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -55,6 +59,19 @@ public abstract class MouseHandlerMixin {
 			return original;
 		}
 		return sensitivity * zoom.sensitivityMultiplier();
+	}
+
+	@WrapOperation(method = "turnPlayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"))
+	private void pretupid$freelookTurn(LocalPlayer player, double dx, double dy, Operation<Void> original) {
+		PretupidClient client = PretupidClient.getOrNull();
+		if (client != null) {
+			FreelookModule freelook = client.modules().get(FreelookModule.class);
+			if (freelook.isEnabled() && freelook.active()) {
+				freelook.turn(dx, dy);
+				return;
+			}
+		}
+		original.call(player, dx, dy);
 	}
 
 	@ModifyExpressionValue(method = "turnPlayer", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Options;smoothCamera:Z"))

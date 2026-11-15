@@ -2,23 +2,11 @@
   <div class="app-layout">
     <SidebarNav @open-settings="settingsModalOpen = true" />
     <main class="app-layout__content">
-      <header class="app-layout__topbar">
-        <RouterLink
-          v-if="quickInstance && route.name !== 'home'"
-          :to="{ name: 'instance-detail', params: { id: quickInstance.id } }"
-          class="app-layout__quick"
-          title="Last played"
-        >
-          <InstanceIcon :instance="quickInstance" :size="26" />
-          <span class="app-layout__quick-name">{{ quickInstance.name }}</span>
-        </RouterLink>
-        <PlayButton v-if="quickInstance && route.name !== 'home'" :instance-id="quickInstance.id" size="small" />
-        <div class="app-layout__topbar-spacer" />
-        <NotificationChevron />
-      </header>
-      <div class="app-layout__view">
+      <div ref="viewRef" class="app-layout__view" :class="{ 'app-layout__view--bleed': route.meta.bleed }">
         <RouterView v-slot="{ Component, route: viewRoute }">
-          <component :is="Component" :key="viewRoute.path" @open-settings="settingsModalOpen = true" />
+          <Transition name="view" mode="out-in">
+            <component :is="Component" :key="viewRoute.path" @open-settings="settingsModalOpen = true" />
+          </Transition>
         </RouterView>
       </div>
     </main>
@@ -29,27 +17,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { ref, watch } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import SidebarNav from '@/components/SidebarNav.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
 import LaunchProgressPopup from '@/components/LaunchProgressPopup.vue'
-import NotificationChevron from '@/components/NotificationChevron.vue'
 import CrashDialog from '@/components/CrashDialog.vue'
-import InstanceIcon from '@/components/InstanceIcon.vue'
-import PlayButton from '@/components/PlayButton.vue'
-import { useInstanceStore } from '@/stores/instances'
-import { useAuthStore } from '@/stores/auth'
 
 const settingsModalOpen = ref(false)
 const route = useRoute()
-const instanceStore = useInstanceStore()
-const authStore = useAuthStore()
+const viewRef = ref<HTMLElement | null>(null)
 
-const quickInstance = computed(() => {
-  if (!authStore.authenticated) return null
-  return instanceStore.recent.find((i) => i.last_played) ?? null
-})
+watch(
+  () => route.path,
+  () => {
+    viewRef.value?.scrollTo({ top: 0 })
+  }
+)
 </script>
 
 <style scoped lang="scss">
@@ -67,46 +51,34 @@ const quickInstance = computed(() => {
   position: relative;
 }
 
-.app-layout__topbar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 58px;
-  padding: 0.6rem 1.75rem;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-secondary);
-  flex-shrink: 0;
-}
-
-.app-layout__quick {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
-  max-width: 280px;
-  color: var(--text-primary);
-  text-decoration: none;
-
-  &:hover .app-layout__quick-name {
-    color: var(--accent);
-  }
-}
-
-.app-layout__quick-name {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.app-layout__topbar-spacer {
-  flex: 1;
-}
-
 .app-layout__view {
   flex: 1;
-  padding: 1.75rem;
+  padding: 1.75rem 2rem 2.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
   min-width: 0;
   min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+.app-layout__view--bleed {
+  padding: 0;
+}
+
+.view-enter-active,
+.view-leave-active {
+  transition: opacity 0.14s ease;
+}
+
+.view-enter-from,
+.view-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter-active,
+  .view-leave-active {
+    transition: none;
+  }
 }
 </style>

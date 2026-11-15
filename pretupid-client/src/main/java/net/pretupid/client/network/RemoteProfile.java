@@ -5,9 +5,10 @@ import com.google.gson.JsonObject;
 import java.net.URI;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.nametag.NametagStyle;
 
-public record RemoteProfile(NametagStyle style, CapeRef cape, String trail, EmoteRef emote) {
+public record RemoteProfile(NametagStyle style, CapeRef cape, String trail, EmoteRef emote, Wearables.Loadout wearables) {
 	private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
 	private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
 
@@ -26,7 +27,11 @@ public record RemoteProfile(NametagStyle style, CapeRef cape, String trail, Emot
 		if (style.isEmpty()) {
 			return Optional.empty();
 		}
-		return Optional.of(new RemoteProfile(style.get(), cape(Json.object(object, "cape")), id(Json.string(object, "trail")), emote(Json.object(object, "emote"), receivedAt)));
+		Wearables.Loadout wearables = new Wearables.Loadout(
+			Wearables.validHat(Json.string(object, "hat")),
+			Wearables.validBoots(Json.string(object, "boots")),
+			Wearables.validPet(Json.string(object, "pet")));
+		return Optional.of(new RemoteProfile(style.get(), cape(Json.object(object, "cape")), id(Json.string(object, "trail")), emote(Json.object(object, "emote"), receivedAt), wearables));
 	}
 
 	public static CapeRef cape(JsonObject cape) {

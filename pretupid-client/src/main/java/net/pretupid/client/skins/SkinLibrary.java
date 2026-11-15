@@ -28,7 +28,7 @@ public final class SkinLibrary {
 		SLIM
 	}
 
-	public record Skin(String name, Path file, Variant variant, Identifier texture, int textureHeight) {
+	public record Skin(String name, Path file, Variant variant, Identifier texture, int textureHeight, long contentHash) {
 	}
 
 	public enum ImportResult {
@@ -46,6 +46,7 @@ public final class SkinLibrary {
 	private final Map<String, Identifier> textures = new HashMap<>();
 	private List<Skin> skins = List.of();
 	private String activeSkin;
+	private String fingerprint = "";
 
 	public SkinLibrary(Path configDirectory) {
 		this.directory = configDirectory.resolve("skins");
@@ -64,7 +65,35 @@ public final class SkinLibrary {
 		return activeSkin;
 	}
 
+	public boolean refreshIfChanged() {
+		String current = computeFingerprint();
+		if (current.equals(fingerprint)) {
+			return false;
+		}
+		refresh();
+		return true;
+	}
+
+	private String computeFingerprint() {
+		if (!Files.isDirectory(directory)) {
+			return "";
+		}
+		StringBuilder builder = new StringBuilder();
+		List<String> parts = new ArrayList<>();
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*.png")) {
+			for (Path path : stream) {
+				parts.add(path.getFileName() + ":" + Files.size(path) + ":" + Files.getLastModifiedTime(path).toMillis());
+			}
+		} catch (IOException exception) {
+			return fingerprint;
+		}
+		parts.sort(null);
+		parts.forEach(part -> builder.append(part).append('|'));
+		return builder.toString();
+	}
+
 	public void refresh() {
+		fingerprint = computeFingerprint();
 		readMetadata();
 		release();
 		List<Skin> result = new ArrayList<>();
@@ -99,10 +128,12 @@ public final class SkinLibrary {
 				return Optional.empty();
 			}
 			int height = image.getHeight();
+			Variant variant = variants.containsKey(name) ? variants.get(name) : detectVariant(image);
+			long hash = contentHash(image);
 			Identifier location = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "skin_preview/" + sanitize(name));
 			Minecraft.getInstance().getTextureManager().register(location, new DynamicTexture(() -> "Pretupid skin " + name, image));
 			textures.put(name, location);
-			return Optional.of(new Skin(name, path, variants.getOrDefault(name, Variant.CLASSIC), location, height));
+			return Optional.of(new Skin(name, path, variant, location, height, hash));
 		} catch (IOException | RuntimeException exception) {
 			PretupidClient.LOGGER.debug("Skipping unreadable skin {}", path, exception);
 			return Optional.empty();
@@ -167,7 +198,7 @@ public final class SkinLibrary {
 		List<Skin> updated = new ArrayList<>(skins.size());
 		for (Skin existing : skins) {
 			updated.add(existing.name().equals(skin.name())
-				? new Skin(existing.name(), existing.file(), variant, existing.texture(), existing.textureHeight())
+				? new Skin(existing.name(), existing.file(), variant, existing.texture(), existing.textureHeight(), existing.contentHash())
 				: existing);
 		}
 		skins = List.copyOf(updated);
@@ -208,6 +239,62 @@ public final class SkinLibrary {
 		} catch (IOException exception) {
 			PretupidClient.LOGGER.warn("Could not save skin metadata", exception);
 		}
+	}
+
+	public Optional<Skin> findByHash(long hash) {
+		for (Skin skin : skins) {
+			if (skin.contentHash() == hash) {
+				return Optional.of(skin);
+			}
+		}
+		return Optional.empty();
+	}
+
+	public ImportResult importBytes(String baseName, byte[] png, Variant variant) {
+		try {
+			Files.createDirectories(directory);
+			String base = sanitize(baseName);
+			Path target = directory.resolve(base + ".png");
+			int counter = 2;
+			while (Files.exists(target)) {
+				target = directory.resolve(base + "-" + counter++ + ".png");
+			}
+			Files.write(target, png);
+			String name = baseName(target);
+			variants.put(name, variant);
+			writeMetadata();
+			return ImportResult.IMPORTED;
+		} catch (IOException exception) {
+			PretupidClient.LOGGER.warn("Could not save skin {}", baseName, exception);
+			return ImportResult.FAILED;
+		}
+	}
+
+	public static Variant detectVariant(NativeImage image) {
+		if (image.getWidth() != 64 || image.getHeight() != 64) {
+			return Variant.CLASSIC;
+		}
+		for (int y = 20; y < 32; y++) {
+			for (int x = 54; x < 56; x++) {
+				if ((image.getPixel(x, y) >>> 24) != 0) {
+					return Variant.CLASSIC;
+				}
+			}
+		}
+		return Variant.SLIM;
+	}
+
+	public static long contentHash(NativeImage image) {
+		long hash = 0xcbf29ce484222325L;
+		for (int y = 0; y < image.getHeight(); y++) {
+			for (int x = 0; x < image.getWidth(); x++) {
+				int argb = image.getPixel(x, y);
+				int normalized = (argb >>> 24) == 0 ? 0 : argb | 0xFF000000;
+				hash ^= normalized;
+				hash *= 0x100000001b3L;
+			}
+		}
+		return hash;
 	}
 
 	private static boolean validSize(int width, int height) {

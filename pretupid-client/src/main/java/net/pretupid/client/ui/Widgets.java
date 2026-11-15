@@ -62,10 +62,23 @@ public final class Widgets {
 		if (style == ButtonStyle.PRIMARY) {
 			Draw.rect(ui.g(), x + 1, y + h - 1, w - 2, 1, Colors.withAlpha(0, 70));
 		}
-		Component fitted = Draw.ellipsize(ui.font(), label, w - 6);
-		int textX = x + (w - ui.font().width(fitted)) / 2;
-		Draw.text(ui.g(), ui.font(), fitted, textX, y + (h - 8) / 2, Colors.lerp(textColor, Theme.TEXT, t));
+		fittedLabel(ui, label, x, y, w, h, Colors.lerp(textColor, Theme.TEXT, t));
 		return hover;
+	}
+
+	private static final float MIN_LABEL_SCALE = 0.7f;
+
+	public static void fittedLabel(UiContext ui, Component label, int x, int y, int w, int h, int color) {
+		int available = Math.max(1, w - 6);
+		int natural = ui.font().width(label);
+		if (natural <= available) {
+			Draw.text(ui.g(), ui.font(), label, x + (w - natural) / 2, y + (h - 8) / 2, color);
+			return;
+		}
+		float scale = Math.max(MIN_LABEL_SCALE, available / (float) natural);
+		Component fitted = scale > MIN_LABEL_SCALE ? label : Draw.ellipsize(ui.font(), label, Math.round(available / scale));
+		float width = ui.font().width(fitted) * scale;
+		Draw.scaled(ui.g(), ui.font(), fitted, x + (w - width) / 2f, y + (h - 8 * scale) / 2f, scale, color, false);
 	}
 
 	public static boolean iconButton(UiContext ui, String id, int x, int y, int w, int h, UiIcon icon, Runnable action) {

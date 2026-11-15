@@ -3,7 +3,9 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["../assets/*"]
+      "@shared/*": ["../assets/*"],
+      "@ui/*": ["../packages/ui/*"],
+      "vue": ["./node_modules/vue"]
     },
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,

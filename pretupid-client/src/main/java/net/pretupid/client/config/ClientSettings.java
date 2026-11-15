@@ -33,6 +33,7 @@ public final class ClientSettings {
 	public final BooleanSetting tabListBadges = add(new BooleanSetting("tab_list_badges", true));
 	public final BooleanSetting autoProfileSwitch = add(new BooleanSetting("auto_profile_switch", true));
 	public final BooleanSetting enhancedTitleScreen = add(new BooleanSetting("enhanced_title_screen", true));
+	public final BooleanSetting titleScreenPanels = add(new BooleanSetting("title_screen_panels", true));
 	public final BooleanSetting newsButton = add(new BooleanSetting("news_button", true));
 	public final BooleanSetting updateChecks = add(new BooleanSetting("update_checks", true));
 	public final BooleanSetting showCosmetics = add(new BooleanSetting("show_cosmetics", true));
@@ -50,9 +51,18 @@ public final class ClientSettings {
 	public final BooleanSetting nametagBold = add(new BooleanSetting("nametag_bold", false));
 	public final TextSetting cape = add(new TextSetting("cape", "", 48));
 	public final TextSetting trail = add(new TextSetting("trail", "", 32));
+	public final TextSetting hat = add(new TextSetting("hat", "", 32));
+	public final TextSetting boots = add(new TextSetting("boots", "", 32));
+	public final TextSetting pet = add(new TextSetting("pet", "", 32));
 	public final TextSetting emoteWheel = add(new TextSetting("emote_wheel", "", 300));
+	public final TextSetting emoteKeys = add(new TextSetting("emote_keys", "", 600));
+	public final BooleanSetting emoteWheelHold = add(new BooleanSetting("emote_wheel_hold", true));
 	public final TextSetting newsSeen = add(new TextSetting("news_seen", "0", 20));
 	public final TextSetting skippedUpdate = add(new TextSetting("skipped_update", "", 40));
+	public final TextSetting lastServerAddress = add(new TextSetting("last_server_address", "", 253));
+	public final TextSetting lastServerName = add(new TextSetting("last_server_name", "", 64));
+	public final TextSetting restrictedServers = add(new TextSetting("restricted_servers", "", 4000));
+	public final BooleanSetting serverCompatibility = add(new BooleanSetting("server_compatibility", true));
 	private NametagStyle cachedStyle;
 
 	public ClientSettings() {

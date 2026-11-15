@@ -9,6 +9,7 @@ pub mod modrinth;
 pub mod pretupid_client;
 pub mod profile;
 pub mod settings;
+pub mod textures;
 pub mod tray;
 pub mod util;
 pub mod version_resolver;

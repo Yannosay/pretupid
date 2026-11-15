@@ -7,6 +7,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
+      meta: { bleed: true },
       component: () => import('../views/HomeView.vue')
     },
     {

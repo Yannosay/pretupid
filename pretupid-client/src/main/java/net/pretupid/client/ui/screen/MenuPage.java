@@ -16,4 +16,7 @@ public interface MenuPage {
 	default boolean onFilesDropped(java.util.List<java.nio.file.Path> paths) {
 		return false;
 	}
+
+	default void release() {
+	}
 }

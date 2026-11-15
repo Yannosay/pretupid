@@ -66,7 +66,7 @@ const measures: { icon: SiteIconName; title: string; text: string }[] = [
   {
     icon: 'lock',
     title: 'Encrypted sign-in',
-    text: 'Your Microsoft session is encrypted with ChaCha20-Poly1305 before it is stored. The key lives in the Windows Credential Manager, so copying the launcher folder alone does not expose your account.'
+    text: 'Your Microsoft session is encrypted with ChaCha20-Poly1305 before it is stored. The key lives in your system keychain (Windows Credential Manager, macOS Keychain or the Linux Secret Service), so copying the launcher folder alone does not expose your account.'
   },
   {
     icon: 'shield',

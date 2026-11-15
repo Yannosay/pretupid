@@ -3,11 +3,10 @@
     <div class="footer__inner">
       <div class="footer__brand">
         <div class="footer__brand-row">
-          <img :src="logo" alt="" width="32" height="32" class="footer__logo" />
-          <span class="footer__brand-name">Pretupid Launcher</span>
+          <img :src="wordmark" alt="Pretupid Launcher" width="240" height="22" class="footer__wordmark" />
         </div>
         <p class="footer__tagline">
-          A fast, safe Minecraft launcher and client.
+          Minecraft launcher and client by Yannosay Productions.
         </p>
         <div class="footer__cta">
           <NuxtLink to="/download" class="btn btn--small">Download</NuxtLink>
@@ -52,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import logo from '@shared/branding/logo.png'
+import wordmark from '@shared/branding/pretupid_logo_full.png'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
 const { openLauncher } = useLauncherBridge()
@@ -83,18 +82,11 @@ const year = new Date().getFullYear()
   gap: 0.75rem;
 }
 
-.footer__logo {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--edge-radius);
-  border: 2px solid var(--border-color);
-}
-
-.footer__brand-name {
-  font-family: var(--font-pixel);
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--accent);
+.footer__wordmark {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
 }
 
 .footer__tagline {

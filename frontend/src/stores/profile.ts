@@ -144,6 +144,30 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
+  async function importFromUsername(username: string, name: string): Promise<boolean> {
+    if (!profileId.value) return false
+    if (skinSlots.value.length >= 5) {
+      error.value = 'Skin slot limit reached.'
+      return false
+    }
+
+    importing.value = true
+    error.value = null
+    success.value = null
+
+    try {
+      await profileApi.importSkinFromUsername(profileId.value, nextSlotNumber(), name, username)
+      await load(profileId.value)
+      success.value = 'Skin imported successfully.'
+      return true
+    } catch (e) {
+      error.value = String(e)
+      return false
+    } finally {
+      importing.value = false
+    }
+  }
+
   async function removeSlot(slotId: string) {
     if (!profileId.value) return
     error.value = null
@@ -244,6 +268,7 @@ export const useProfileStore = defineStore('profile', () => {
     load,
     importFromFile,
     importFromUrl,
+    importFromUsername,
     removeSlot,
     setActive,
     reorder,

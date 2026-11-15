@@ -19,7 +19,25 @@ public final class MarkdownText {
 	private static final Pattern BULLET = Pattern.compile("^[-*]\\s+(.+)$");
 	private static final Pattern NUMBERED = Pattern.compile("^(\\d+)[.)]\\s+(.+)$");
 
-	public record Line(FormattedCharSequence text, int indent, int color, int spacingBefore, boolean rule) {
+	private static final Pattern BUTTON = Pattern.compile("^\\[\\[([^\\]]{1,48})]]\\(([^)\\s]+)\\)$");
+	private static final Pattern IMAGE = Pattern.compile("^!\\[([^\\]]*)]\\(([^)\\s]+)\\)$");
+	private static final float[] HEADING_SCALES = {1.5f, 1.25f, 1.1f};
+
+	public enum Kind {
+		TEXT,
+		RULE,
+		BUTTON,
+		IMAGE
+	}
+
+	public record Line(Kind kind, FormattedCharSequence text, int indent, int color, int spacingBefore, float scale, String label, String url) {
+		public boolean rule() {
+			return kind == Kind.RULE;
+		}
+
+		static Line text(FormattedCharSequence text, int indent, int color, int spacingBefore, float scale) {
+			return new Line(Kind.TEXT, text, indent, color, spacingBefore, scale, null, null);
+		}
 	}
 
 	private MarkdownText() {
@@ -51,17 +69,45 @@ public final class MarkdownText {
 				pendingSpacing = Math.max(flush(lines, paragraph, font, width, textColor, pendingSpacing), 5);
 				continue;
 			}
+			Matcher button = BUTTON.matcher(line);
+			if (button.matches()) {
+				pendingSpacing = flush(lines, paragraph, font, width, textColor, pendingSpacing);
+				String url = safeUrl(button.group(2));
+				if (url != null) {
+					lines.add(new Line(Kind.BUTTON, FormattedCharSequence.EMPTY, 0, textColor, takeSpacing(lines, Math.max(pendingSpacing, 4)), 1f, button.group(1).strip(), url));
+					pendingSpacing = 5;
+				}
+				continue;
+			}
+			Matcher image = IMAGE.matcher(line);
+			if (image.matches()) {
+				pendingSpacing = flush(lines, paragraph, font, width, textColor, pendingSpacing);
+				String url = safeUrl(image.group(2));
+				if (url != null && url.startsWith("https://")) {
+					lines.add(new Line(Kind.IMAGE, FormattedCharSequence.EMPTY, 0, mutedColor, takeSpacing(lines, Math.max(pendingSpacing, 4)), 1f, image.group(1).strip(), url));
+					pendingSpacing = 5;
+				}
+				continue;
+			}
 			Matcher heading = HEADING.matcher(line);
 			if (heading.matches()) {
 				pendingSpacing = flush(lines, paragraph, font, width, textColor, pendingSpacing);
+				int level = heading.group(1).length();
+				float scale = HEADING_SCALES[level - 1];
 				MutableComponent text = inline(heading.group(2)).withStyle(style -> style.withBold(true));
-				addWrapped(lines, font, text, width, 0, heading.group(1).length() == 1 ? accentColor : textColor, takeSpacing(lines, Math.max(pendingSpacing, 6)));
+				int color = level == 1 ? accentColor : textColor;
+				int spacing = takeSpacing(lines, Math.max(pendingSpacing, level == 1 ? 8 : 6));
+				boolean first = true;
+				for (FormattedCharSequence part : font.split(text, Math.max(20, Math.round(width / scale)))) {
+					lines.add(Line.text(part, 0, color, first ? spacing : 0, scale));
+					first = false;
+				}
 				pendingSpacing = 3;
 				continue;
 			}
 			if (line.matches("^(-{3,}|\\*{3,})$")) {
 				pendingSpacing = flush(lines, paragraph, font, width, textColor, pendingSpacing);
-				lines.add(new Line(FormattedCharSequence.EMPTY, 0, mutedColor, 4, true));
+				lines.add(new Line(Kind.RULE, FormattedCharSequence.EMPTY, 0, mutedColor, 4, 1f, null, null));
 				pendingSpacing = 4;
 				continue;
 			}
@@ -108,7 +154,7 @@ public final class MarkdownText {
 	private static void addWrapped(List<Line> lines, Font font, Component text, int width, int indent, int color, int spacing) {
 		boolean first = true;
 		for (FormattedCharSequence part : font.split(text, Math.max(20, width))) {
-			lines.add(new Line(part, indent, color, first ? spacing : 0, false));
+			lines.add(Line.text(part, indent, color, first ? spacing : 0, 1f));
 			first = false;
 		}
 	}

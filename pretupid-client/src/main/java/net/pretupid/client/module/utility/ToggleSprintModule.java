@@ -13,6 +13,8 @@ public final class ToggleSprintModule extends TextHudModule {
 	private final BooleanSetting toggleSprint = add(new BooleanSetting("toggle_sprint", true));
 	private final BooleanSetting toggleSneak = add(new BooleanSetting("toggle_sneak", false));
 	private final BooleanSetting showStatus = add(new BooleanSetting("show_status", true));
+	private Boolean previousToggleSprint;
+	private Boolean previousToggleCrouch;
 
 	public ToggleSprintModule() {
 		super("toggle_sprint", Category.UTILITY, "sugar", false, new HudPosition(HudPosition.Anchor.START, 4, HudPosition.Anchor.END, 52));
@@ -32,9 +34,18 @@ public final class ToggleSprintModule extends TextHudModule {
 
 	@Override
 	protected void onDisable() {
+		if (previousToggleSprint == null && previousToggleCrouch == null) {
+			return;
+		}
 		Options options = Minecraft.getInstance().options;
-		options.toggleSprint().set(false);
-		options.toggleCrouch().set(false);
+		if (previousToggleSprint != null) {
+			options.toggleSprint().set(previousToggleSprint);
+		}
+		if (previousToggleCrouch != null) {
+			options.toggleCrouch().set(previousToggleCrouch);
+		}
+		previousToggleSprint = null;
+		previousToggleCrouch = null;
 		options.save();
 	}
 
@@ -48,6 +59,10 @@ public final class ToggleSprintModule extends TextHudModule {
 			return;
 		}
 		Options options = Minecraft.getInstance().options;
+		if (previousToggleSprint == null) {
+			previousToggleSprint = options.toggleSprint().get();
+			previousToggleCrouch = options.toggleCrouch().get();
+		}
 		options.toggleSprint().set(toggleSprint.enabled());
 		options.toggleCrouch().set(toggleSneak.enabled());
 		options.save();

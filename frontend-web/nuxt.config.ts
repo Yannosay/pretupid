@@ -32,12 +32,18 @@ export default defineNuxtConfig({
     }
   },
   alias: {
-    '@shared': sharedAssetsRoot
+    '@shared': sharedAssetsRoot,
+    '@ui': path.resolve(packagesRoot, 'ui')
   },
   css: ['~/assets/styles/main.scss'],
   typescript: {
     tsConfig: {
-      exclude: ['../realtime']
+      exclude: ['../realtime'],
+      compilerOptions: {
+        paths: {
+          vue: ['../node_modules/vue']
+        }
+      }
     }
   },
   routeRules: {
@@ -56,6 +62,9 @@ export default defineNuxtConfig({
     }
   },
   vite: {
+    resolve: {
+      dedupe: ['vue']
+    },
     css: {
       preprocessorOptions: {
         scss: {

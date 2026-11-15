@@ -24,6 +24,9 @@ export interface PublicProfile {
   style: NametagStyle
   cape: { url: string; sha256: string } | null
   trail: string | null
+  hat: string | null
+  boots: string | null
+  pet: string | null
   emote: { id: string; age: number } | null
 }
 
@@ -63,7 +66,7 @@ export async function publicProfiles(event: H3Event, uuids: string[]): Promise<R
     .bind(now - PRESENCE_TTL_SECONDS, ...unique)
     .all<PlayerRow>()
   const customCapeOwners = results
-    .filter((row) => parseJsonColumn<Equipped>(row.equipped, { cape: null, trail: null }).cape === 'custom')
+    .filter((row) => parseJsonColumn<Partial<Equipped>>(row.equipped, {}).cape === 'custom')
     .map((row) => row.uuid)
   const [customCapes, catalog] = await Promise.all([activeCapeHashes(event, customCapeOwners), loadCatalog(event)])
   const catalogCapes = new Map(catalog.capes.map((cape) => [cape.id, cape]))
@@ -84,6 +87,9 @@ export async function publicProfiles(event: H3Event, uuids: string[]): Promise<R
       style: sanitizeStyle(parseJsonColumn(row.style, {})),
       cape,
       trail: equipped.trail && trails.has(equipped.trail) ? equipped.trail : null,
+      hat: equipped.hat,
+      boots: equipped.boots,
+      pet: equipped.pet,
       emote: row.emote_id && emotes.has(row.emote_id) && emoteAge <= EMOTE_WINDOW_SECONDS ? { id: row.emote_id, age: emoteAge } : null
     }
   }

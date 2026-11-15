@@ -3,6 +3,8 @@
     <button
       type="button"
       class="notify__trigger"
+      :title="store.unreadCount > 0 ? `${store.unreadCount} new notifications` : 'Notifications'"
+      aria-label="Notifications"
       :class="{ 'notify__trigger--open': store.open }"
       aria-haspopup="true"
       :aria-expanded="store.open"
@@ -14,13 +16,12 @@
           <path d="M10 21h4" />
         </svg>
       </span>
-      <span class="notify__label">Notifications</span>
-      <span v-if="store.unreadCount > 0" class="notify__badge">{{ store.unreadCount }}</span>
-      <span class="notify__chevron" :class="{ 'notify__chevron--open': store.open }" aria-hidden="true">▾</span>
+      <span v-if="store.unreadCount > 0" class="notify__badge">{{ store.unreadCount > 9 ? '9+' : store.unreadCount }}</span>
     </button>
 
+    <Teleport to="body">
     <Transition name="notify-panel">
-      <div v-if="store.open" class="notify__panel" role="dialog" aria-label="Notifications">
+      <div v-if="store.open" ref="panelRef" class="notify__panel" role="dialog" aria-label="Notifications">
         <header class="notify__panel-header">
           <h3 class="notify__panel-title">Notifications</h3>
           <div class="notify__panel-actions">
@@ -67,6 +68,7 @@
         </ul>
       </div>
     </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -76,6 +78,7 @@ import { useNotificationsStore, type AppNotification, type NotificationKind } fr
 
 const store = useNotificationsStore()
 const rootRef = ref<HTMLElement | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
 
 function iconFor(kind: NotificationKind): string {
   switch (kind) {
@@ -101,7 +104,8 @@ function onDocumentClick(event: MouseEvent) {
   if (!store.open) return
   const root = rootRef.value
   if (!root) return
-  if (!root.contains(event.target as Node)) {
+  const target = event.target as Node
+  if (!root.contains(target) && !panelRef.value?.contains(target)) {
     store.close()
   }
 }

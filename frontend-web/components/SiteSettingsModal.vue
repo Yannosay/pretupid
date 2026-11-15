@@ -41,13 +41,19 @@
             :aria-label="`Accent ${color}`"
             @click="setAccent(color)"
           />
-          <input
-            v-model="customAccent"
-            type="color"
-            class="custom-color"
+          <button
+            type="button"
+            class="color-preset custom-color"
+            :class="!presetColors.includes(accent.toLowerCase()) ? 'color-preset--selected' : ''"
+            :aria-expanded="customOpen"
             aria-label="Custom accent color"
-            @change="setAccent(customAccent)"
-          />
+            @click="customOpen = !customOpen"
+          >
+            <span v-if="!presetColors.includes(accent.toLowerCase())" class="custom-color__fill" :style="{ backgroundColor: accent }" />
+          </button>
+        </div>
+        <div v-if="customOpen" class="custom-color__panel">
+          <ColorPicker :model-value="accent" @update:model-value="setAccent" />
         </div>
       </div>
 
@@ -109,6 +115,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import ColorPicker from '@ui/ColorPicker.vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 
 defineProps<{
@@ -123,7 +130,7 @@ const { syncSettings } = useLauncherBridge()
 
 const theme = ref<'dark' | 'light'>('dark')
 const accent = ref('#4a9eff')
-const customAccent = ref('#4a9eff')
+const customOpen = ref(false)
 const corner = ref<'blocky' | 'rounded'>('blocky')
 const cornerRadius = ref(0)
 const presetColors = ['#4a9eff', '#4aff9e', '#ff6b6b', '#f9ca24', '#a29bfe', '#fd79a8']
@@ -231,7 +238,6 @@ onMounted(() => {
       accent.value = typeof parsed.accent === 'string' ? parsed.accent : '#4a9eff'
       corner.value = parsed.corner === 'rounded' ? 'rounded' : 'blocky'
       cornerRadius.value = typeof parsed.cornerRadius === 'number' ? parsed.cornerRadius : 0
-      customAccent.value = accent.value
     } catch {
       void 0
     }
@@ -367,12 +373,24 @@ onMounted(() => {
 }
 
 .custom-color {
-  width: 34px;
-  height: 34px;
-  border: 2px solid var(--border-color);
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(#ff6b6b, #f9ca24, #4aff9e, #4a9eff, #a29bfe, #fd79a8, #ff6b6b);
+}
+
+.custom-color__fill {
+  position: absolute;
+  inset: 5px;
   border-radius: var(--edge-radius);
-  background: none;
-  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+.custom-color__panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
 }
 
 .corner-toggle__icon {

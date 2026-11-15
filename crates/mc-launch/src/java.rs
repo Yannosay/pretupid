@@ -104,19 +104,38 @@ impl JavaRuntime {
             }
         }
 
-        let roots = [
-            "C:\\Program Files\\Java",
-            "C:\\Program Files\\Eclipse Adoptium",
-            "C:\\Program Files\\Microsoft",
-            "C:\\Program Files\\Zulu",
-        ];
+        let roots: &[&str] = if cfg!(windows) {
+            &[
+                "C:\\Program Files\\Java",
+                "C:\\Program Files\\Eclipse Adoptium",
+                "C:\\Program Files\\Microsoft",
+                "C:\\Program Files\\Zulu",
+            ]
+        } else if cfg!(target_os = "macos") {
+            &[
+                "/Library/Java/JavaVirtualMachines",
+                "/opt/homebrew/opt",
+                "/usr/local/opt",
+            ]
+        } else {
+            &["/usr/lib/jvm", "/usr/java", "/opt/java", "/opt/jdk"]
+        };
 
         for root in roots {
             if let Ok(entries) = std::fs::read_dir(root) {
                 for entry in entries.flatten() {
-                    let exe = entry.path().join("bin").join(JAVA_EXE);
-                    if exe.exists() {
-                        candidates.push(exe);
+                    let base = entry.path();
+                    let home = base.join("Contents").join("Home");
+                    let brew = base
+                        .join("libexec")
+                        .join("openjdk.jdk")
+                        .join("Contents")
+                        .join("Home");
+                    for dir in [base, home, brew] {
+                        let exe = dir.join("bin").join(JAVA_EXE);
+                        if exe.exists() {
+                            candidates.push(exe);
+                        }
                     }
                 }
             }
@@ -325,6 +344,17 @@ impl JavaRuntime {
                 })
                 .ok();
             Self::extract_zip(&archive_path, java_dir)?;
+        } else if package_name.ends_with(".tar.gz") || package_name.ends_with(".tgz") {
+            event_tx
+                .send(LaunchEvent::Log {
+                    line: "Extracting Java...".to_string(),
+                })
+                .ok();
+            let archive = archive_path.clone();
+            let destination = java_dir.to_path_buf();
+            tokio::task::spawn_blocking(move || Self::extract_tar_gz(&archive, &destination))
+                .await
+                .map_err(|e| LaunchError::Io(e.to_string()))??;
         } else {
             let _ = tokio::fs::remove_file(&archive_path).await;
             return Err(LaunchError::Parse(format!(
@@ -371,11 +401,51 @@ impl JavaRuntime {
         Ok(())
     }
 
+    fn extract_tar_gz(archive_path: &Path, destination: &Path) -> LaunchResult<()> {
+        let file = std::fs::File::open(archive_path).map_err(|e| LaunchError::Io(e.to_string()))?;
+        let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(file));
+        archive.set_overwrite(true);
+        let entries = archive
+            .entries()
+            .map_err(|e| LaunchError::Parse(format!("invalid Java archive: {e}")))?;
+        for entry in entries {
+            let mut entry =
+                entry.map_err(|e| LaunchError::Parse(format!("invalid Java archive: {e}")))?;
+            let kind = entry.header().entry_type();
+            if !(kind.is_file() || kind.is_dir() || kind.is_symlink()) {
+                continue;
+            }
+            if kind.is_symlink() {
+                let target = entry
+                    .link_name()
+                    .map_err(|e| LaunchError::Parse(e.to_string()))?
+                    .map(|t| t.into_owned());
+                let escapes = match target.as_ref() {
+                    Some(t) => {
+                        t.is_absolute()
+                            || t.components()
+                                .any(|c| matches!(c, std::path::Component::Prefix(_)))
+                    }
+                    None => true,
+                };
+                if escapes {
+                    continue;
+                }
+            }
+            entry
+                .unpack_in(destination)
+                .map_err(|e| LaunchError::Io(format!("could not extract Java: {e}")))?;
+        }
+        Ok(())
+    }
+
     fn find_java_in_dir(java_dir: &Path, major_version: u32) -> Option<PathBuf> {
         let mut stack = vec![java_dir.to_path_buf()];
 
         while let Some(dir) = stack.pop() {
-            let entries = std::fs::read_dir(&dir).ok()?;
+            let Ok(entries) = std::fs::read_dir(&dir) else {
+                continue;
+            };
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.is_dir() {

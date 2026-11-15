@@ -19,9 +19,9 @@ public enum NameEffect {
 		float time = seconds * speed;
 		int offset = switch (this) {
 			case NONE -> 0;
-			case WAVE -> Math.round(1.5f * (float) Math.sin(time * 4.0 - index * 0.65));
-			case BOUNCE -> Math.round(2f - 3f * (float) Math.abs(Math.sin(time * 3.2)));
-			case FLOAT -> Math.round(1.4f * (float) Math.sin(time * 1.6));
+			case WAVE -> (int) Math.floor(1.99f * (float) Math.sin(time * 3.6 - index * 0.55) + 0.5f);
+			case BOUNCE -> (int) Math.floor(1f - 2.99f * (float) Math.abs(Math.sin(time * 3.2)) + 0.5f);
+			case FLOAT -> (int) Math.floor(1.49f * (float) Math.sin(time * 1.6) + 0.5f);
 			case HOP -> {
 				double phase = Math.sin(time * 4.5 - index * 0.75);
 				yield 1 - (phase > 0 ? Math.round((float) Math.pow(phase, 4) * 2f) : 0);

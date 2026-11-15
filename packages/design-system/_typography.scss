@@ -1,8 +1,7 @@
 body {
   font-family: var(--font-body);
-  font-size: 1rem;
-  line-height: 1.45;
-  letter-spacing: 0.01em;
+  font-size: 0.95rem;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -20,8 +19,17 @@ h4,
 h5,
 h6 {
   font-family: var(--font-pixel);
+  font-weight: 700;
   line-height: 1.25;
+  letter-spacing: 0.01em;
   margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 h1 {

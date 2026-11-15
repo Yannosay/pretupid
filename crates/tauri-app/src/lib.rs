@@ -118,6 +118,8 @@ pub fn run() {
             commands::pretupid_client::pretupid_client_status,
             commands::settings::read_font_file,
             commands::app_info::open_external_link,
+            commands::app_info::fetch_news,
+            commands::textures::get_block_textures,
             commands::pretupid_client::install_pretupid_client,
             commands::pretupid_client::install_performance_pack,
             commands::content::remove_instance_mod,
@@ -134,6 +136,8 @@ pub fn run() {
             commands::profile::set_active_skin_slot,
             commands::profile::import_skin_from_file,
             commands::profile::import_skin_from_url,
+            commands::profile::import_skin_from_username,
+            commands::profile::lookup_player_skin,
             commands::profile::apply_skin_slot,
             commands::profile::export_skin_slot,
             commands::profile::export_skin_slot_to_downloads,
@@ -166,6 +170,11 @@ pub fn run() {
 fn get_base_dir() -> std::path::PathBuf {
     if cfg!(target_os = "windows") {
         std::path::PathBuf::from(std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string()))
+            .join("PretupidLauncher")
+    } else if cfg!(target_os = "macos") {
+        std::path::PathBuf::from(std::env::var("HOME").unwrap_or_else(|_| ".".to_string()))
+            .join("Library")
+            .join("Application Support")
             .join("PretupidLauncher")
     } else {
         std::path::PathBuf::from(std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {

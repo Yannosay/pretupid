@@ -4,9 +4,9 @@
 :root,
 :root[data-font='press-start'],
 :root[data-font='custom'] {
-  --font-pixel: 'Monocraft', 'Courier New', monospace;
-  --font-body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Roboto, Arial, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Code', Consolas, 'SFMono-Regular', Menlo, monospace;
+  --font-pixel: 'Monocraft Display', 'Monocraft', 'Courier New', monospace;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 }
 
 body {
@@ -45,6 +45,51 @@ li {
   h4 {
     margin: 1.5rem 0 0.5rem;
     line-height: 1.3;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+  }
+
+  h3 {
+    font-size: 1.3rem;
+  }
+
+  h4 {
+    font-size: 1.1rem;
+  }
+
+  .markdown__actions {
+    margin: 1.25rem 0;
+  }
+
+  .markdown__button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.2rem;
+    font-family: var(--font-pixel);
+    font-size: 0.9rem;
+    color: var(--accent-text);
+    text-decoration: none;
+    background-color: var(--accent);
+    border-radius: var(--edge-radius);
+    transition: filter var(--transition-fast);
+
+    &:hover {
+      filter: brightness(1.1);
+    }
+  }
+
+  .markdown__figure {
+    margin: 1.25rem 0;
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border-color);
+      border-radius: var(--edge-radius);
+    }
   }
 
   p,

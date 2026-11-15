@@ -23,6 +23,7 @@ public abstract class Module {
 	private final KeySetting toggleKey;
 	private final List<Setting<?>> settings = new ArrayList<>();
 	private final List<Setting<?>> view = Collections.unmodifiableList(settings);
+	private Component pauseReason;
 
 	protected Module(String id, Category category, String icon, boolean enabledByDefault) {
 		this.id = id;
@@ -31,7 +32,7 @@ public abstract class Module {
 		this.enabled = new BooleanSetting("enabled", enabledByDefault);
 		this.enabled.bindTranslation("pretupid.common");
 		this.enabled.onChange(active -> {
-			if (suppressCallbacks) {
+			if (suppressCallbacks || pauseReason != null) {
 				return;
 			}
 			if (active) {
@@ -73,7 +74,33 @@ public abstract class Module {
 	}
 
 	public final boolean isEnabled() {
-		return enabled.get();
+		return enabled.get() && pauseReason == null;
+	}
+
+	public final boolean isPaused() {
+		return pauseReason != null;
+	}
+
+	public final Component pauseReason() {
+		return pauseReason;
+	}
+
+	public final void pause(Component reason) {
+		boolean wasActive = isEnabled();
+		pauseReason = reason;
+		if (wasActive) {
+			onDisable();
+		}
+	}
+
+	public final void resume() {
+		if (pauseReason == null) {
+			return;
+		}
+		pauseReason = null;
+		if (enabled.get()) {
+			onEnable();
+		}
 	}
 
 	public final void setEnabled(boolean value) {

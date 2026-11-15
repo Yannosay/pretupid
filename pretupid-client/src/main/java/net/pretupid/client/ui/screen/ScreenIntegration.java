@@ -27,7 +27,6 @@ public final class ScreenIntegration {
 	}
 
 	public static void register(PretupidClient client) {
-		new TitleScreenEnhancer().register();
 		ScreenEvents.AFTER_INIT.register((minecraft, screen, width, height) -> {
 			boolean title = screen instanceof TitleScreen && client.settings().titleScreenButton.enabled();
 			boolean pause = screen instanceof PauseScreen pauseScreen && pauseScreen.showsPauseMenu() && client.settings().pauseScreenButton.enabled();
@@ -35,6 +34,7 @@ public final class ScreenIntegration {
 				attach(screen);
 			}
 		});
+		new TitleScreenEnhancer().register();
 	}
 
 	private static void attach(Screen screen) {

@@ -86,6 +86,24 @@ export function renderMarkdown(source: string): string {
       flushAll()
       continue
     }
+    const button = /^\[\[([^\]]{1,48})\]\]\(([^)\s]+)\)$/.exec(trimmed)
+    if (button) {
+      const url = safeUrl(button[2])
+      if (url) {
+        flushAll()
+        html.push(`<p class="markdown__actions"><a class="markdown__button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer nofollow">${escapeHtml(button[1])}</a></p>`)
+        continue
+      }
+    }
+    const image = /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(trimmed)
+    if (image) {
+      const url = safeUrl(image[2])
+      if (url && url.startsWith('https://')) {
+        flushAll()
+        html.push(`<figure class="markdown__figure"><img src="${escapeHtml(url)}" alt="${escapeHtml(image[1])}" loading="lazy" decoding="async" referrerpolicy="no-referrer"></figure>`)
+        continue
+      }
+    }
     const heading = /^(#{1,3})\s+(.+)$/.exec(trimmed)
     if (heading) {
       flushAll()

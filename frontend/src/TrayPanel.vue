@@ -3,7 +3,7 @@
     <header class="tray-panel__header">
       <div class="tray-panel__brand">
         <img
-          src="@shared/branding/logo.png"
+          src="@shared/branding/pretupid_logo_512x.png"
           alt="Pretupid"
           class="tray-panel__brand-logo"
         />

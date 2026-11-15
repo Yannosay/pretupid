@@ -24,8 +24,11 @@ public final class NametagFormatter {
 	private NametagFormatter() {
 	}
 
+	private static final long EPOCH = System.nanoTime();
+	private static final long PERIOD_NANOS = 3_600_000_000_000L;
+
 	public static float seconds() {
-		return (System.currentTimeMillis() % 3_600_000L) / 1000f;
+		return ((System.nanoTime() - EPOCH) % PERIOD_NANOS) / 1_000_000_000f;
 	}
 
 	public static MutableComponent badge() {

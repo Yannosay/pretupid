@@ -10,6 +10,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.network.RemoteProfile;
+import net.pretupid.client.util.SmoothClock;
 
 public final class EmotePlayer {
 	private static final float BLEND_SECONDS = 0.18f;
@@ -32,7 +33,7 @@ public final class EmotePlayer {
 		if (player == null) {
 			return;
 		}
-		active.put(player.getUUID(), new Active(emote.id(), emote.animation(), System.currentTimeMillis()));
+		active.put(player.getUUID(), new Active(emote.id(), emote.animation(), SmoothClock.millisLong()));
 		startPosition = player.position();
 		if (PretupidClient.get().settings().emoteThirdPerson.enabled() && minecraft.options.getCameraType().isFirstPerson()) {
 			restoreCamera = minecraft.options.getCameraType();
@@ -56,7 +57,7 @@ public final class EmotePlayer {
 		if (entry.isEmpty() || !PretupidClient.get().settings().showCosmetics.enabled()) {
 			return;
 		}
-		long now = System.currentTimeMillis();
+		long now = SmoothClock.millisLong();
 		lastRemoteStart.put(uuid, now);
 		active.put(uuid, new Active(id, entry.get().animation(), now));
 	}
@@ -87,7 +88,7 @@ public final class EmotePlayer {
 			return;
 		}
 		EmoteAnimation animation = entry.get().animation();
-		long elapsed = System.currentTimeMillis() - emote.startedAtMillis();
+		long elapsed = SmoothClock.millisLong() - emote.startedAtMillis();
 		if (!animation.loop() && elapsed > animation.durationSeconds() * 1000L) {
 			return;
 		}
@@ -95,7 +96,7 @@ public final class EmotePlayer {
 	}
 
 	public void tick(Minecraft minecraft) {
-		long now = System.currentTimeMillis();
+		long now = SmoothClock.millisLong();
 		active.entrySet().removeIf(entry -> {
 			Active value = entry.getValue();
 			return !value.animation().loop() && now - value.startedAt() > value.animation().durationSeconds() * 1000L + 50L;
@@ -135,7 +136,7 @@ public final class EmotePlayer {
 			return null;
 		}
 		float duration = value.animation().durationSeconds();
-		float elapsed = (System.currentTimeMillis() - value.startedAt()) / 1000f;
+		float elapsed = (float) ((SmoothClock.millis() - value.startedAt()) / 1000.0);
 		if (elapsed < 0f) {
 			return null;
 		}

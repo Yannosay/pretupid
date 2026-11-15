@@ -20,7 +20,7 @@ Pretupid Client: `cd pretupid-client && ./gradlew build` (JDK 25). `./gradlew ru
 
 ## Online services
 
-The website in `frontend-web/` also serves the client API (`server/api`). It runs as the Cloudflare Worker `pretupid-web` with a D1 database (`DB`) and an R2 bucket (`CONTENT`), configured in `frontend-web/wrangler.toml`. Database migrations live in `frontend-web/migrations`.
+The website in `frontend-web/` also serves the client API (`server/api`). It runs as the Cloudflare Worker `pretupid-web` with a D1 database (`DB`) and an R2 bucket (`CONTENT`), configured in `frontend-web/wrangler.toml`. Database migrations live in `frontend-web/migrations`; apply new ones with `npx wrangler d1 migrations apply pretupid --remote` before deploying.
 
 Real-time events (emotes, cosmetic changes, friend notifications) go through the `pretupid-realtime` Worker in `frontend-web/realtime`. Every client keeps one WebSocket open. Each player is a `Peer` Durable Object, and players on the same server share a `Room` Durable Object that relays events to everyone in it. The API pushes friend events to a player's `Peer`. Deploy it with `npx wrangler deploy -c realtime/wrangler.toml`; it needs the `PRESENCE_SECRET` secret with the same value as `NUXT_PRESENCE_SECRET`.
 
@@ -37,8 +37,14 @@ Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_
 
 ## Releases
 
-- **Launcher:** bump the version in `crates/tauri-app/tauri.conf.json` and the workspace `Cargo.toml`, then push a `v*` tag. The release workflow builds, signs and publishes the installer with its `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
+- **Launcher:** bump the version in `crates/tauri-app/tauri.conf.json` and the workspace `Cargo.toml`, then push a `v*` tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
 - **Client:** bump `mod_version` in `pretupid-client/gradle.properties`, then push a `client-v*` tag. The workflow publishes the jar and a `client-manifest.json` with its hashes; the launcher and the in-game updater only install builds that match those hashes.
+
+## Assets
+
+- `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.
+- `python scripts/generate-wearables.py` regenerates the hat models and boot textures of Pretupid Client.
+- `npm run dev:desktop` serves the launcher UI in a browser with a mocked backend (`frontend/src/dev/tauriMock.ts`), which is handy for layout work.
 
 ## Conventions
 

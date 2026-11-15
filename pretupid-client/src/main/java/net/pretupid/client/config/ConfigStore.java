@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -33,6 +34,7 @@ public final class ConfigStore {
 
 	private final Path clientFile;
 	private final Path profilesDirectory;
+	private final Path sharedDirectory;
 	private final ClientSettings clientSettings;
 	private final ModuleManager modules;
 	private final Set<String> favorites = new LinkedHashSet<>();
@@ -48,15 +50,17 @@ public final class ConfigStore {
 	private boolean dirty;
 	private long dirtySince;
 
-	public ConfigStore(Path root, ClientSettings clientSettings, ModuleManager modules) {
+	public ConfigStore(Path root, Path sharedDirectory, ClientSettings clientSettings, ModuleManager modules) {
 		this.clientFile = root.resolve("client.json");
 		this.profilesDirectory = root.resolve("profiles");
+		this.sharedDirectory = sharedDirectory;
 		this.clientSettings = clientSettings;
 		this.modules = modules;
 		SettingChangeBus.subscribe(setting -> markDirty());
 	}
 
 	public void load() {
+		seedFromShared();
 		loading = true;
 		try {
 			JsonFiles.read(clientFile).ifPresent(this::readClient);
@@ -203,7 +207,54 @@ public final class ConfigStore {
 			JsonFiles.write(profilePath(snapshot.profile()), snapshot.profileData());
 		} catch (IOException exception) {
 			PretupidClient.LOGGER.error("Failed to save Pretupid Client configuration", exception);
+			return;
 		}
+		if (sharedDirectory == null) {
+			return;
+		}
+		try {
+			JsonFiles.write(sharedDirectory.resolve("client.json"), snapshot.client());
+			JsonFiles.write(sharedDirectory.resolve("profiles").resolve(snapshot.profile() + ".json"), snapshot.profileData());
+		} catch (IOException exception) {
+			PretupidClient.LOGGER.debug("Could not mirror settings to {}", sharedDirectory, exception);
+		}
+	}
+
+	private void seedFromShared() {
+		if (sharedDirectory == null || Files.isRegularFile(clientFile)) {
+			return;
+		}
+		Path sharedClient = sharedDirectory.resolve("client.json");
+		if (!Files.isRegularFile(sharedClient)) {
+			return;
+		}
+		try {
+			Files.createDirectories(profilesDirectory);
+			Path sharedProfiles = sharedDirectory.resolve("profiles");
+			if (Files.isDirectory(sharedProfiles)) {
+				try (DirectoryStream<Path> stream = Files.newDirectoryStream(sharedProfiles, "*.json")) {
+					for (Path source : stream) {
+						String fileName = source.getFileName().toString();
+						if (isValidProfileName(fileName.substring(0, fileName.length() - 5))) {
+							Files.copy(source, profilesDirectory.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+						}
+					}
+				}
+			}
+			Files.copy(sharedClient, clientFile, StandardCopyOption.REPLACE_EXISTING);
+			PretupidClient.LOGGER.info("Restored Pretupid Client settings from {}", sharedDirectory);
+		} catch (IOException exception) {
+			PretupidClient.LOGGER.warn("Could not restore shared settings from {}", sharedDirectory, exception);
+		}
+	}
+
+	public static Path defaultSharedDirectory() {
+		String override = System.getenv("PRETUPID_CLIENT_SETTINGS_DIR");
+		if (override != null && !override.isBlank()) {
+			return Path.of(override);
+		}
+		String home = System.getProperty("user.home");
+		return home == null || home.isBlank() ? null : Path.of(home, ".pretupid", "client");
 	}
 
 	public String activeProfile() {

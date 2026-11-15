@@ -24,9 +24,9 @@ export const featureGroups: FeatureGroup[] = [
     features: [
       {
         icon: 'box',
-        title: 'All four loaders',
+        title: 'The Big 4',
         description:
-          'Fabric, Quilt, Forge and NeoForge from Minecraft 1.12 to today. Forge is installed natively, without running a separate installer window.',
+          'Fabric, Quilt, Forge and NeoForge integrated, plus an rich library from Modrinth.',
         highlight: true
       },
       {
@@ -66,14 +66,14 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'bolt',
         title: 'Play from anywhere',
-        description: 'Start any instance from the home screen, the library, the top bar or the system tray.',
+        description: 'Start any instance from the home screen, the library, the sidebar or the system tray.',
         highlight: true
       },
       {
         icon: 'alert',
         title: 'Crash helper',
         description:
-          'When the game crashes, Pretupid reads the log and tells you the likely cause: missing dependencies, wrong Java, memory or driver issues.',
+          'When the game crashes, Pretupid reads the log and tells you the likely cause.',
         highlight: true
       },
       {
@@ -112,7 +112,7 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'lock',
         title: 'Encrypted sign-in',
-        description: 'Your Microsoft session is encrypted on disk with a key kept in the Windows Credential Manager.'
+        description: 'Your Microsoft session is encrypted on disk with a key kept in your system keychain (Windows Credential Manager, macOS Keychain or the Linux Secret Service).'
       },
       {
         icon: 'shield',
@@ -150,6 +150,63 @@ export const featureGroups: FeatureGroup[] = [
         icon: 'terminal',
         title: 'Readable console',
         description: 'Live game output with search, error highlighting and a one-click copy for bug reports.'
+      },
+      {
+        icon: 'layers',
+        title: 'Instance icons',
+        description: 'Upload your own picture for an instance, or pick one of 28 real Minecraft block textures.'
+      }
+    ]
+  },
+  {
+    id: 'client',
+    title: 'Pretupid Client',
+    subtitle: 'A free Fabric mod you add to any instance in one click.',
+    features: [
+      {
+        icon: 'bolt',
+        title: 'Performance',
+        description: 'Entity culling skips mobs, chests and signs hidden behind walls. Add a particle limiter, lighter video settings and lower FPS in the background. A built-in benchmark shows the difference on your own PC.'
+      },
+      {
+        icon: 'layers',
+        title: 'Movable HUD',
+        description: 'FPS, CPS, ping, keystrokes, armor, potions, coordinates, saturation, item counter, light level and more, placed exactly where you want.'
+      },
+      {
+        icon: 'palette',
+        title: 'Cosmetics',
+        description: 'Capes, hats, boots, shoulder pets, nametag colours and effects, and emotes. Other Pretupid players see them too.'
+      },
+      {
+        icon: 'key',
+        title: 'Quick menu and Freelook',
+        description: 'Hold G to toggle your favourite modules or jump to the HUD editor. Hold Left Alt to look around without turning.'
+      },
+      {
+        icon: 'toggle',
+        title: 'Emote wheel and hotkeys',
+        description: 'Hold the wheel key, point, release. Or give your favourite emotes their own keys.'
+      },
+      {
+        icon: 'server',
+        title: 'Friends, chat and invites',
+        description: 'See who is online and where, chat, and invite friends to your server or singleplayer world.'
+      },
+      {
+        icon: 'shield',
+        title: 'Respects server rules',
+        description: 'Modules a server does not allow pause on their own and turn back on when you leave.'
+      },
+      {
+        icon: 'copy',
+        title: 'Skins in game',
+        description: 'Keep a skin library, copy skins by username, and switch without leaving the game.'
+      },
+      {
+        icon: 'refresh',
+        title: 'Settings that follow you',
+        description: 'Your client settings carry over to new instances and survive updates.'
       }
     ]
   }

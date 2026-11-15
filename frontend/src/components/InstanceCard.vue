@@ -7,13 +7,10 @@
     @keydown.enter="open"
   >
     <div class="instance-card__top">
-      <InstanceIcon :instance="instance" :size="52" />
+      <InstanceIcon :instance="instance" :size="56" />
       <div class="instance-card__heading">
         <h3 class="instance-card__name" :title="instance.name">{{ instance.name }}</h3>
-        <div class="instance-card__tags">
-          <span class="badge">{{ instance.minecraft_version }}</span>
-          <span class="badge" :class="instance.mod_loader === 'vanilla' ? '' : 'badge--accent'">{{ loaderLabel(instance.mod_loader) }}</span>
-        </div>
+        <span class="instance-card__version">{{ instance.minecraft_version }} · {{ loaderLabel(instance.mod_loader) }}</span>
       </div>
       <DropdownMenu @keydown.enter.stop>
         <template #trigger="{ toggle, open: menuOpen }">
@@ -47,13 +44,15 @@
       <span class="instance-card__pulse" />
       Running
     </p>
-    <p v-else class="instance-card__meta">
-      <AppIcon name="clock" :size="12" />
-      {{ instance.last_played ? `${formatRelative(instance.last_played)} · ${formatPlaytime(instance.playtime_seconds)}` : 'Not played yet' }}
-    </p>
-
-    <div class="instance-card__footer" @click.stop>
-      <PlayButton :instance-id="instance.id" size="small" />
+    <div class="instance-card__footer">
+      <span @click.stop>
+        <PlayButton :instance-id="instance.id" size="small" />
+      </span>
+      <span v-if="!installing && !state.running" class="instance-card__meta">
+        <AppIcon name="clock" :size="12" />
+        {{ instance.last_played ? formatRelative(instance.last_played) : 'New' }}
+        <template v-if="instance.playtime_seconds > 0"> · {{ formatPlaytime(instance.playtime_seconds) }}</template>
+      </span>
     </div>
   </article>
 </template>
@@ -130,9 +129,10 @@ async function duplicate() {
   &:hover,
   &:focus-visible {
     outline: none;
-    border-color: var(--accent);
-    transform: translate(-2px, -2px);
-    box-shadow: 0 6px 18px var(--shadow-color);
+    border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+    background-color: var(--bg-elevated);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px var(--shadow-color);
   }
 }
 
@@ -155,34 +155,37 @@ async function duplicate() {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.3rem;
+  padding-top: 0.15rem;
 }
 
 .instance-card__name {
+  display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   line-height: 1.3;
   text-transform: none;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-.instance-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
+.instance-card__version {
+  font-size: 0.8rem;
+  color: var(--text-dim);
 }
 
 .instance-card__meta,
 .instance-card__status {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  min-width: 0;
   margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
+  font-size: 0.8rem;
+  color: var(--text-dim);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -206,7 +209,9 @@ async function duplicate() {
 
 .instance-card__footer {
   display: flex;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-top: auto;
 }
 

@@ -1,11 +1,31 @@
-# Pretupid
+<picture>
+	<source media="(prefers-color-scheme: light)" srcset=".github/assets/monorepo_cover_light.png">
+	<img alt="Modrinth Monorepo Cover" src=".github/assets/monorepo_cover.png">
+</picture>
 
-Pretupid is a Minecraft launcher and client by Yannosay Productions.
+![Lines of Code](https://img.shields.io/endpoint?url=https://loctopus.creeperkatze.dev/github/Yannosay/pretupid/badge?style=flat&logoColor=white&color=5d5bf5&style=for-the-badge)
+![Issues](https://img.shields.io/github/issues-raw/Yannosay/pretupid?color=5d5bf5&label=issues&style=for-the-badge)
+![Pull Requests](https://img.shields.io/github/issues-pr-raw/Yannosay/pretupid?color=5d5bf5&label=PRs&style=for-the-badge)
+![Contributors](https://img.shields.io/github/contributors/Yannosay/pretupid?color=5d5bf5&label=contributors&style=for-the-badge)
+![Commit Activity](https://img.shields.io/github/commit-activity/m/Yannosay/pretupid?color=5d5bf5&label=commits&style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/Yannosay/pretupid?color=5d5bf5&label=last%20commit&style=for-the-badge)
 
-- **Pretupid Launcher** — a fast desktop launcher for Windows with Fabric, Quilt, Forge and NeoForge instances, Modrinth mods and modpacks, skins and checksum-verified downloads.
+# Pretupid Monorepo
+
+Welcome to the Pretupid Monorepo, which is the main codebase for the **Pretupid website**, **app**, and **client** and created and primarily managed by [Yannosay Productions](https://yannosay.com).
+
+#### This repo holds three different projects, which are the following:
+- **Pretupid Launcher** — the desktop app for Windows, macOS and Linux
 - **Pretupid Client** — a Fabric mod with a mod menu, a draggable HUD, performance tools, cosmetics, friends and news. See [`pretupid-client/`](pretupid-client/README.md).
+- **Pretupid Website** — the frontend website which feature the projects above
 
-Download the latest release from [pretupid.yannosay.com](https://pretupid.yannosay.com) or the [GitHub releases](https://github.com/Yannosay/pretupid/releases).
+
+#### If you're not a developer and you've stumbled upon this repository, you have multiple ways to access the projects directly:
+
+- Via web interface
+  - Download the latest release of the app [here](https://pretupid.yannosay.com/download).
+- Via GitHub
+  - Download the latest release or the monorepo source [here](https://github.com/Yannosay/pretupid/releases).
 
 ## Repository
 
@@ -39,6 +59,9 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for more commands.
 
 Please report vulnerabilities privately through [GitHub security advisories](https://github.com/Yannosay/pretupid/security/advisories/new) instead of public issues.
 
-## Legal
+## License
 
-Pretupid is not an official Minecraft product and is not approved by or associated with Mojang or Microsoft. Fonts in `assets/fonts` are licensed under the SIL Open Font License; their license files are next to them.
+All content in this monorepo are licensed under their respective licenses.
+
+> [!NOTE]
+> Pretupid is not an official Minecraft product and is not approved by or associated with Mojang or Microsoft. Fonts in `assets/fonts` are licensed under the SIL Open Font License; their license files are next to them.

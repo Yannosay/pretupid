@@ -29,10 +29,27 @@ function adminCookieName(event: H3Event): string {
   return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'pretupid_admin' : ADMIN_COOKIE
 }
 
+const ADMIN_EPOCH_KEY = 'admin_session_epoch'
+
+async function adminEpoch(event: H3Event): Promise<number> {
+  const row = await db(event).prepare('SELECT value FROM app_cache WHERE key = ?').bind(ADMIN_EPOCH_KEY).first<{ value: string }>()
+  const value = Number(row?.value ?? 0)
+  return Number.isSafeInteger(value) ? value : 0
+}
+
+export async function revokeAdminSessions(event: H3Event): Promise<void> {
+  const next = (await adminEpoch(event)) + 1
+  await db(event)
+    .prepare('INSERT INTO app_cache (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3')
+    .bind(ADMIN_EPOCH_KEY, String(next), nowSeconds())
+    .run()
+}
+
 export async function issueAdminSession(event: H3Event): Promise<void> {
   const token = await signToken(event, {
     purpose: 'admin',
     sub: 'admin',
+    epoch: await adminEpoch(event),
     exp: nowSeconds() + ADMIN_SESSION_TTL_SECONDS
   })
   const local = adminCookieName(event) !== ADMIN_COOKIE
@@ -51,7 +68,11 @@ export function clearAdminSession(event: H3Event): void {
 
 export async function hasAdminSession(event: H3Event): Promise<boolean> {
   const token = getCookie(event, adminCookieName(event))
-  return (await verifyToken(event, token, 'admin')) !== null
+  const payload = await verifyToken(event, token, 'admin')
+  if (!payload) {
+    return false
+  }
+  return (payload.epoch ?? 0) === (await adminEpoch(event))
 }
 
 export async function requireAdmin(event: H3Event): Promise<void> {

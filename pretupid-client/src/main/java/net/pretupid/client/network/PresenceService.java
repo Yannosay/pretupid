@@ -2,6 +2,7 @@ package net.pretupid.client.network;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import net.pretupid.client.cosmetic.Wearables;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -122,6 +123,16 @@ public final class PresenceService {
 		String trail = settings.trail.get();
 		if (!trail.isEmpty()) {
 			equipped.addProperty("trail", trail);
+		}
+		Wearables.Loadout wearables = Wearables.own();
+		if (wearables.hat() != null) {
+			equipped.addProperty("hat", wearables.hat());
+		}
+		if (wearables.boots() != null) {
+			equipped.addProperty("boots", wearables.boots());
+		}
+		if (wearables.pet() != null) {
+			equipped.addProperty("pet", wearables.pet());
 		}
 		body.add("equipped", equipped);
 		body.addProperty("clientVersion", PretupidInfo.shortVersion());

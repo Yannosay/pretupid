@@ -1,5 +1,5 @@
 import './assets/styles/main.scss'
-import logoUrl from '@shared/branding/logo.png'
+import logoUrl from '@shared/branding/pretupid_logo_512x.png'
 import { createApp, type App as VueApp } from 'vue'
 import { createPinia } from 'pinia'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -10,6 +10,11 @@ favicon.rel = 'icon'
 favicon.type = 'image/png'
 favicon.href = logoUrl
 document.head.appendChild(favicon)
+
+if (import.meta.env.DEV && !('__TAURI_INTERNALS__' in window)) {
+  const { installTauriMock } = await import('./dev/tauriMock')
+  installTauriMock()
+}
 
 const currentWindow = getCurrentWindow()
 const isTrayPanel = currentWindow.label === 'tray-panel'

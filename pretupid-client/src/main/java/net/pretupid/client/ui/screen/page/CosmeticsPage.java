@@ -27,6 +27,7 @@ import net.pretupid.client.ui.Theme;
 import net.pretupid.client.ui.UiContext;
 import net.pretupid.client.ui.Widgets;
 import net.pretupid.client.ui.screen.ClientMenuScreen;
+import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.ui.screen.MenuPage;
 import net.pretupid.client.util.Colors;
 import net.pretupid.client.util.PlatformOpener;
@@ -35,6 +36,7 @@ public final class CosmeticsPage implements MenuPage {
 	private enum Section {
 		NAMETAG,
 		CAPE,
+		WEARABLES,
 		TRAIL,
 		EMOTES
 	}
@@ -117,8 +119,8 @@ public final class CosmeticsPage implements MenuPage {
 
 	@Override
 	public void draw(UiContext ui, int x, int y, int w, int h) {
-		int tabWidth = (w - 6 - 3 * 4) / 4;
 		Section[] values = Section.values();
+		int tabWidth = (w - 6 - (values.length - 1) * 4) / values.length;
 		for (int i = 0; i < values.length; i++) {
 			Section entry = values[i];
 			Widgets.button(ui, "cosmetics.section." + entry, x + i * (tabWidth + 4), y, tabWidth, 16,
@@ -133,6 +135,7 @@ public final class CosmeticsPage implements MenuPage {
 		switch (section) {
 			case NAMETAG -> drawNametag(ui, x, bodyY, w, bodyH);
 			case CAPE -> drawCapes(ui, x, bodyY, w, bodyH);
+			case WEARABLES -> drawWearables(ui, x, bodyY, w, bodyH);
 			case TRAIL -> drawTrails(ui, x, bodyY, w, bodyH);
 			case EMOTES -> drawEmotes(ui, x, bodyY, w, bodyH);
 		}
@@ -337,31 +340,70 @@ public final class CosmeticsPage implements MenuPage {
 		scroll.end(ui, x, y, w, h);
 	}
 
+	private void drawWearables(UiContext ui, int x, int y, int w, int h) {
+		ClientSettings settings = PretupidClient.get().settings();
+		int rows = 3 + Wearables.HATS.size() + Wearables.BOOTS.size() + Wearables.PET_ORDER.size();
+		scroll.begin(ui, "cosmetics.wearables", x, y, w, h, 3 * 16 + rows * 24 + Widgets.ROW_HEIGHT + 12);
+		int rowY = y - scroll.offset();
+		rowY = drawWearableGroup(ui, "hat", Wearables.HATS, settings.hat, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "boots", Wearables.BOOTS, settings.boots, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "pet", Wearables.PET_ORDER, settings.pet, x, rowY, w - 6);
+		Widgets.settingRow(ui, screen, settings.showCosmetics, x, rowY + 4, w - 6);
+		scroll.end(ui, x, y, w, h);
+	}
+
+	private int drawWearableGroup(UiContext ui, String kind, List<String> ids, net.pretupid.client.setting.TextSetting setting, int x, int y, int w) {
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.wearable." + kind), x, y + 2, w);
+		int rowY = y + 16;
+		String current = setting.get();
+		rowY = drawChoice(ui, "wearable." + kind + ".none", x, rowY, w, Component.translatable("pretupid.cosmetics.none"), Component.empty(), current.isEmpty(), () -> {
+			setting.set("");
+			PretupidClient.get().presence().requestHeartbeat();
+		});
+		for (String id : ids) {
+			rowY = drawChoice(ui, "wearable." + kind + "." + id, x, rowY, w, Component.translatable("pretupid.wearable." + kind + "." + id),
+				Component.translatable("pretupid.wearable." + kind + "." + id + ".description"), current.equals(id), () -> {
+					setting.set(id);
+					PretupidClient.get().presence().requestHeartbeat();
+				});
+		}
+		return rowY;
+	}
+
 	private void drawEmotes(UiContext ui, int x, int y, int w, int h) {
 		PretupidClient client = PretupidClient.get();
 		ClientSettings settings = client.settings();
 		List<Catalog.EmoteEntry> emotes = client.cosmetics().catalog().emotes();
 		boolean inWorld = Minecraft.getInstance().player != null;
-		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + emotes.size() * 24 + Widgets.ROW_HEIGHT + 8);
+		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + emotes.size() * 24 + Widgets.ROW_HEIGHT * 2 + 8);
 		int rowY = y - scroll.offset();
 		Component key = client.keybinds().emoteWheel().getTranslatedKeyMessage();
-		Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.translatable("pretupid.cosmetics.emotes.hint", key), w - 8), x, rowY + 4, Theme.TEXT_MUTED);
+		Component hint = inWorld
+			? Component.translatable("pretupid.cosmetics.emotes.hint", key)
+			: Component.translatable("pretupid.cosmetics.emotes.join_world");
+		Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), hint, w - 8), x, rowY + 4, Theme.TEXT_MUTED);
 		rowY += 20;
 		for (Catalog.EmoteEntry emote : emotes) {
 			Draw.chamfer(ui.g(), x, rowY, w - 6, 22, Theme.SURFACE);
 			Draw.text(ui.g(), ui.font(), Component.literal(emote.name()), x + 6, rowY + 3, Theme.TEXT);
-			Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.literal(emote.description()), w - 90), x + 6, rowY + 12, Theme.TEXT_DIM);
-			Widgets.button(ui, "emote.play." + emote.id(), x + w - 66, rowY + 3, 56, 16, Component.translatable("pretupid.cosmetics.emotes.play"),
-				inWorld ? Widgets.ButtonStyle.PRIMARY : Widgets.ButtonStyle.GHOST, () -> {
-					if (Minecraft.getInstance().player != null) {
-						screen.onClose();
-						client.emotes().playLocal(emote);
-					}
-				});
+			int keyX = inWorld ? x + w - 130 : x + w - 70;
+			Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.literal(emote.description()), keyX - x - 12), x + 6, rowY + 12, Theme.TEXT_DIM);
+			Widgets.keyButton(ui, screen, "emote.key." + emote.id(), keyX, rowY + 4, 60, client.emoteKeys().binding(emote.id()));
+			if (inWorld) {
+				Widgets.button(ui, "emote.play." + emote.id(), x + w - 66, rowY + 3, 56, 16, Component.translatable("pretupid.cosmetics.emotes.play"),
+					Widgets.ButtonStyle.PRIMARY, () -> {
+						if (Minecraft.getInstance().player != null) {
+							screen.onClose();
+							client.emotes().playLocal(emote);
+						}
+					});
+			}
 			rowY += 24;
 		}
 		rowY += 8;
 		Widgets.settingRow(ui, screen, settings.emoteThirdPerson, x, rowY, w - 6);
+		rowY += Widgets.ROW_HEIGHT;
+		Widgets.settingRow(ui, screen, settings.emoteWheelHold, x, rowY, w - 6);
 		scroll.end(ui, x, y, w, h);
 	}
 

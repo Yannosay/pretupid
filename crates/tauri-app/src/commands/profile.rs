@@ -396,6 +396,137 @@ pub async fn import_skin_from_url(
     Ok(dto_from_slot(&state, slot))
 }
 
+fn is_valid_username(username: &str) -> bool {
+    (1..=16).contains(&username.len())
+        && username
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+struct ResolvedSkin {
+    url: String,
+    model: &'static str,
+}
+
+async fn resolve_player_skin(username: &str) -> Result<ResolvedSkin, String> {
+    let client = reqwest::Client::builder()
+        .user_agent(super::util::USER_AGENT)
+        .connect_timeout(std::time::Duration::from_secs(8))
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let lookup = client
+        .get(format!(
+            "https://api.mojang.com/users/profiles/minecraft/{username}"
+        ))
+        .send()
+        .await
+        .map_err(|_| "Could not reach Mojang. Check your connection.".to_string())?;
+    match lookup.status().as_u16() {
+        200 => {}
+        204 | 404 => return Err(format!("No Minecraft player is called {username}.")),
+        429 => return Err("Mojang is rate limiting requests. Try again in a minute.".to_string()),
+        code => return Err(format!("Mojang answered with an error ({code}).")),
+    }
+    let player: serde_json::Value = lookup
+        .json()
+        .await
+        .map_err(|_| "Mojang sent an unexpected answer.".to_string())?;
+    let id = player["id"]
+        .as_str()
+        .filter(|id| id.len() == 32 && id.bytes().all(|b| b.is_ascii_hexdigit()))
+        .ok_or_else(|| "Mojang sent an unexpected answer.".to_string())?;
+
+    let profile: serde_json::Value = client
+        .get(format!(
+            "https://sessionserver.mojang.com/session/minecraft/profile/{id}"
+        ))
+        .send()
+        .await
+        .map_err(|_| "Could not reach Mojang. Check your connection.".to_string())?
+        .error_for_status()
+        .map_err(|_| "Mojang could not load that player's profile.".to_string())?
+        .json()
+        .await
+        .map_err(|_| "Mojang sent an unexpected answer.".to_string())?;
+
+    let encoded = profile["properties"]
+        .as_array()
+        .and_then(|props| props.iter().find(|p| p["name"] == "textures"))
+        .and_then(|p| p["value"].as_str())
+        .ok_or_else(|| format!("{username} has no custom skin."))?;
+    let decoded = STANDARD
+        .decode(encoded)
+        .map_err(|_| "Mojang sent an unexpected answer.".to_string())?;
+    let textures: serde_json::Value = serde_json::from_slice(&decoded)
+        .map_err(|_| "Mojang sent an unexpected answer.".to_string())?;
+    let skin = &textures["textures"]["SKIN"];
+    let raw_url = skin["url"]
+        .as_str()
+        .ok_or_else(|| format!("{username} uses a default skin."))?;
+    let parsed =
+        url::Url::parse(raw_url).map_err(|_| "Mojang sent an invalid skin link.".to_string())?;
+    if parsed.host_str() != Some("textures.minecraft.net") {
+        return Err("Mojang sent an invalid skin link.".to_string());
+    }
+    let url = format!("https://textures.minecraft.net{}", parsed.path());
+    let model = if skin["metadata"]["model"].as_str() == Some("slim") {
+        "slim"
+    } else {
+        "classic"
+    };
+    Ok(ResolvedSkin { url, model })
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PlayerSkinPreview {
+    pub url: String,
+    pub model_type: String,
+}
+
+#[tauri::command]
+pub async fn lookup_player_skin(username: String) -> Result<PlayerSkinPreview, String> {
+    let username = username.trim();
+    if !is_valid_username(username) {
+        return Err("Usernames are 1 to 16 letters, numbers or underscores.".to_string());
+    }
+    let resolved = resolve_player_skin(username).await?;
+    Ok(PlayerSkinPreview {
+        url: resolved.url,
+        model_type: resolved.model.to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn import_skin_from_username(
+    state: State<'_, AppState>,
+    profile_id: String,
+    slot_number: u32,
+    name: String,
+    username: String,
+) -> Result<SkinSlotDto, String> {
+    let username = username.trim().to_string();
+    if !is_valid_username(&username) {
+        return Err("Usernames are 1 to 16 letters, numbers or underscores.".to_string());
+    }
+    let resolved = resolve_player_skin(&username).await?;
+    let name = if name.trim().is_empty() {
+        username
+    } else {
+        name
+    };
+    import_skin_from_url(
+        state,
+        profile_id,
+        slot_number,
+        name,
+        resolved.model.to_string(),
+        resolved.url,
+    )
+    .await
+}
+
 #[tauri::command]
 pub async fn apply_skin_slot(state: State<'_, AppState>, slot_id: String) -> Result<(), String> {
     let slot = state

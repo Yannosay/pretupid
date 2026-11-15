@@ -9,7 +9,8 @@
 
     <template v-if="instance">
       <header class="instance-view__header">
-        <InstanceIcon :instance="instance" :size="84" />
+        <PixelScenery :seed="instance.id" class="instance-view__scenery" />
+        <InstanceIcon :instance="instance" :size="88" class="instance-view__icon" />
         <div class="instance-view__heading">
           <h1 class="instance-view__title" :title="instance.name">{{ instance.name }}</h1>
           <div class="instance-view__tags">
@@ -21,7 +22,7 @@
           </div>
           <p class="instance-view__meta">
             <span><AppIcon name="clock" :size="12" /> {{ formatPlaytime(instance.playtime_seconds) }}</span>
-            <span>Last played {{ formatRelative(instance.last_played) }}</span>
+            <span>{{ instance.last_played ? `Last played ${formatRelative(instance.last_played).toLowerCase()}` : 'Not played yet' }}</span>
           </p>
         </div>
         <div class="instance-view__actions">
@@ -149,7 +150,9 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
 import PlayButton from '@/components/PlayButton.vue'
+import PixelScenery from '@ui/PixelScenery.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DropdownMenu from '@/components/DropdownMenu.vue'
 import InstanceContentTab from '@/components/instance/InstanceContentTab.vue'
 import InstanceSettingsTab from '@/components/instance/InstanceSettingsTab.vue'
 import InstanceConsoleTab from '@/components/instance/InstanceConsoleTab.vue'
@@ -344,16 +347,30 @@ onMounted(async () => {
 }
 
 .instance-view__header {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   flex-wrap: wrap;
   gap: 1.25rem;
-  padding: 1.25rem;
-  background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
-    var(--bg-secondary);
+  min-height: 190px;
+  padding: 1.5rem;
+  overflow: hidden;
+  isolation: isolate;
   border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
+
+  > :not(.instance-view__scenery) {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.instance-view__scenery {
+  z-index: 0;
+}
+
+.instance-view__icon {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
 .instance-view__heading {
@@ -370,8 +387,10 @@ onMounted(async () => {
   white-space: nowrap;
   text-overflow: ellipsis;
   font-family: var(--font-pixel);
-  font-size: 1.15rem;
-  line-height: 1.3;
+  font-size: 1.6rem;
+  line-height: 1.25;
+  color: #ffffff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 .instance-view__tags {
@@ -385,7 +404,9 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 1rem;
   margin: 0;
-  color: var(--text-secondary);
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
 
   span {
     display: inline-flex;
@@ -398,6 +419,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  .icon-btn {
+    color: #ffffff;
+    background-color: rgba(0, 0, 0, 0.38);
+    border-color: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(6px);
+  }
 }
 
 .instance-view__banner {

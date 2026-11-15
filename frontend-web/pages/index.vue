@@ -4,11 +4,10 @@
 
     <section id="features" class="home__section">
       <header class="home__section-header">
-        <span class="home__section-eyebrow">Built for players</span>
-        <h2 class="home__section-title">Everything you need, nothing you do not</h2>
+        <span class="home__section-eyebrow">The launcher</span>
+        <h2 class="home__section-title">FREE OF PRICE AND ADS</h2>
         <p class="home__section-subtitle">
-          Mods that install with their dependencies, Forge that just works, crashes that explain
-          themselves, and downloads that are verified before they ever run.
+          Open Source and makes no revenue - though supporting the project is appreciated!
         </p>
       </header>
 
@@ -27,10 +26,12 @@
       </div>
     </section>
 
+    <ClientShowcase />
+
     <section class="home__gallery" aria-labelledby="gallery-title">
       <header class="home__section-header">
-        <span class="home__section-eyebrow">A closer look</span>
-        <h2 id="gallery-title" class="home__section-title">Built to get you playing</h2>
+        <span class="home__section-eyebrow">Screenshots</span>
+        <h2 id="gallery-title" class="home__section-title">See it before you install it</h2>
       </header>
       <div class="home__gallery-grid">
         <figure v-for="shot in screenshots" :key="shot.src" class="home__shot">
@@ -45,11 +46,11 @@
 
     <section class="home__trust">
       <div class="home__trust-copy">
-        <span class="home__section-eyebrow">Security first</span>
+        <span class="home__section-eyebrow">Security</span>
         <h2 class="home__section-title home__trust-title">Safe by default</h2>
         <p class="home__section-subtitle">
           Every file is checksum-verified, your sign-in is encrypted, modpacks cannot touch files outside their folder,
-          and nothing about you is tracked.
+          and the launcher has no analytics.
         </p>
         <NuxtLink to="/security" class="btn btn--secondary home__trust-link">How we keep you safe</NuxtLink>
       </div>
@@ -65,10 +66,10 @@
     <section class="home__cta">
       <div class="home__cta-inner">
         <div class="home__cta-content">
-          <span class="home__cta-eyebrow">Ready to play</span>
+          <span class="home__cta-eyebrow">Free for Windows, macOS and Linux</span>
           <h2 class="home__cta-title">Get Pretupid Launcher</h2>
           <p class="home__cta-text">
-            Free, open source, and built with the tools modern desktop apps deserve.
+            Sign in with Microsoft, pick a version or a modpack, and press Play.
           </p>
         </div>
         <div class="home__cta-actions">
@@ -124,7 +125,22 @@ const faqItems = [
   },
   {
     question: 'Does it collect any data?',
-    answer: 'No. There is no telemetry, no analytics and no extra account. Everything stays on your PC.'
+    answer:
+      "The launcher has no telemetry and no analytics. Pretupid Client's online features (friends, cosmetics and news) need your Minecraft name and UUID, and you can turn presence sharing off in its settings."
+  },
+  {
+    question: 'What does Pretupid Client add?',
+    answer:
+      'Performance tweaks, a movable HUD, zoom, cosmetics other players can see, emotes, friends with chat and invites, and an in-game skin library. Install it from any Fabric instance in the launcher.'
+  },
+  {
+    question: 'Will Pretupid Client get me banned on servers?',
+    answer:
+      'Pretupid Client has no cheats. Modules a server does not allow pause automatically while you play there, and server owners can ask us to add rules for their server.'
+  },
+  {
+    question: 'Which systems are supported?',
+    answer: 'Windows 10 and 11, macOS 11 or newer on Apple Silicon and Intel, and 64-bit Linux as AppImage, .deb or .rpm.'
   },
   {
     question: 'Does it support mods?',

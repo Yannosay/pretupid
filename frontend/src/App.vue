@@ -15,6 +15,7 @@ import { useLaunchStore } from '@/stores/launch'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useInstallsStore, type InstallStatus } from '@/stores/installs'
 import { getInstance } from '@/api'
+import { loadBlockTextures } from '@/utils/instanceIcon'
 
 interface DeepLinkAction {
   type: string
@@ -231,6 +232,7 @@ onMounted(async () => {
   }
 
   launchStore.initListeners().catch(() => void 0)
+  loadBlockTextures().catch(() => void 0)
   updaterStore.checkForUpdates().catch(() => void 0)
 })
 

@@ -13,16 +13,30 @@
     <template v-else>
       <header class="admin__header">
         <h1 class="admin__title">Pretupid Admin</h1>
-        <nav class="admin__tabs">
-          <button v-for="item in tabs" :key="item.id" class="admin__tab" :class="{ 'admin__tab--active': tab === item.id }" @click="selectTab(item.id)">
-            {{ item.label }}
-          </button>
-        </nav>
-        <button class="btn btn--ghost btn--small" @click="logout">Sign out</button>
+        <button class="btn btn--ghost btn--small" title="Signs out every admin session" @click="logout">Sign out everywhere</button>
       </header>
 
-      <p v-if="error" class="admin__error">{{ error }}</p>
-      <p v-if="notice" class="admin__notice">{{ notice }}</p>
+      <div class="admin__layout">
+      <nav class="admin__nav" aria-label="Admin sections">
+        <div v-for="group in tabGroups" :key="group.label" class="admin__nav-group">
+          <span class="admin__nav-label">{{ group.label }}</span>
+          <button
+            v-for="item in group.items"
+            :key="item.id"
+            class="admin__tab"
+            :class="{ 'admin__tab--active': tab === item.id }"
+            :aria-current="tab === item.id ? 'page' : undefined"
+            @click="selectTab(item.id)"
+          >
+            {{ item.label }}
+            <span v-if="item.id === 'capes' && (stats.reportedCapes ?? 0) > 0" class="admin__badge">{{ stats.reportedCapes }}</span>
+          </button>
+        </div>
+      </nav>
+
+      <main class="admin__main">
+      <p v-if="error" class="admin__error" role="alert">{{ error }}</p>
+      <p v-if="notice" class="admin__notice" role="status">{{ notice }}</p>
 
       <section v-if="tab === 'overview'" class="admin__grid">
         <div v-for="stat in statCards" :key="stat.label" class="admin__stat">
@@ -116,7 +130,7 @@
               <label class="admin__check"><input v-model="newsForm.published" type="checkbox" /> Published</label>
             </div>
             <div class="admin__md">
-              <textarea v-model="newsForm.body" class="input admin__textarea" placeholder="Write in Markdown: # headings, **bold**, *italic*, - lists, [links](https://…), `code`" maxlength="20000" required />
+              <textarea v-model="newsForm.body" class="input admin__textarea" placeholder="Markdown: # Heading, **bold**, *italic*, - lists, [link](https://…), [[Button]](https://…), ![Image](https://…/image.png)" maxlength="20000" required />
               <div class="admin__preview markdown" v-html="newsPreview" />
             </div>
             <div class="admin__row">
@@ -181,6 +195,36 @@
         </div>
       </section>
 
+      <section v-if="tab === 'rules'" class="admin__section">
+        <p class="admin__muted">
+          Pretupid Client pauses the listed modules while a player is on a matching server and turns them back on when they leave.
+          Use an exact address (play.example.net) or a wildcard (*.example.net).
+        </p>
+        <div class="admin__split">
+          <div class="admin__list">
+            <button class="btn btn--small" @click="editRule(null)">New rule</button>
+            <button v-for="rule in rules" :key="rule.id" class="admin__list-item" :class="{ 'admin__list-item--active': ruleForm.id === rule.id }" @click="editRule(rule)">
+              <strong>{{ rule.pattern }}</strong>
+              <span class="admin__muted">{{ rule.modules.length }} module{{ rule.modules.length === 1 ? '' : 's' }} paused</span>
+            </button>
+          </div>
+          <form class="admin__editor" @submit.prevent="saveRule">
+            <input v-model="ruleForm.pattern" class="input" placeholder="Server address, e.g. play.example.net" maxlength="253" required />
+            <input v-model="ruleForm.reason" class="input" placeholder="Reason shown to players (optional)" maxlength="160" />
+            <div class="admin__modules">
+              <label v-for="module in moduleIds" :key="module" class="admin__check">
+                <input v-model="ruleForm.modules" type="checkbox" :value="module" />
+                {{ module }}
+              </label>
+            </div>
+            <div class="admin__row">
+              <button class="btn" type="submit" :disabled="busy || ruleForm.modules.length === 0">Save rule</button>
+              <button v-if="ruleForm.id" class="btn btn--danger" type="button" @click="deleteRule">Delete</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
       <section v-if="tab === 'audit'" class="admin__section">
         <table class="admin__table">
           <thead>
@@ -197,12 +241,21 @@
           </tbody>
         </table>
       </section>
+      </main>
+      </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-type Tab = 'overview' | 'capes' | 'players' | 'news' | 'cosmetics' | 'audit'
+type Tab = 'overview' | 'capes' | 'players' | 'news' | 'cosmetics' | 'rules' | 'audit'
+
+interface ServerRule {
+  id: number
+  pattern: string
+  modules: string[]
+  reason: string
+}
 
 interface Cape {
   id: string
@@ -261,14 +314,14 @@ interface AuditEntry {
 definePageMeta({ layout: 'default' })
 useHead({ title: 'Admin · Pretupid', meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
 
-const tabs: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'capes', label: 'Capes' },
-  { id: 'players', label: 'Players' },
-  { id: 'news', label: 'News' },
-  { id: 'cosmetics', label: 'Cosmetics' },
-  { id: 'audit', label: 'Audit log' }
+const tabGroups: { label: string; items: { id: Tab; label: string }[] }[] = [
+  { label: 'Dashboard', items: [{ id: 'overview', label: 'Overview' }] },
+  { label: 'Content', items: [{ id: 'news', label: 'News' }, { id: 'cosmetics', label: 'Cosmetics' }] },
+  { label: 'Moderation', items: [{ id: 'capes', label: 'Capes' }, { id: 'players', label: 'Players' }] },
+  { label: 'Client', items: [{ id: 'rules', label: 'Server rules' }] },
+  { label: 'Security', items: [{ id: 'audit', label: 'Audit log' }] }
 ]
+const emptyRule = () => ({ id: 0, pattern: '', reason: '', modules: [] as string[] })
 const categories = ['news', 'update', 'announcement', 'event', 'maintenance']
 const emptyNews = () => ({ id: '', title: '', summary: '', body: '', category: 'news', pinned: false, published: false })
 const emptyCosmetic = () => ({
@@ -306,6 +359,9 @@ const particles = ref<string[]>([])
 const patterns = ref<string[]>([])
 const parts = ref<string[]>([])
 const auditLog = ref<AuditEntry[]>([])
+const rules = ref<ServerRule[]>([])
+const moduleIds = ref<string[]>([])
+const ruleForm = reactive(emptyRule())
 
 const newsPreview = computed(() => renderMarkdown(newsForm.body))
 const statCards = computed(() => [
@@ -379,6 +435,7 @@ async function selectTab(next: Tab) {
   if (next === 'players') await loadPlayers()
   if (next === 'news') await loadNews()
   if (next === 'cosmetics') await loadCosmetics()
+  if (next === 'rules') await loadRules()
   if (next === 'audit') auditLog.value = (await api<{ entries: AuditEntry[] }>('/api/admin/audit')).entries
 }
 
@@ -444,6 +501,37 @@ async function deleteNews() {
   editNews(null)
   flash('Post deleted')
   await loadNews()
+}
+
+async function loadRules() {
+  const result = await api<{ rules: ServerRule[]; modules: string[] }>('/api/admin/server-rules')
+  rules.value = result.rules
+  moduleIds.value = result.modules
+}
+
+function editRule(rule: ServerRule | null) {
+  Object.assign(ruleForm, rule ? { ...rule, modules: [...rule.modules] } : emptyRule())
+}
+
+async function saveRule() {
+  busy.value = true
+  try {
+    await api('/api/admin/server-rules', { method: 'POST', body: { pattern: ruleForm.pattern, reason: ruleForm.reason, modules: ruleForm.modules } })
+    flash('Rule saved. Clients pick it up within a few hours.')
+    await loadRules()
+    const saved = rules.value.find((rule) => rule.pattern === ruleForm.pattern.trim().toLowerCase())
+    if (saved) editRule(saved)
+  } finally {
+    busy.value = false
+  }
+}
+
+async function deleteRule() {
+  if (!ruleForm.id || !window.confirm(`Delete the rule for ${ruleForm.pattern}?`)) return
+  await api(`/api/admin/server-rules/${ruleForm.id}`, { method: 'DELETE' })
+  editRule(null)
+  flash('Rule deleted')
+  await loadRules()
 }
 
 async function loadCosmetics() {
@@ -596,26 +684,102 @@ onMounted(async () => {
   justify-content: space-between;
 }
 
-.admin__tabs {
+.admin__layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  align-items: start;
+  gap: 1.5rem;
+}
+
+.admin__nav {
+  position: sticky;
+  top: 1rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+.admin__nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin__nav-label {
+  padding: 0 0.6rem 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .admin__tab {
-  padding: 0.45rem 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
   font: inherit;
+  text-align: left;
   color: var(--text-secondary);
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-color);
+  background: none;
+  border: none;
   border-radius: var(--edge-radius);
   cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+  }
 }
 
 .admin__tab--active {
-  color: var(--accent-text);
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.admin__badge {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  background: var(--danger);
+  border-radius: 999px;
+}
+
+.admin__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.admin__modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.35rem 0.75rem;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+}
+
+@media (max-width: 760px) {
+  .admin__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin__nav {
+    position: static;
+  }
 }
 
 .admin__muted {

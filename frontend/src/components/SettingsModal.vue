@@ -35,17 +35,23 @@
               :key="color"
               class="color-preset"
               :style="{ backgroundColor: color }"
-              :class="{ 'color-preset--selected': settings.accentColor === color }"
+              :class="{ 'color-preset--selected': settings.accentColor.toLowerCase() === color }"
+              :aria-label="`Use accent ${color}`"
               @click="settingsStore.setAccentColor(color)"
             />
+            <button
+              class="color-preset color-preset--custom"
+              :class="{ 'color-preset--selected': customAccent }"
+              :aria-expanded="customOpen"
+              aria-label="Custom accent color"
+              title="Custom color"
+              @click="customOpen = !customOpen"
+            >
+              <span v-if="customAccent" class="color-preset__fill" :style="{ backgroundColor: settings.accentColor }" />
+            </button>
           </div>
-          <div class="custom-color">
-            <input
-              type="color"
-              :value="settings.accentColor"
-              @input="settingsStore.setAccentColor(($event.target as HTMLInputElement).value)"
-            />
-            <span>Custom</span>
+          <div v-if="customOpen" class="custom-color">
+            <ColorPicker :model-value="settings.accentColor" @update:model-value="settingsStore.setAccentColor" />
           </div>
         </section>
 
@@ -65,6 +71,20 @@
           <p v-if="settings.font === 'custom' && settings.customFontPath" class="settings-font__path">
             {{ settings.customFontPath.split(/[\/]/).pop() }}
           </p>
+        </section>
+
+        <section class="section">
+          <h3 class="section__title section__title--sm">Home</h3>
+          <label class="toggle">
+            <input
+              type="checkbox"
+              class="toggle__input"
+              :checked="settings.sceneryMotion"
+              @change="settingsStore.setSceneryMotion(($event.target as HTMLInputElement).checked)"
+            />
+            <span class="toggle__track" />
+            <span class="toggle__label">Animated landscape</span>
+          </label>
         </section>
 
         <section class="section">
@@ -193,6 +213,7 @@
 </template>
 
 <script setup lang="ts">
+import ColorPicker from '@ui/ColorPicker.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { getGlobalSettings, saveGlobalSettings, getAppInfo, openExternalLink } from '@/api'
 import { LEGAL_LINKS } from '@/config'
@@ -216,6 +237,8 @@ const notifications = useNotificationsStore()
 const settings = computed(() => settingsStore.settings)
 
 const presetColors = ['#4a9eff', '#7c5cff', '#e879f9', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf']
+const customOpen = ref(false)
+const customAccent = computed(() => !presetColors.includes(settings.value.accentColor.toLowerCase()))
 
 const fontOptions: { value: FontChoice; label: string }[] = [
   { value: 'minecraft', label: 'Minecraft (Recommended)' },
@@ -458,18 +481,25 @@ function close() {
   transform: scale(1.1);
 }
 
-.custom-color {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+.color-preset--custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(#f87171, #facc15, #4ade80, #2dd4bf, #4a9eff, #7c5cff, #e879f9, #f87171);
 }
 
-.custom-color input {
-  width: 36px;
-  height: 36px;
-  border: none;
-  cursor: pointer;
+.color-preset__fill {
+  position: absolute;
+  inset: 6px;
+  border-radius: var(--edge-radius);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+.custom-color {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
 }
 
 .corner-toggle__icon {

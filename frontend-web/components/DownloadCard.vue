@@ -1,12 +1,11 @@
 <template>
   <div
     class="download-card"
-    :class="[featured ? 'download-card--featured' : 'download-card--muted']"
+    :class="{ 'download-card--featured': featured }"
   >
     <div class="download-card__top">
       <span class="download-card__platform">{{ platformLabel }}</span>
-      <span v-if="featured" class="download-card__badge">Recommended</span>
-      <span v-else class="download-card__badge download-card__badge--soon">Coming soon</span>
+      <span v-if="featured" class="download-card__badge">Your system</span>
     </div>
 
     <h2 class="download-card__title">{{ title }}</h2>
@@ -16,9 +15,14 @@
       :href="url"
       class="btn download-card__button"
       :class="{ 'btn--secondary': !featured }"
+      rel="nofollow"
     >
       {{ buttonText }}
     </a>
+
+    <div v-if="alternatives?.length" class="download-card__alternatives">
+      <a v-for="link in alternatives" :key="link.url" :href="link.url" class="download-card__alt" rel="nofollow">{{ link.label }}</a>
+    </div>
 
     <span class="download-card__meta">{{ meta }}</span>
   </div>
@@ -34,6 +38,7 @@ const props = defineProps<{
   buttonText: string
   meta: string
   featured?: boolean
+  alternatives?: { label: string; url: string }[]
 }>()
 
 const platformLabel = computed(() => {
@@ -73,9 +78,6 @@ const platformLabel = computed(() => {
   border-color: var(--accent);
 }
 
-.download-card--muted {
-  opacity: 0.7;
-}
 
 .download-card__top {
   display: flex;
@@ -105,12 +107,6 @@ const platformLabel = computed(() => {
   border-radius: var(--edge-radius);
 }
 
-.download-card__badge--soon {
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 2px solid var(--border-color);
-}
-
 .download-card__title {
   font-family: var(--font-pixel);
   font-weight: 700;
@@ -127,6 +123,23 @@ const platformLabel = computed(() => {
 
 .download-card__button {
   align-self: flex-start;
+}
+
+.download-card__alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.download-card__alt {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 .download-card__meta {

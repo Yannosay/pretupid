@@ -9,9 +9,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.ui.screen.ClientMenuScreen;
 import net.pretupid.client.ui.screen.EmoteWheelScreen;
 import net.pretupid.client.ui.screen.HudEditorScreen;
+import net.pretupid.client.ui.screen.QuickMenuScreen;
 
 public final class Keybinds {
 	private final PretupidClient client;
@@ -20,6 +22,8 @@ public final class Keybinds {
 	private KeyMapping openHudEditor;
 	private KeyMapping zoom;
 	private KeyMapping emoteWheel;
+	private KeyMapping freelook;
+	private KeyMapping quickMenu;
 
 	public Keybinds(PretupidClient client) {
 		this.client = client;
@@ -31,10 +35,16 @@ public final class Keybinds {
 		openHudEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.hud_editor", InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), category));
 		zoom = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.zoom", InputConstants.Type.KEYBOARD, InputConstants.KEY_C, category));
 		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, category));
+		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, category));
+		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", InputConstants.Type.KEYBOARD, InputConstants.KEY_LALT, category));
 	}
 
 	public KeyMapping emoteWheel() {
 		return emoteWheel;
+	}
+
+	public KeyMapping quickMenu() {
+		return quickMenu;
 	}
 
 	public KeyMapping zoom() {
@@ -54,6 +64,25 @@ public final class Keybinds {
 		while (emoteWheel.consumeClick()) {
 			if (minecraft.gui.screen() == null && minecraft.player != null) {
 				minecraft.gui.setScreen(new EmoteWheelScreen());
+			}
+		}
+		while (quickMenu.consumeClick()) {
+			if (minecraft.gui.screen() == null && minecraft.player != null) {
+				minecraft.gui.setScreen(new QuickMenuScreen());
+			}
+		}
+		FreelookModule freelookModule = client.modules().get(FreelookModule.class);
+		if (freelookModule.holdMode()) {
+			boolean pressed = freelook.isDown();
+			while (freelook.consumeClick()) {
+				pressed = true;
+			}
+			freelookModule.setHeld(minecraft, freelookModule.isEnabled() && pressed && minecraft.gui.screen() == null);
+		} else {
+			while (freelook.consumeClick()) {
+				if (minecraft.gui.screen() == null) {
+					freelookModule.toggleActive(minecraft);
+				}
 			}
 		}
 		while (openHudEditor.consumeClick()) {

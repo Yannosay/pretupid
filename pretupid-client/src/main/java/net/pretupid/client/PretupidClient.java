@@ -6,6 +6,15 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.pretupid.client.network.Json;
+import net.pretupid.client.network.ServerCompatibility;
+import net.pretupid.client.network.ServerRulesPayload;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -23,6 +32,9 @@ import net.pretupid.client.module.ModuleManager;
 import net.pretupid.client.module.hud.ArmorHud;
 import net.pretupid.client.module.hud.ClockHud;
 import net.pretupid.client.module.hud.ComboHud;
+import net.pretupid.client.module.hud.ItemCounterHud;
+import net.pretupid.client.module.hud.LightLevelHud;
+import net.pretupid.client.module.hud.SaturationHud;
 import net.pretupid.client.module.hud.CoordinatesHud;
 import net.pretupid.client.module.hud.CpsHud;
 import net.pretupid.client.module.hud.DirectionHud;
@@ -37,6 +49,7 @@ import net.pretupid.client.module.hud.SessionHud;
 import net.pretupid.client.module.hud.SpeedHud;
 import net.pretupid.client.module.performance.DynamicFpsModule;
 import net.pretupid.client.module.performance.EntityCullingModule;
+import net.pretupid.client.module.performance.FpsBenchmark;
 import net.pretupid.client.module.performance.FpsBoostModule;
 import net.pretupid.client.module.performance.ParticleLimiterModule;
 import net.pretupid.client.module.utility.ChatMacrosModule;
@@ -53,16 +66,20 @@ import net.pretupid.client.module.visual.MotionBlurModule;
 import net.pretupid.client.module.visual.LowFireModule;
 import net.pretupid.client.module.visual.NoHurtCamModule;
 import net.pretupid.client.module.visual.OwnNametagModule;
+import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
 import net.pretupid.client.mods.ModCatalog;
 import net.pretupid.client.mods.ModIcons;
 import net.pretupid.client.nametag.Nametags;
+import net.pretupid.client.skins.AccountSkin;
+import net.pretupid.client.skins.LocalSkinOverride;
 import net.pretupid.client.skins.SkinLibrary;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.AuthSession;
 import net.pretupid.client.network.PresenceService;
 import net.pretupid.client.network.RealtimeClient;
 import net.pretupid.client.cosmetic.CosmeticsService;
+import net.pretupid.client.cosmetic.EmoteKeys;
 import net.pretupid.client.cosmetic.EmotePlayer;
 import net.pretupid.client.cosmetic.TrailRenderer;
 import net.pretupid.client.news.NewsService;
@@ -91,13 +108,18 @@ public final class PretupidClient implements ClientModInitializer {
 	private final RealtimeClient realtime = new RealtimeClient(session);
 	private final CosmeticsService cosmetics = new CosmeticsService(api, session, FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
 	private final EmotePlayer emotes = new EmotePlayer();
+	private EmoteKeys emoteKeys;
 	private final TrailRenderer trails = new TrailRenderer();
 	private final NewsService news = new NewsService(api);
+	private ServerCompatibility compatibility;
 	private final UpdateService updates = new UpdateService(api);
 	private final SocialService social = new SocialService(api, session);
 	private final LocalHosting hosting = new LocalHosting();
 	private final ModIcons modIcons = new ModIcons();
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
+	private final AccountSkin accountSkin = new AccountSkin();
+	private final LocalSkinOverride localSkin = new LocalSkinOverride();
+	private final FpsBenchmark benchmark = new FpsBenchmark();
 	private ConfigStore config;
 	private Keybinds keybinds;
 	private Nametags nametags;
@@ -118,10 +140,12 @@ public final class PretupidClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		registerModules();
-		config = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID), settings, modules);
+		config = new ConfigStore(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID), ConfigStore.defaultSharedDirectory(), settings, modules);
 		nametags = new Nametags(this);
 		modCatalog = new ModCatalog();
 		keybinds = new Keybinds(this);
+		emoteKeys = new EmoteKeys(settings.emoteKeys);
+		compatibility = new ServerCompatibility(api, settings.restrictedServers);
 		instance = this;
 		config.load();
 		keybinds.register();
@@ -149,11 +173,15 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new SessionHud());
 		modules.register(new ReachHud());
 		modules.register(new ComboHud());
+		modules.register(new SaturationHud());
+		modules.register(new ItemCounterHud());
+		modules.register(new LightLevelHud());
 		modules.register(new DynamicFpsModule());
 		modules.register(new EntityCullingModule());
 		modules.register(new ParticleLimiterModule());
 		modules.register(new FpsBoostModule());
 		modules.register(new ZoomModule());
+		modules.register(new FreelookModule());
 		modules.register(new NoHurtCamModule());
 		modules.register(new LowFireModule());
 		modules.register(new ClearWeatherModule());
@@ -184,9 +212,32 @@ public final class PretupidClient implements ClientModInitializer {
 			ServerData server = minecraft.getCurrentServer();
 			if (server != null && !minecraft.hasSingleplayerServer()) {
 				config.onServerJoined(server.ip);
+				if (settings.serverCompatibility.enabled()) {
+					compatibility.onJoined(server.ip);
+				}
+				if (server.type() == ServerData.Type.OTHER && server.ip != null && !server.ip.isBlank()) {
+					settings.lastServerAddress.set(server.ip);
+					settings.lastServerName.set(server.name == null || server.name.isBlank() ? server.ip : server.name);
+				}
 			}
 		}));
+		PayloadTypeRegistry.clientboundPlay().register(ServerRulesPayload.TYPE, ServerRulesPayload.CODEC);
+		ClientPlayNetworking.registerGlobalReceiver(ServerRulesPayload.TYPE, (payload, context) -> context.client().execute(() -> {
+			if (settings.serverCompatibility.enabled()) {
+				compatibility.onServerRules(parseRuleModules(payload.json()));
+			}
+		}));
+		ScreenEvents.AFTER_INIT.register((minecraft, screen, width, height) -> {
+			if (screen instanceof DisconnectedScreen) {
+				StringBuilder text = new StringBuilder();
+				for (AbstractWidget widget : Screens.getWidgets(screen)) {
+					text.append(widget.getMessage().getString()).append(' ');
+				}
+				compatibility.onDisconnectMessage(text.toString());
+			}
+		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, minecraft) -> minecraft.execute(() -> {
+			compatibility.onDisconnected();
 			config.onServerLeft();
 			presence.onWorldLeft();
 			emotes.clear();
@@ -207,6 +258,14 @@ public final class PretupidClient implements ClientModInitializer {
 					openMenuNextTick = true;
 					return 1;
 				})
+				.then(ClientCommands.literal("benchmark")
+					.executes(context -> {
+						if (!benchmark.start(Minecraft.getInstance())) {
+							context.getSource().sendError(net.minecraft.network.chat.Component.translatable("pretupid.benchmark.unavailable"));
+							return 0;
+						}
+						return 1;
+					}))
 				.then(ClientCommands.literal("reportcape")
 					.then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
 						.executes(context -> reportCape(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player")))))
@@ -244,6 +303,7 @@ public final class PretupidClient implements ClientModInitializer {
 			minecraft.gui.setScreen(new ClientMenuScreen(null));
 		}
 		keybinds.tick(minecraft);
+		emoteKeys.tick(minecraft);
 		combat.tick(minecraft);
 		modules.tick(minecraft);
 		boolean online = settings.sharePresence.enabled();
@@ -258,8 +318,20 @@ public final class PretupidClient implements ClientModInitializer {
 		trails.tick(minecraft);
 		social.tick(minecraft);
 		news.tick();
+		if (settings.serverCompatibility.enabled()) {
+			compatibility.tick();
+		}
 		updates.tick(minecraft);
 		config.tick();
+	}
+
+	public void onFrame(Minecraft minecraft) {
+		modules.get(EntityCullingModule.class).culler().beginFrame();
+		benchmark.onFrame(minecraft);
+	}
+
+	public FpsBenchmark benchmark() {
+		return benchmark;
 	}
 
 	public ClientSettings settings() {
@@ -302,6 +374,29 @@ public final class PretupidClient implements ClientModInitializer {
 		return cosmetics;
 	}
 
+	public ServerCompatibility compatibility() {
+		return compatibility;
+	}
+
+	private static java.util.Set<String> parseRuleModules(String json) {
+		java.util.Set<String> modules = new java.util.LinkedHashSet<>();
+		try {
+			com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+			for (com.google.gson.JsonElement element : Json.array(root, "disable")) {
+				if (element.isJsonPrimitive() && modules.size() < 64) {
+					modules.add(element.getAsString().toLowerCase(java.util.Locale.ROOT));
+				}
+			}
+		} catch (RuntimeException exception) {
+			LOGGER.debug("Ignoring malformed server rules", exception);
+		}
+		return modules;
+	}
+
+	public EmoteKeys emoteKeys() {
+		return emoteKeys;
+	}
+
 	public EmotePlayer emotes() {
 		return emotes;
 	}
@@ -332,6 +427,14 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public ModCatalog modCatalog() {
 		return modCatalog;
+	}
+
+	public AccountSkin accountSkin() {
+		return accountSkin;
+	}
+
+	public LocalSkinOverride localSkin() {
+		return localSkin;
 	}
 
 	public SkinLibrary skins() {

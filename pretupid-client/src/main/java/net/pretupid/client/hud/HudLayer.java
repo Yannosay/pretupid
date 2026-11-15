@@ -7,10 +7,13 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.performance.FpsBenchmark;
 import net.pretupid.client.module.visual.CrosshairModule;
+import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 
 public final class HudLayer implements HudElement {
@@ -42,6 +45,9 @@ public final class HudLayer implements HudElement {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (minecraft.gui.hud.isHidden() || minecraft.gui.screen() instanceof HudEditorScreen) {
 			return;
+		}
+		if (client.benchmark().running()) {
+			drawBenchmark(graphics, minecraft);
 		}
 		for (Module module : client.modules().all()) {
 			if (module.isEnabled() && module instanceof OverlayRenderer overlay) {
@@ -99,5 +105,19 @@ public final class HudLayer implements HudElement {
 		public int bottom() {
 			return y + height;
 		}
+	}
+
+	private void drawBenchmark(GuiGraphicsExtractor graphics, Minecraft minecraft) {
+		FpsBenchmark benchmark = client.benchmark();
+		Font font = minecraft.font;
+		Component label = Component.translatable(benchmark.measuringOptimized() ? "pretupid.benchmark.phase.optimized" : "pretupid.benchmark.phase.vanilla");
+		int width = Math.max(140, font.width(label) + 16);
+		int x = (graphics.guiWidth() - width) / 2;
+		int y = 48;
+		Draw.glass(graphics, x, y, width, 24, 0xCC0E1020, 0x665D5BF5);
+		Draw.text(graphics, font, label, x + (width - font.width(label)) / 2, y + 4, 0xFFFFFFFF);
+		int barWidth = width - 16;
+		Draw.rect(graphics, x + 8, y + 16, barWidth, 3, 0x33FFFFFF);
+		Draw.rect(graphics, x + 8, y + 16, Math.round(barWidth * benchmark.progress()), 3, 0xFF8F94F5);
 	}
 }

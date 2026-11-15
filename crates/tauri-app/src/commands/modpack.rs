@@ -12,9 +12,22 @@ use sqlx::SqlitePool;
 use tauri::{AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
+use futures_util::StreamExt;
+
 use super::content::load_instance;
 use super::util::{self, ExpectedHash};
 use crate::state::AppState;
+
+const MODPACK_DOWNLOAD_CONCURRENCY: usize = 8;
+
+#[derive(Clone)]
+struct PlannedFile {
+    path: String,
+    dest: PathBuf,
+    url: String,
+    sha1: Option<String>,
+    sha512: Option<String>,
+}
 
 const MAX_PACK_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 const INDEX_FILE: &str = "modrinth.index.json";
@@ -178,9 +191,9 @@ async fn run_install(
             }
         }
 
-        let total = files.len().max(1);
         let mut skipped = Vec::new();
-        for (index_pos, file) in files.iter().enumerate() {
+        let mut planned: Vec<PlannedFile> = Vec::new();
+        for file in &files {
             let dest = match util::safe_relative_join(&profile_dir, &file.path) {
                 Some(d) => d,
                 None => {
@@ -195,20 +208,51 @@ async fn run_install(
                     continue;
                 }
             };
-            let sha1 = file.hashes.get("sha1").map(String::as_str);
-            let sha512 = file.hashes.get("sha512").map(String::as_str);
+            let sha1 = file.hashes.get("sha1").cloned();
+            let sha512 = file.hashes.get("sha512").cloned();
             if sha1.is_none() && sha512.is_none() {
                 skipped.push(format!("{} (no checksum)", file.path));
                 continue;
             }
-            emit_progress(
-                &app,
-                &instance_id,
-                "downloading_mods",
-                &format!("Downloading files ({}/{})", index_pos + 1, total),
-            );
-            util::download_verified(&client, &url, &dest, &ExpectedHash { sha1, sha512 }).await?;
+            planned.push(PlannedFile {
+                path: file.path.clone(),
+                dest,
+                url,
+                sha1,
+                sha512,
+            });
+        }
 
+        let total = planned.len().max(1);
+        let finished = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        emit_progress(&app, &instance_id, "downloading_mods", &format!("Downloading files (0/{total})"));
+        let results: Vec<Result<(), String>> = futures_util::stream::iter(planned.clone().into_iter().map(|file| {
+            let client = client.clone();
+            let app = app.clone();
+            let instance_id = instance_id.clone();
+            let finished = finished.clone();
+            async move {
+                let expected = ExpectedHash {
+                    sha1: file.sha1.as_deref(),
+                    sha512: file.sha512.as_deref(),
+                };
+                let result = util::download_verified(&client, &file.url, &file.dest, &expected)
+                    .await
+                    .map(|_| ())
+                    .map_err(|e| format!("{}: {e}", file.path));
+                let done = finished.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                emit_progress(&app, &instance_id, "downloading_mods", &format!("Downloading files ({done}/{total})"));
+                result
+            }
+        }))
+        .buffer_unordered(MODPACK_DOWNLOAD_CONCURRENCY)
+        .collect()
+        .await;
+        if let Some(error) = results.into_iter().find_map(Result::err) {
+            return Err(error);
+        }
+
+        for file in planned {
             let normalized = file.path.replace('\\', "/");
             let (folder, name) = match normalized.rsplit_once('/') {
                 Some((f, n)) => (f.to_string(), n.to_string()),
@@ -223,7 +267,7 @@ async fn run_install(
             if !is_safe_file_name(&name) || content_folder(project_type).is_none() {
                 continue;
             }
-            let version = sha1.and_then(|h| versions.get(h));
+            let version = file.sha1.as_deref().and_then(|h| versions.get(h));
             let project = version.and_then(|v| projects.get(&v.project_id));
             let record = NewInstanceMod {
                 instance_id: instance_id.clone(),
@@ -235,9 +279,9 @@ async fn run_install(
                 icon_url: project.and_then(|p| p.icon_url.clone()),
                 version_id: version.map(|v| v.id.clone()),
                 version_name: version.map(|v| v.version_number.clone()),
-                file_url: Some(url),
+                file_url: Some(file.url),
                 file_name: Some(name),
-                sha1: sha1.map(String::from),
+                sha1: file.sha1,
                 enabled: true,
             };
             let _ = repo.add_mod(&record).await;

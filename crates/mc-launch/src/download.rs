@@ -12,7 +12,9 @@ use crate::error::{LaunchError, LaunchResult};
 use crate::launcher::LaunchEvent;
 
 pub const USER_AGENT: &str = concat!("pretupid-launcher/", env!("CARGO_PKG_VERSION"));
-const MAX_ATTEMPTS: u32 = 3;
+const MAX_ATTEMPTS: u32 = 4;
+const STALL_TIMEOUT: Duration = Duration::from_secs(25);
+const VALIDATION_CONCURRENCY: usize = 64;
 
 #[derive(Debug, Clone)]
 pub struct DownloadTask {
@@ -39,8 +41,13 @@ impl DownloadTask {
 pub fn http_client() -> LaunchResult<reqwest::Client> {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)
-        .connect_timeout(Duration::from_secs(20))
-        .timeout(Duration::from_secs(600))
+        .connect_timeout(Duration::from_secs(15))
+        .read_timeout(STALL_TIMEOUT)
+        .timeout(Duration::from_secs(900))
+        .pool_max_idle_per_host(64)
+        .pool_idle_timeout(Duration::from_secs(60))
+        .tcp_keepalive(Duration::from_secs(30))
+        .tcp_nodelay(true)
         .build()
         .map_err(|e| LaunchError::Network(e.to_string()))
 }
@@ -83,6 +90,12 @@ pub async fn file_is_valid(path: &Path, sha1: Option<&str>, size: u64, deep: boo
     true
 }
 
+async fn wait_cancelled(cancel: &mut watch::Receiver<bool>) {
+    if cancel.wait_for(|cancelled| *cancelled).await.is_err() {
+        std::future::pending::<()>().await;
+    }
+}
+
 fn part_path(path: &Path) -> PathBuf {
     let mut name = path
         .file_name()
@@ -110,11 +123,13 @@ async fn download_attempt(
             .map_err(|e| LaunchError::Io(e.to_string()))?;
     }
 
-    let response = client
-        .get(&task.url)
-        .send()
-        .await
-        .map_err(|e| LaunchError::Network(format!("{}: {}", task.url, e)))?;
+    let mut cancel = cancel_rx.clone();
+    let response = tokio::select! {
+        response = client.get(&task.url).send() => {
+            response.map_err(|e| LaunchError::Network(format!("{}: {}", task.url, e)))?
+        }
+        _ = wait_cancelled(&mut cancel) => return Err(LaunchError::Cancelled),
+    };
     if !response.status().is_success() {
         return Err(LaunchError::Network(format!(
             "download failed with status {} for {}",
@@ -131,12 +146,27 @@ async fn download_attempt(
     let mut written: u64 = 0;
     let mut stream = response.bytes_stream();
 
-    while let Some(chunk) = stream.next().await {
-        if *cancel_rx.borrow() {
-            drop(file);
-            let _ = tokio::fs::remove_file(&temp).await;
-            return Err(LaunchError::Cancelled);
-        }
+    loop {
+        let next = tokio::select! {
+            next = tokio::time::timeout(STALL_TIMEOUT, stream.next()) => next,
+            _ = wait_cancelled(&mut cancel) => {
+                drop(file);
+                let _ = tokio::fs::remove_file(&temp).await;
+                return Err(LaunchError::Cancelled);
+            }
+        };
+        let chunk = match next {
+            Ok(Some(chunk)) => chunk,
+            Ok(None) => break,
+            Err(_) => {
+                drop(file);
+                let _ = tokio::fs::remove_file(&temp).await;
+                return Err(LaunchError::Network(format!(
+                    "download stalled for {}",
+                    task.url
+                )));
+            }
+        };
         let bytes = match chunk {
             Ok(b) => b,
             Err(e) => {
@@ -200,13 +230,31 @@ pub async fn download(
                 counter.fetch_sub(after.saturating_sub(before), Ordering::Relaxed);
                 last_error = Some(err);
                 if attempt + 1 < MAX_ATTEMPTS {
-                    tokio::time::sleep(Duration::from_millis(500 * u64::from(attempt + 1))).await;
+                    let mut cancel = cancel_rx.clone();
+                    tokio::select! {
+                        _ = tokio::time::sleep(Duration::from_millis(400 << attempt)) => {}
+                        _ = wait_cancelled(&mut cancel) => return Err(LaunchError::Cancelled),
+                    }
                 }
             }
         }
     }
     Err(last_error
         .unwrap_or_else(|| LaunchError::Network(format!("failed to download {}", task.url))))
+}
+
+pub async fn retain_missing(tasks: Vec<DownloadTask>, deep: bool) -> Vec<DownloadTask> {
+    stream::iter(tasks.into_iter().map(|task| async move {
+        if file_is_valid(&task.path, task.sha1.as_deref(), task.size, deep).await {
+            None
+        } else {
+            Some(task)
+        }
+    }))
+    .buffer_unordered(VALIDATION_CONCURRENCY)
+    .filter_map(|task| async move { task })
+    .collect()
+    .await
 }
 
 pub async fn download_single(

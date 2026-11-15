@@ -32,6 +32,54 @@ fn validate_name(name: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
+const MAX_ICON_DATA_URL_BYTES: usize = 512 * 1024;
+const ICON_DATA_PREFIXES: &[&str] = &[
+    "data:image/png;base64,",
+    "data:image/jpeg;base64,",
+    "data:image/webp;base64,",
+    "data:image/gif;base64,",
+];
+const ICON_STYLE_KINDS: &[&str] = &["block"];
+
+fn validate_icon_url(icon: &str) -> Result<(), String> {
+    if icon.is_empty() || util::is_allowed_download_url(icon) {
+        return Ok(());
+    }
+    if !ICON_DATA_PREFIXES.iter().any(|p| icon.starts_with(p)) {
+        return Err("Icons must be PNG, JPEG, WebP or GIF images.".to_string());
+    }
+    if icon.len() > MAX_ICON_DATA_URL_BYTES {
+        return Err("That image is too large. Pick one under 384 KB.".to_string());
+    }
+    let payload = &icon[icon.find(',').map(|i| i + 1).unwrap_or(icon.len())..];
+    if !payload
+        .bytes()
+        .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/' || b == b'=')
+    {
+        return Err("The image data is not valid.".to_string());
+    }
+    Ok(())
+}
+
+fn validate_icon_style(style: &str) -> Result<(), String> {
+    if style.is_empty() {
+        return Ok(());
+    }
+    let mut parts = style.split(':');
+    let kind = parts.next().unwrap_or_default();
+    let value = parts.next().unwrap_or_default();
+    let valid_value = !value.is_empty()
+        && value.len() <= 24
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-');
+    if ICON_STYLE_KINDS.contains(&kind) && valid_value && parts.next().is_none() {
+        Ok(())
+    } else {
+        Err("Unknown icon style.".to_string())
+    }
+}
+
 fn validate_version(version: &str) -> Result<(), String> {
     if mc_launch::VersionResolver::is_valid_version_id(version.trim()) {
         Ok(())
@@ -110,12 +158,10 @@ pub async fn update_instance(
         validate_version(version)?;
     }
     if let Some(icon) = &request.icon_url {
-        if !icon.is_empty()
-            && !util::is_allowed_download_url(icon)
-            && !icon.starts_with("data:image/")
-        {
-            return Err("Icons must be https:// images.".to_string());
-        }
+        validate_icon_url(icon)?;
+    }
+    if let Some(style) = &request.icon_style {
+        validate_icon_style(style)?;
     }
     if let Some(group) = &request.group_name {
         request.group_name = Some(group.trim().chars().take(32).collect());
@@ -182,6 +228,7 @@ pub async fn duplicate_instance(
     let update = UpdateInstanceRequest {
         icon_url: source.icon_url.clone(),
         group_name: source.group_name.clone(),
+        icon_style: source.icon_style.clone(),
         ..Default::default()
     };
     let created = state

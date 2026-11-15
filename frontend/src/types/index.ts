@@ -12,6 +12,7 @@ export interface Instance {
   playtime_seconds: number
   icon_url: string | null
   group_name: string | null
+  icon_style?: string | null
 }
 
 export interface UpdateInstanceRequest {
@@ -22,6 +23,7 @@ export interface UpdateInstanceRequest {
   loader_version?: string | null
   icon_url?: string | null
   group_name?: string | null
+  icon_style?: string | null
 }
 
 export interface InstanceSettings {
