@@ -3,7 +3,7 @@
     <div class="footer__inner">
       <div class="footer__brand">
         <div class="footer__brand-row">
-          <img :src="wordmark" alt="Pretupid Launcher" width="240" height="22" class="footer__wordmark" />
+          <img :src="wordmark" alt="Pretupid Launcher" width="240" height="22" class="footer__wordmark brand-wordmark" />
         </div>
         <p class="footer__tagline">
           Minecraft launcher and client by Yannosay Productions.

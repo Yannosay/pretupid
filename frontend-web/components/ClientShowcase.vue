@@ -75,7 +75,7 @@ const { data: info } = useFetch<DownloadInfo>('/api/download/info', { lazy: true
 const minecraft = computed(() => info.value?.client?.minecraft || '26.3')
 
 const stats = [
-  { value: '35+', label: 'modules' },
+  { value: '45', label: 'modules' },
   { value: '1 click', label: 'from the launcher' },
   { value: 'Free', label: 'and open source' }
 ]
@@ -83,7 +83,7 @@ const stats = [
 const highlights: { icon: SiteIconName; title: string; text: string }[] = [
   { icon: 'bolt', title: 'Smoother frames', text: 'Entity culling, particle limits and lower FPS while the game is in the background.' },
   { icon: 'layers', title: 'Your HUD, your layout', text: 'Drag FPS, CPS, keystrokes, armor, potions and coordinates anywhere.' },
-  { icon: 'palette', title: 'Cosmetics others see', text: 'Capes, hats, boots, pets and emotes for every Pretupid player.' },
+  { icon: 'palette', title: 'Cosmetics others see', text: 'Capes, hats, animated wings, back items, pets and emotes for every Pretupid player.' },
   { icon: 'shield', title: 'Server friendly', text: 'Modules a server disallows pause on their own.' }
 ]
 </script>
@@ -124,12 +124,10 @@ const highlights: { icon: SiteIconName; title: string; text: string }[] = [
   align-self: flex-start;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.35rem 0.8rem 0.35rem 0.4rem;
+  padding: 0;
   font-family: var(--font-pixel);
   font-size: 0.95rem;
   color: #fff;
-  background-color: rgba(143, 148, 245, 0.16);
-  border: 1px solid rgba(143, 148, 245, 0.45);
   border-radius: var(--edge-radius);
 
   img {

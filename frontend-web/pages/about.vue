@@ -1,7 +1,6 @@
 <template>
   <div class="about-page">
     <header class="about-page__header">
-      <span class="about-page__eyebrow">Behind the project</span>
       <h1 class="about-page__title">About Pretupid Launcher</h1>
       <p class="about-page__subtitle">
         A launcher built by a Minecraft player who got tired of waiting.
@@ -9,15 +8,11 @@
     </header>
 
     <section class="about-page__card">
-      <h2 class="about-page__card-title">Our mission</h2>
+      <h2 class="about-page__card-title">My idea</h2>
       <p>
-        Pretupid Launcher exists because modern Minecraft launchers are slow, bloated, or both.
-        The goal is simple: a fast, reliable launcher that respects your time and your machine,
-        and stays out of the way while you play.
-      </p>
-      <p>
-        It is built with Tauri 2, Rust, Vue 3, and SQLite, and released as open source under the
-        GNU Affero General Public License v3.0.
+        Pretupid Launcher exists because modern Minecraft launchers are slow, bloated, full of ads and filled with
+        in-game purchases. So let's just have a fast, reliable launcher that respects your time and your machine, and
+        stays out of the way while you play.
       </p>
     </section>
 
@@ -78,19 +73,6 @@ const { openLauncher } = useLauncherBridge()
   gap: 0.75rem;
 }
 
-.about-page__eyebrow {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 0.4rem 0.8rem;
-}
 
 .about-page__title {
   font-family: var(--font-pixel);

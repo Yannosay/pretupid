@@ -1,5 +1,5 @@
 <template>
-  <article class="feature-card">
+  <article class="feature-card spotlight" @pointermove="track">
     <div class="feature-card__icon" aria-hidden="true">
       <SiteIcon :name="icon" :size="22" />
     </div>
@@ -16,6 +16,13 @@ defineProps<{
   title: string
   description: string
 }>()
+
+function track(event: PointerEvent) {
+  const card = event.currentTarget as HTMLElement
+  const bounds = card.getBoundingClientRect()
+  card.style.setProperty('--spot-x', `${event.clientX - bounds.left}px`)
+  card.style.setProperty('--spot-y', `${event.clientY - bounds.top}px`)
+}
 </script>
 
 <style scoped lang="scss">

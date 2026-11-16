@@ -147,23 +147,7 @@ function apply() {
     corner.value === 'blocky' ? '0px' : cornerRadius.value + 'px'
   )
 
-  if (theme.value === 'light') {
-    root.style.setProperty('--bg-primary', '#f0f0f0')
-    root.style.setProperty('--bg-secondary', '#ffffff')
-    root.style.setProperty('--bg-tertiary', '#e6e6e6')
-    root.style.setProperty('--text-primary', '#1a1a1a')
-    root.style.setProperty('--text-secondary', '#555555')
-    root.style.setProperty('--border-color', '#cccccc')
-    root.style.setProperty('--shadow-color', 'rgba(0,0,0,0.15)')
-  } else {
-    root.style.setProperty('--bg-primary', '#0d0d0d')
-    root.style.setProperty('--bg-secondary', '#1a1a1a')
-    root.style.setProperty('--bg-tertiary', '#262626')
-    root.style.setProperty('--text-primary', '#ffffff')
-    root.style.setProperty('--text-secondary', '#b3b3b3')
-    root.style.setProperty('--border-color', '#404040')
-    root.style.setProperty('--shadow-color', 'rgba(0,0,0,0.5)')
-  }
+  root.dataset.theme = theme.value
 
   if (typeof window !== 'undefined') {
     localStorage.setItem(

@@ -1,7 +1,6 @@
 <template>
   <div class="security-page">
     <header class="security-page__header">
-      <span class="security-page__eyebrow">Security</span>
       <h1 class="security-page__title">How Pretupid keeps you safe</h1>
       <p class="security-page__subtitle">
         A launcher downloads and runs code on your PC and holds the key to your Minecraft account. Here is exactly how
@@ -118,18 +117,6 @@ const hosts = [
   text-align: center;
 }
 
-.security-page__eyebrow {
-  padding: 0.4rem 0.8rem;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-}
 
 .security-page__title {
   margin: 0;

@@ -1,7 +1,6 @@
 <template>
   <div class="contact-page">
     <header class="contact-page__header">
-      <span class="contact-page__eyebrow">Get in touch</span>
       <h1 class="contact-page__title">Contact</h1>
       <p class="contact-page__subtitle">
         Feedback, bug reports, feature ideas. All of it welcome, and all of it handled in the open on GitHub.
@@ -75,19 +74,6 @@ const channels: { icon: SiteIconName; label: string; hint: string; href: string 
   gap: 0.75rem;
 }
 
-.contact-page__eyebrow {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 0.4rem 0.8rem;
-}
 
 .contact-page__title {
   font-family: var(--font-pixel);

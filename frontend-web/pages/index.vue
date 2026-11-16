@@ -3,18 +3,18 @@
     <HeroSection />
 
     <section id="features" class="home__section">
-      <header class="home__section-header">
-        <span class="home__section-eyebrow">The launcher</span>
+      <header v-reveal class="home__section-header">
         <h2 class="home__section-title">FREE OF PRICE AND ADS</h2>
         <p class="home__section-subtitle">
-          Open Source and makes no revenue - though supporting the project is appreciated!
+          Open Source and makes no revenue -- though supporting the project is appreciated!
         </p>
       </header>
 
       <div class="home__features-grid">
         <FeatureCard
-          v-for="feature in highlightedFeatures"
+          v-for="(feature, index) in highlightedFeatures"
           :key="feature.title"
+          v-reveal="(index % 3) * 90"
           :icon="feature.icon"
           :title="feature.title"
           :description="feature.description"
@@ -26,15 +26,14 @@
       </div>
     </section>
 
-    <ClientShowcase />
+    <ClientShowcase v-reveal />
 
     <section class="home__gallery" aria-labelledby="gallery-title">
-      <header class="home__section-header">
-        <span class="home__section-eyebrow">Screenshots</span>
-        <h2 id="gallery-title" class="home__section-title">See it before you install it</h2>
+      <header v-reveal class="home__section-header">
+        <h2 id="gallery-title" class="home__section-title">See before you install it</h2>
       </header>
       <div class="home__gallery-grid">
-        <figure v-for="shot in screenshots" :key="shot.src" class="home__shot">
+        <figure v-for="(shot, index) in screenshots" :key="shot.src" v-reveal="index * 120" class="home__shot">
           <img :src="shot.src" :alt="shot.alt" width="1600" height="1000" loading="lazy" class="home__shot-image" />
           <figcaption class="home__shot-caption">
             <strong>{{ shot.title }}</strong>
@@ -44,10 +43,9 @@
       </div>
     </section>
 
-    <section class="home__trust">
+    <section v-reveal class="home__trust">
       <div class="home__trust-copy">
-        <span class="home__section-eyebrow">Security</span>
-        <h2 class="home__section-title home__trust-title">Safe by default</h2>
+        <h2 class="home__section-title home__trust-title">It's the bare minimum</h2>
         <p class="home__section-subtitle">
           Every file is checksum-verified, your sign-in is encrypted, modpacks cannot touch files outside their folder,
           and the launcher has no analytics.
@@ -64,12 +62,12 @@
     </section>
 
     <section class="home__cta">
-      <div class="home__cta-inner">
+      <div v-reveal class="home__cta-inner">
         <div class="home__cta-content">
           <span class="home__cta-eyebrow">Free for Windows, macOS and Linux</span>
           <h2 class="home__cta-title">Get Pretupid Launcher</h2>
           <p class="home__cta-text">
-            Sign in with Microsoft, pick a version or a modpack, and press Play.
+            Sign in with Microsoft, pick a version or a modpack, and press Play!!
           </p>
         </div>
         <div class="home__cta-actions">
@@ -82,9 +80,8 @@
     </section>
 
     <section class="home__faq">
-      <header class="home__section-header">
-        <span class="home__section-eyebrow">FAQ</span>
-        <h2 class="home__section-title">Frequently asked questions</h2>
+      <header v-reveal class="home__section-header">
+        <h2 class="home__section-title">(Probably) asked questions</h2>
       </header>
 
       <FaqAccordion :items="faqItems" />
@@ -116,12 +113,12 @@ const { openLauncher } = useLauncherBridge()
 const faqItems = [
   {
     question: 'Is Pretupid Launcher free?',
-    answer: 'Yes. Pretupid Launcher is free to use and open source under the GNU AGPL-3.0 license.'
+    answer: 'Yep. Pretupid Launcher is completely free to use and open source under the GNU AGPL-3.0 license.'
   },
   {
     question: 'Is it safe to use?',
     answer:
-      'Every game file, mod and Java download is checked against its published checksum, your Microsoft session is stored encrypted, and modpacks cannot write outside their own folder. The full details are on the Security page.'
+      'Yes, it is safe to use, specifically explained in the Security Section. Windows may display a warning when installing the launcher, but this is because I did not pay the $99/year Microsoft developer fee to get a verified publisher certificate. (I am not rich :P)'
   },
   {
     question: 'Does it collect any data?',
@@ -136,7 +133,7 @@ const faqItems = [
   {
     question: 'Will Pretupid Client get me banned on servers?',
     answer:
-      'Pretupid Client has no cheats. Modules a server does not allow pause automatically while you play there, and server owners can ask us to add rules for their server.'
+      'The Pretupid Client has no cheats. Modules a server does not allow pause automatically while you play there, and server owners can ask us to add rules for their server. Not all servers may turn off modules, so check the rules before joining a server with Pretupid Client.'
   },
   {
     question: 'Which systems are supported?',
@@ -145,7 +142,7 @@ const faqItems = [
   {
     question: 'Does it support mods?',
     answer:
-      'Yes. Fabric, Quilt, Forge, and NeoForge are supported, and Modrinth mods and modpacks can be installed directly from the launcher.'
+      'Yes. Fabric, Quilt, Forge, and NeoForge are supported, and the official Modrinth Library is built in. You can install mods manually into an instance, or, install modpacks.'
   },
   {
     question: 'Which Minecraft versions are supported?',
@@ -155,12 +152,12 @@ const faqItems = [
   {
     question: 'Is it affiliated with Mojang or Microsoft?',
     answer:
-      'No. Pretupid Launcher is not an official Minecraft service and is not approved by or associated with Mojang or Microsoft.'
+      'Nope, Pretupid Launcher is not an official Minecraft service and is not approved by or associated with Mojang or Microsoft.'
   },
   {
     question: 'How do I install Java?',
     answer:
-      'The launcher detects the required Java major version from the Minecraft version you have selected and installs a matching runtime from Adoptium automatically if you do not have it.'
+      'The launcher detects the required Java major version from the Minecraft version you have selected and installs a matching runtime from Adoptium automatically if you do not have it. You can still install Java manually though.'
   }
 ]
 </script>
@@ -234,19 +231,6 @@ const faqItems = [
   margin: 0 auto;
 }
 
-.home__section-eyebrow {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 0.4rem 0.8rem;
-}
 
 .home__section-title {
   font-family: var(--font-pixel);

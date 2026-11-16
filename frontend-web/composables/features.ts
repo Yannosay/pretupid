@@ -154,7 +154,7 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'layers',
         title: 'Instance icons',
-        description: 'Upload your own picture for an instance, or pick one of 28 real Minecraft block textures.'
+        description: 'Upload or drop your own picture for an instance, or search every block texture from your installed Minecraft.'
       }
     ]
   },
@@ -171,12 +171,22 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'layers',
         title: 'Movable HUD',
-        description: 'FPS, CPS, ping, keystrokes, armor, potions, coordinates, saturation, item counter, light level and more, placed exactly where you want.'
+        description: 'FPS, CPS, ping, keystrokes, armor, potions, coordinates, biome, day and time, the block you look at, saturation, item counter, light level and more, placed exactly where you want.'
       },
       {
         icon: 'palette',
         title: 'Cosmetics',
-        description: 'Capes, hats, boots, shoulder pets, nametag colours and effects, and emotes. Other Pretupid players see them too.'
+        description: 'Capes, hats, animated wings and back items, floating pets, nametag colours and effects, and emotes. Other Pretupid players see them too.'
+      },
+      {
+        icon: 'folder',
+        title: 'Waypoints',
+        description: 'Save places per world with /pretupid waypoint add or a hotkey, get a waypoint where you die, and follow the arrows back.'
+      },
+      {
+        icon: 'eye-off',
+        title: 'Chat and streaming tools',
+        description: 'Compact Chat merges spam into one line, Nick Hider swaps your name for an alias, and timestamps and macros are one toggle away.'
       },
       {
         icon: 'key',

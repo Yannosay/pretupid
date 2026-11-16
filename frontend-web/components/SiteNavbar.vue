@@ -1,7 +1,7 @@
 <template>
   <header class="navbar" :class="{ 'navbar--scrolled': scrolled }">
     <NuxtLink to="/" class="navbar__brand">
-      <img :src="wordmark" alt="Pretupid" width="210" height="19" class="navbar__wordmark" />
+      <img :src="wordmark" alt="Pretupid" width="210" height="19" class="navbar__wordmark brand-wordmark" />
       <img :src="icon" alt="Pretupid" width="34" height="34" class="navbar__icon" />
     </NuxtLink>
 
@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0.9rem 2rem;
-  background-color: rgba(26, 26, 26, 0.85);
+  background-color: color-mix(in srgb, var(--bg-primary) 82%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 2px solid var(--border-color);
   transition: padding var(--transition-fast), background-color var(--transition-fast);
@@ -84,7 +84,7 @@ onBeforeUnmount(() => {
 
 .navbar--scrolled {
   padding: 0.65rem 2rem;
-  background-color: rgba(26, 26, 26, 0.95);
+  background-color: color-mix(in srgb, var(--bg-primary) 94%, transparent);
 }
 
 .navbar__brand {

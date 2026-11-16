@@ -1,7 +1,6 @@
 <template>
   <div class="features-page">
     <header class="features-page__header">
-      <span class="features-page__eyebrow">Capabilities</span>
       <h1 class="features-page__title">Features</h1>
       <p class="features-page__subtitle">
         Everything in Pretupid Launcher, grouped so you can find what matters to you.
@@ -66,19 +65,6 @@ useSeoMeta({
   margin: 0 auto;
 }
 
-.features-page__eyebrow {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 0.4rem 0.8rem;
-}
 
 .features-page__title {
   font-family: var(--font-pixel);

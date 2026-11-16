@@ -186,7 +186,7 @@ const orb = computed(() => {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 var(--scenery-solid, 60%), transparent 100%);
 }
 
 .scenery__svg {

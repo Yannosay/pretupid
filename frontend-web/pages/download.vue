@@ -1,7 +1,6 @@
 <template>
   <div class="download-page">
     <header class="download-page__hero">
-      <span class="download-page__eyebrow">Free</span>
       <h1 class="download-page__title">Download Pretupid Launcher</h1>
       <p class="download-page__subtitle">
         Pick your system. The launcher updates itself after that.
@@ -228,19 +227,6 @@ const options: {
   margin: 0 auto;
 }
 
-.download-page__eyebrow {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: var(--edge-radius);
-  padding: 0.4rem 0.8rem;
-}
 
 .download-page__title {
   font-family: var(--font-pixel);

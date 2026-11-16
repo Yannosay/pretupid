@@ -31,8 +31,9 @@
         <li>The server address you are playing on, only if you turn on sharing it with friends.</li>
       </ul>
       <p>
-        Your account is verified the same way a Minecraft server verifies it. Your Microsoft or Minecraft access token is
-        never sent to Pretupid. Requests pass through Cloudflare, which processes IP addresses to deliver and protect
+        Your account is verified with the chat signing key Mojang issues to your account and your Mojang-signed profile,
+        the same proof Minecraft servers use for signed chat. Your Microsoft or Minecraft access token is never sent to
+        Pretupid. Requests pass through Cloudflare, which processes IP addresses to deliver and protect
         the service. We use IP addresses only for rate limiting and security and do not sell or share personal
         information.
       </p>
