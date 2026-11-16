@@ -21,7 +21,7 @@
 
       <div class="hero__actions">
         <a :href="primary.url" class="btn btn--large hero__download" rel="nofollow">
-          <SiteIcon :name="primary.icon" :size="20" />
+          <PlatformIcon :platform="primary.id" :size="18" />
           Download for {{ primary.label }}
         </a>
         <button type="button" class="btn btn--secondary btn--large hero__open" @click="openLauncher">
@@ -38,7 +38,7 @@
           :class="{ 'hero__platform--active': option.id === platform }"
           rel="nofollow"
         >
-          <SiteIcon :name="option.icon" :size="16" />
+          <PlatformIcon :platform="option.id" :size="15" />
           {{ option.label }}
         </a>
         <NuxtLink to="/download" class="hero__platform hero__platform--more">All downloads</NuxtLink>
@@ -58,14 +58,12 @@
 <script setup lang="ts">
 import PixelScenery from '@ui/PixelScenery.vue'
 import wordmark from '@shared/branding/pretupid_logo_full.png'
-import type { SiteIconName } from '~/components/SiteIcon.vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'
 import { platformLabel, useVisitorPlatform, type VisitorPlatform } from '~/composables/useVisitorPlatform'
 
 interface PlatformOption {
   id: VisitorPlatform
   label: string
-  icon: SiteIconName
   url: string
 }
 
@@ -73,9 +71,9 @@ const { openLauncher } = useLauncherBridge()
 const { platform } = useVisitorPlatform()
 
 const platforms: PlatformOption[] = [
-  { id: 'windows', label: platformLabel('windows'), icon: 'windows', url: '/api/download/launcher/windows' },
-  { id: 'macos', label: platformLabel('macos'), icon: 'apple', url: '/api/download/launcher/macos?variant=arm64' },
-  { id: 'linux', label: platformLabel('linux'), icon: 'linux', url: '/api/download/launcher/linux?variant=appimage' }
+  { id: 'windows', label: platformLabel('windows'), url: '/api/download/launcher/windows' },
+  { id: 'macos', label: platformLabel('macos'), url: '/api/download/launcher/macos?variant=arm64' },
+  { id: 'linux', label: platformLabel('linux'), url: '/api/download/launcher/linux?variant=appimage' }
 ]
 
 const primary = computed(() => platforms.find((option) => option.id === platform.value) ?? platforms[0]!)
