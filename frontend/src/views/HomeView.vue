@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <section class="home__hero">
+    <section class="home__hero surface-dark">
       <PixelScenery :seed="featured?.id ?? authStore.profile?.id ?? 'pretupid'" :moving="settingsStore.settings.sceneryMotion" />
 
       <div class="home__hero-inner">

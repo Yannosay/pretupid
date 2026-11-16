@@ -120,6 +120,7 @@ pub fn run() {
             commands::app_info::open_external_link,
             commands::app_info::fetch_news,
             commands::textures::get_block_textures,
+            commands::textures::list_block_textures,
             commands::pretupid_client::install_pretupid_client,
             commands::pretupid_client::install_performance_pack,
             commands::content::remove_instance_mod,

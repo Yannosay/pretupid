@@ -28,7 +28,7 @@
     <span class="play-btn__spinner" />
     <span class="play-btn__label">{{ percent > 0 ? `${percent}%` : busyLabel }}</span>
   </button>
-  <button v-else class="btn btn--success play-btn" :class="sizeClass" :title="compact ? 'Play' : undefined" :aria-label="compact ? 'Play' : undefined" @click.stop="play">
+  <button v-else class="btn btn--success play-btn" :class="sizeClass" :title="compact ? 'Play' : undefined" :aria-label="compact ? 'Play' : undefined" @click.stop="play($event)">
     <AppIcon name="play" :size="iconSize" />
     <span class="play-btn__label">Play</span>
   </button>
@@ -37,6 +37,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import { pixelBurst } from '@/utils/pixelBurst'
 import { useAuthStore } from '@/stores/auth'
 import { useLaunchStore } from '@/stores/launch'
 import { useInstallsStore } from '@/stores/installs'
@@ -76,7 +77,8 @@ async function signIn() {
   }
 }
 
-async function play() {
+async function play(event: MouseEvent) {
+  if (event.currentTarget instanceof HTMLElement) pixelBurst(event.currentTarget)
   try {
     await launchStore.play(props.instanceId)
   } catch (e) {

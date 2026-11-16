@@ -86,6 +86,15 @@ type Args = Record<string, unknown>
 const listeners = new Map<number, string>()
 let nextListener = 1
 
+let textureIndex: Promise<string[]> | null = null
+
+function devTextureIndex(): Promise<string[]> {
+  textureIndex ??= fetch('/__dev/block-textures/index.json')
+    .then((response) => (response.ok ? (response.json() as Promise<string[]>) : []))
+    .catch(() => [])
+  return textureIndex
+}
+
 async function handle(cmd: string, args: Args): Promise<unknown> {
   switch (cmd) {
     case 'plugin:event|listen': {
@@ -191,11 +200,16 @@ async function handle(cmd: string, args: Args): Promise<unknown> {
     case 'fetch_news':
       return [
         { id: 'welcome', title: 'Pretupid 0.1.1 is here', summary: 'Custom instance icons, a brand new home screen and a faster downloader.', category: 'update', pinned: true, publishedAt: Math.floor(Date.now() / 1000) - 86_400 },
-        { id: 'cosmetics', title: 'Hats, pets and boots arrive', summary: 'Pretupid Client now has wearable cosmetics that every Pretupid player can see.', category: 'announcement', pinned: false, publishedAt: Math.floor(Date.now() / 1000) - 4 * 86_400 },
+        { id: 'cosmetics', title: 'Wings, pets and hats arrive', summary: 'Pretupid Client now has animated wings, floating pets and hats that every Pretupid player can see.', category: 'announcement', pinned: false, publishedAt: Math.floor(Date.now() / 1000) - 4 * 86_400 },
         { id: 'event', title: 'Build contest this weekend', summary: 'Show off your best base and win an exclusive cape.', category: 'event', pinned: false, publishedAt: Math.floor(Date.now() / 1000) - 9 * 86_400 }
       ]
-    case 'get_block_textures':
-      return {}
+    case 'get_block_textures': {
+      const names = (args.names as string[]) ?? []
+      const available = new Set(await devTextureIndex())
+      return Object.fromEntries(names.filter((name) => available.has(name)).map((name) => [name, `/__dev/block-textures/${name}.png`]))
+    }
+    case 'list_block_textures':
+      return devTextureIndex()
     case 'lookup_player_skin':
       return { url: `https://mc-heads.net/skin/${args.username}`, model_type: 'classic' }
     case 'list_skin_slots':

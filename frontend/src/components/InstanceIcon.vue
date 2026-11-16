@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Instance } from '@/types'
-import { autoMaterial, blockTexture, parseIconStyle } from '@/utils/instanceIcon'
+import { iconTextureName, textureUrl } from '@/utils/instanceIcon'
 
 type IconSource = Pick<Instance, 'id' | 'name' | 'icon_url'> & { icon_style?: string | null }
 
@@ -26,12 +26,12 @@ watch(
   }
 )
 
-const material = computed(() => parseIconStyle(props.instance.icon_style) ?? autoMaterial(props.instance.id))
+const texture = computed(() => iconTextureName(props.instance.icon_style, props.instance.id))
 
 const display = computed(() => {
   if (props.instance.icon_url && !broken.value) return { kind: 'image' as const, src: props.instance.icon_url }
-  const texture = blockTexture(material.value)
-  return texture ? { kind: 'block' as const, src: texture } : { kind: 'pending' as const, src: '' }
+  const src = textureUrl(texture.value)
+  return src ? { kind: 'block' as const, src } : { kind: 'pending' as const, src: '' }
 })
 
 const letter = computed(() => {

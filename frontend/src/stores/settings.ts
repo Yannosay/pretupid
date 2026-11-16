@@ -60,16 +60,11 @@ function darken(hex: string, amount: number): string {
 function applySettings(state: SettingsState) {
   const root = document.documentElement
 
-  const palette = state.theme === 'dark' ? DARK_PALETTE : LIGHT_PALETTE
-
   const accent = state.accentColor
   const accentHover = darken(accent, 0.1)
   const accentText = getContrastingText(accent)
   const edgeRadius = `${state.edgeRadius}px`
 
-  for (const [name, value] of Object.entries(palette)) {
-    root.style.setProperty(name, value)
-  }
   root.dataset.theme = state.theme
   root.dataset.font = state.font === 'custom' && !customFontReady ? 'minecraft' : state.font
   if (state.font === 'custom' && state.customFontPath && state.customFontPath !== loadedFontPath) {
@@ -83,36 +78,6 @@ function applySettings(state: SettingsState) {
 
 const STORAGE_KEY = 'pretupid-settings'
 const CUSTOM_FONT_FAMILY = 'PretupidCustom'
-
-const DARK_PALETTE: Record<string, string> = {
-  '--bg-primary': '#07090d',
-  '--bg-secondary': 'rgba(16, 20, 28, 0.86)',
-  '--bg-tertiary': 'rgba(255, 255, 255, 0.06)',
-  '--bg-elevated': 'rgba(22, 27, 37, 0.94)',
-  '--surface-hover': 'rgba(255, 255, 255, 0.1)',
-  '--text-primary': '#f2f4f8',
-  '--text-secondary': '#a3abb9',
-  '--text-dim': '#6c7584',
-  '--border-color': 'rgba(255, 255, 255, 0.1)',
-  '--border-strong': 'rgba(255, 255, 255, 0.18)',
-  '--highlight': 'rgba(255, 255, 255, 0.07)',
-  '--shadow-color': 'rgba(0, 0, 0, 0.45)'
-}
-
-const LIGHT_PALETTE: Record<string, string> = {
-  '--bg-primary': '#e9edf3',
-  '--bg-secondary': 'rgba(255, 255, 255, 0.82)',
-  '--bg-tertiary': 'rgba(10, 20, 40, 0.05)',
-  '--bg-elevated': 'rgba(255, 255, 255, 0.95)',
-  '--surface-hover': 'rgba(10, 20, 40, 0.09)',
-  '--text-primary': '#111722',
-  '--text-secondary': '#4b5565',
-  '--text-dim': '#7b8494',
-  '--border-color': 'rgba(10, 20, 40, 0.12)',
-  '--border-strong': 'rgba(10, 20, 40, 0.22)',
-  '--highlight': 'rgba(255, 255, 255, 0.7)',
-  '--shadow-color': 'rgba(10, 20, 40, 0.15)'
-}
 
 let loadedFontPath: string | null = null
 let customFontReady = false

@@ -1,7 +1,7 @@
 <template>
   <aside class="sidebar">
     <RouterLink to="/" class="sidebar__brand" aria-label="Pretupid Launcher home">
-      <img src="@shared/branding/pretupid_logo_full.png" alt="Pretupid Launcher" class="sidebar__brand-logo" />
+      <img src="@shared/branding/pretupid_logo_full.png" alt="Pretupid Launcher" class="sidebar__brand-logo brand-wordmark" />
     </RouterLink>
 
     <nav class="sidebar__nav" aria-label="Main">

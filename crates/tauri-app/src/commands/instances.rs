@@ -39,8 +39,6 @@ const ICON_DATA_PREFIXES: &[&str] = &[
     "data:image/webp;base64,",
     "data:image/gif;base64,",
 ];
-const ICON_STYLE_KINDS: &[&str] = &["block"];
-
 fn validate_icon_url(icon: &str) -> Result<(), String> {
     if icon.is_empty() || util::is_allowed_download_url(icon) {
         return Ok(());
@@ -68,12 +66,22 @@ fn validate_icon_style(style: &str) -> Result<(), String> {
     let mut parts = style.split(':');
     let kind = parts.next().unwrap_or_default();
     let value = parts.next().unwrap_or_default();
-    let valid_value = !value.is_empty()
-        && value.len() <= 24
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-');
-    if ICON_STYLE_KINDS.contains(&kind) && valid_value && parts.next().is_none() {
+    let valid_value = match kind {
+        "block" => {
+            (1..=24).contains(&value.len())
+                && value
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+        }
+        "texture" => {
+            (1..=48).contains(&value.len())
+                && value
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+        }
+        _ => false,
+    };
+    if valid_value && parts.next().is_none() {
         Ok(())
     } else {
         Err("Unknown icon style.".to_string())

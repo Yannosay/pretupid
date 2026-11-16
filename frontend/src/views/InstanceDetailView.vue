@@ -8,7 +8,7 @@
     <div v-if="loadError" class="form-error form-error--block">{{ loadError }}</div>
 
     <template v-if="instance">
-      <header class="instance-view__header">
+      <header class="instance-view__header surface-dark">
         <PixelScenery :seed="instance.id" class="instance-view__scenery" />
         <InstanceIcon :instance="instance" :size="88" class="instance-view__icon" />
         <div class="instance-view__heading">

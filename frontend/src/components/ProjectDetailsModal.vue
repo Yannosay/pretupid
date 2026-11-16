@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { getModrinthVersions } from '@/api'
@@ -130,6 +131,7 @@ onMounted(async () => {
     loading.value = false
   }
 })
+useEscapeKey(() => true, () => emit('close'))
 </script>
 
 <style scoped lang="scss">

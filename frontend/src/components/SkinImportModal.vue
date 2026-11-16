@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import { lookupPlayerSkin } from '@/api/profile'
@@ -276,6 +277,7 @@ onBeforeUnmount(() => {
   if (lookupTimer !== null) window.clearTimeout(lookupTimer)
   if (filePreview.value) URL.revokeObjectURL(filePreview.value)
 })
+useEscapeKey(() => true, () => emit('close'))
 </script>
 
 <style scoped lang="scss">

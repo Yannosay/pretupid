@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
@@ -67,6 +68,7 @@ const ranked = computed(() =>
     })
     .sort((a, b) => Number(b.compatible) - Number(a.compatible))
 )
+useEscapeKey(() => true, () => emit('close'))
 </script>
 
 <style scoped lang="scss">

@@ -175,6 +175,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { ref, computed, onMounted, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import AppIcon from '@/components/AppIcon.vue'
@@ -398,6 +399,7 @@ onMounted(async () => {
     loadingVersions.value = false
   }
 })
+useEscapeKey(() => true, handleClose)
 </script>
 
 <style scoped lang="scss">

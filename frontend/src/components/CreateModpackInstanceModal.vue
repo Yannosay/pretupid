@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { ref, computed, onMounted } from 'vue'
 import { getModrinthVersions, createInstanceFromModpack } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
@@ -147,6 +148,7 @@ onMounted(async () => {
     loadingVersions.value = false
   }
 })
+useEscapeKey(() => true, handleClose)
 </script>
 
 <style scoped lang="scss">

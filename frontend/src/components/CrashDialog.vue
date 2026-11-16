@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
@@ -100,6 +101,7 @@ function viewInstance() {
   dismiss()
   router.push({ name: 'instance-detail', params: { id }, query: { tab: 'console' } })
 }
+useEscapeKey(() => Boolean(crash.value), dismiss)
 </script>
 
 <style scoped lang="scss">

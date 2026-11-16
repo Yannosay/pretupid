@@ -213,6 +213,7 @@
 </template>
 
 <script setup lang="ts">
+import { useEscapeKey } from '@/composables/useEscapeKey'
 import ColorPicker from '@ui/ColorPicker.vue'
 import { useSettingsStore } from '@/stores/settings'
 import { getGlobalSettings, saveGlobalSettings, getAppInfo, openExternalLink } from '@/api'
@@ -368,6 +369,7 @@ function resetSettings() {
 function close() {
   emit('update:modelValue', false)
 }
+useEscapeKey(() => props.modelValue, close)
 </script>
 
 <style scoped lang="scss">

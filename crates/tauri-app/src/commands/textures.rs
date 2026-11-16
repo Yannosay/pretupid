@@ -23,28 +23,56 @@ fn is_valid_texture_name(name: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
 }
 
+const BLOCK_TEXTURE_DIR: &str = "assets/minecraft/textures/block/";
+const PROBE_TEXTURE: &str = "assets/minecraft/textures/block/stone.png";
+
+static TEXTURE_INDEX: Mutex<Option<(PathBuf, Vec<String>)>> = Mutex::const_new(None);
+
+fn client_jars_newest_first(versions_dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(versions_dir) else {
+        return Vec::new();
+    };
+    let mut jars: Vec<(SystemTime, PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let id = entry.file_name().to_string_lossy().to_string();
+            let jar = entry.path().join(format!("{id}.jar"));
+            let metadata = std::fs::metadata(&jar).ok()?;
+            metadata
+                .is_file()
+                .then(|| (metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH), jar))
+        })
+        .collect();
+    jars.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
+    jars.into_iter().map(|(_, jar)| jar).collect()
+}
+
+fn has_block_textures(jar: &Path) -> bool {
+    std::fs::File::open(jar)
+        .ok()
+        .and_then(|file| zip::ZipArchive::new(file).ok())
+        .is_some_and(|mut archive| archive.by_name(PROBE_TEXTURE).is_ok())
+}
+
 fn newest_client_jar(versions_dir: &Path) -> Option<PathBuf> {
-    let entries = std::fs::read_dir(versions_dir).ok()?;
-    let mut best: Option<(SystemTime, PathBuf)> = None;
-    for entry in entries.flatten() {
-        let id = entry.file_name().to_string_lossy().to_string();
-        let jar = entry.path().join(format!("{id}.jar"));
-        let Ok(metadata) = std::fs::metadata(&jar) else {
-            continue;
-        };
-        if !metadata.is_file() {
-            continue;
-        }
-        let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
-        let newer = match &best {
-            Some((time, _)) => modified > *time,
-            None => true,
-        };
-        if newer {
-            best = Some((modified, jar));
-        }
-    }
-    best.map(|(_, jar)| jar)
+    client_jars_newest_first(versions_dir)
+        .into_iter()
+        .find(|jar| has_block_textures(jar))
+}
+
+fn texture_names(jar: &Path) -> Result<Vec<String>, String> {
+    let file = std::fs::File::open(jar).map_err(|e| e.to_string())?;
+    let archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+    let mut names: Vec<String> = archive
+        .file_names()
+        .filter_map(|entry| entry.strip_prefix(BLOCK_TEXTURE_DIR))
+        .filter_map(|rest| rest.strip_suffix(".png"))
+        .filter(|name| is_valid_texture_name(name))
+        .map(str::to_string)
+        .collect();
+    names.sort_unstable();
+    names.dedup();
+    Ok(names)
 }
 
 fn extract_missing(jar: &Path, cache_dir: &Path, names: &[String]) -> Result<(), String> {
@@ -52,7 +80,7 @@ fn extract_missing(jar: &Path, cache_dir: &Path, names: &[String]) -> Result<(),
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
     std::fs::create_dir_all(cache_dir).map_err(|e| e.to_string())?;
     for name in names {
-        let entry_name = format!("assets/minecraft/textures/block/{name}.png");
+        let entry_name = format!("{BLOCK_TEXTURE_DIR}{name}.png");
         let Ok(mut entry) = archive.by_name(&entry_name) else {
             continue;
         };
@@ -81,12 +109,18 @@ fn load_textures(caches_dir: PathBuf, names: Vec<String>) -> HashMap<String, Str
         .cloned()
         .collect();
     if !missing.is_empty() {
-        if let Some(jar) = newest_client_jar(&caches_dir.join("versions")) {
+        for jar in client_jars_newest_first(&caches_dir.join("versions")) {
             if let Err(err) = extract_missing(&jar, &cache_dir, &missing) {
                 tracing::debug!(
                     "could not read block textures from {}: {err}",
                     jar.display()
                 );
+            }
+            if missing
+                .iter()
+                .all(|name| cache_dir.join(format!("{name}.png")).is_file())
+            {
+                break;
             }
         }
     }
@@ -159,4 +193,23 @@ pub async fn get_block_textures(
     tokio::task::spawn_blocking(move || load_textures(caches_dir, names))
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_block_textures(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let Some(jar) = ensure_client_jar(&state).await else {
+        return Ok(Vec::new());
+    };
+    let mut index = TEXTURE_INDEX.lock().await;
+    if let Some((indexed_jar, names)) = index.as_ref() {
+        if *indexed_jar == jar {
+            return Ok(names.clone());
+        }
+    }
+    let source = jar.clone();
+    let names = tokio::task::spawn_blocking(move || texture_names(&source))
+        .await
+        .map_err(|e| e.to_string())??;
+    *index = Some((jar, names.clone()));
+    Ok(names)
 }
