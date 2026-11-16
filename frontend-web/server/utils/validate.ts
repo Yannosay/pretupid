@@ -22,13 +22,13 @@ export interface Equipped {
   cape: string | null
   trail: string | null
   hat: string | null
-  boots: string | null
+  back: string | null
   pet: string | null
 }
 
 export const HAT_IDS = ['top_hat', 'crown', 'halo', 'party_hat', 'wizard_hat', 'cat_ears', 'propeller_cap', 'headphones'] as const
-export const BOOT_IDS = ['sneakers', 'cowboy_boots', 'flame_boots', 'frost_boots', 'gold_boots'] as const
-export const PET_IDS = ['parrot_red', 'parrot_blue', 'parrot_green', 'parrot_cyan', 'parrot_gray'] as const
+export const BACK_IDS = ['angel_wings', 'dragon_wings', 'butterfly_wings', 'knight_shield', 'jetpack'] as const
+export const PET_IDS = ['ghost', 'penguin', 'owl', 'drone'] as const
 
 function pickAllowed<T extends string>(value: unknown, allowed: readonly T[]): T | null {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : null
@@ -88,7 +88,7 @@ export function sanitizeEquipped(input: unknown): Equipped {
     cape = raw.cape
   }
   const trail = isCosmeticId(raw.trail) ? raw.trail : null
-  return { cape, trail, hat: pickAllowed(raw.hat, HAT_IDS), boots: pickAllowed(raw.boots, BOOT_IDS), pet: pickAllowed(raw.pet, PET_IDS) }
+  return { cape, trail, hat: pickAllowed(raw.hat, HAT_IDS), back: pickAllowed(raw.back, BACK_IDS), pet: pickAllowed(raw.pet, PET_IDS) }
 }
 
 export function parseJsonColumn<T>(value: unknown, fallback: T): T {

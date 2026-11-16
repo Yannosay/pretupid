@@ -5,7 +5,8 @@ export const CLIENT_MODULE_IDS = [
   'session', 'reach', 'combo', 'saturation', 'item_counter', 'light_level', 'dynamic_fps', 'entity_culling',
   'particle_limiter', 'fps_boost', 'zoom', 'freelook', 'no_hurt_cam', 'low_fire', 'clear_weather', 'motion_blur', 'fullbright',
   'crosshair', 'toggle_sprint', 'death_coordinates', 'durability_alert', 'chat_timestamps', 'chat_macros',
-  'low_health_warning', 'tab_ping', 'own_nametag'
+  'low_health_warning', 'tab_ping', 'own_nametag', 'biome', 'day', 'look_at', 'waypoints', 'compact_chat', 'nick_hider',
+  'block_outline'
 ] as const
 
 const PATTERN = /^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/

@@ -25,7 +25,7 @@ export interface PublicProfile {
   cape: { url: string; sha256: string } | null
   trail: string | null
   hat: string | null
-  boots: string | null
+  back: string | null
   pet: string | null
   emote: { id: string; age: number } | null
 }
@@ -88,7 +88,7 @@ export async function publicProfiles(event: H3Event, uuids: string[]): Promise<R
       cape,
       trail: equipped.trail && trails.has(equipped.trail) ? equipped.trail : null,
       hat: equipped.hat,
-      boots: equipped.boots,
+      back: equipped.back,
       pet: equipped.pet,
       emote: row.emote_id && emotes.has(row.emote_id) && emoteAge <= EMOTE_WINDOW_SECONDS ? { id: row.emote_id, age: emoteAge } : null
     }

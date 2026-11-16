@@ -1,24 +1,17 @@
-const SESSION_SERVER = 'https://sessionserver.mojang.com/session/minecraft/hasJoined'
-
 export default defineEventHandler(async (event) => {
   noStore(event)
   await rateLimit(event, `verify:${clientIp(event)}`, 30, 600)
-  const body = await readJson<{ challengeId: unknown; name: unknown }>(event)
+  const body = await readJson<{ challengeId: unknown; profileKey: Partial<ProfileKeyProof>; textures: Partial<SignedTextures> }>(event, 16384)
   const challenge = await verifyToken(event, body.challengeId, 'challenge')
-  if (!challenge || !challenge.serverId || !isUuid(challenge.sub) || !isPlayerName(challenge.name) || body.name !== challenge.name) {
+  if (!challenge || !challenge.serverId || !isUuid(challenge.sub)) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid or expired challenge' })
   }
-  const url = `${SESSION_SERVER}?username=${encodeURIComponent(challenge.name)}&serverId=${encodeURIComponent(challenge.serverId)}`
-  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
-  if (response.status !== 200) {
+  const uuid = challenge.sub
+  const ownsKey = await verifyProfileKey(uuid, challenge.serverId, body.profileKey)
+  const name = ownsKey ? await verifiedProfileName(uuid, body.textures) : null
+  if (!ownsKey || !name) {
     throw createError({ statusCode: 403, statusMessage: 'Account could not be verified' })
   }
-  const profile = (await response.json()) as { id?: unknown; name?: unknown }
-  const uuid = typeof profile.id === 'string' ? dashedUuid(profile.id) : null
-  if (uuid !== challenge.sub) {
-    throw createError({ statusCode: 403, statusMessage: 'Account could not be verified' })
-  }
-  const name = isPlayerName(profile.name) ? profile.name : challenge.name
   const now = nowSeconds()
   const existing = await db(event).prepare('SELECT banned FROM players WHERE uuid = ?').bind(uuid).first<{ banned: number }>()
   if (existing?.banned) {

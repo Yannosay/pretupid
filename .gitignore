@@ -22,6 +22,7 @@ edit.ps1
 project-context-export.txt
 context-export/
 frontend-web/.wrangler/
+frontend-web/realtime/.wrangler/
 
 .dev.vars
 frontend-web/.dev.vars
