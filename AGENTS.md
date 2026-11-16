@@ -10,6 +10,9 @@ Rules for anyone, human or AI agent, changing this repository. `DEVELOPMENT.md` 
 - Every claim on the website, in the launcher or in a README must match a shipped feature. A maintainer will most likely review some texts and rewrite some other. Update the copy in the same change as the feature.
 - Keep each file's existing line endings. Many files use CRLF; rewriting them as LF produces whole-file diffs.
 - Never commit secrets, `.dev.vars`, `todo.txt`, `run/` folders or build output.
+- When pushing, full release (Latest) the version in GitHub releases, so that user's can actually access it via website or GitHub (version tag should not hold 'client' prefix as this would be wrong)
+
+Tags should be named like this: `v[version]`, release should contain promotion for the new version and what's new. These should be named like this: `Pretupid v[version]` and must contain client mod (.jar), full launcher (Windows, Mac, Linux) and source.
 
 ## Project map
 
