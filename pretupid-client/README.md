@@ -12,10 +12,10 @@ A Fabric client mod for Minecraft 26.3.
 - **Mod menu** (Right Shift or `/pretupid`): modules with search, favorites and per-module settings, profiles that switch per server, and a mod manager.
 - **Quick menu** (hold G): toggle your starred modules, jump to the HUD editor, emotes or the benchmark. Release over a tile to toggle it, or tap G to keep the menu open.
 - **HUD editor:** drag, resize, snap, nudge with the arrow keys, and remove widgets with the trash button or the Delete key.
-- **Modules:** HUD widgets, performance tools, zoom, Freelook (hold Left Alt), a custom crosshair designer with live preview, toggle sprint, chat tools and more. Zoom is on by default; everything else starts off.
+- **Modules:** HUD widgets, performance tools, zoom, Freelook (hold Left Alt), a custom crosshair designer with live preview, a block outline editor, waypoints (`/pretupid waypoint add|remove|list`), toggle sprint, Compact Chat, Nick Hider and more. Zoom is on by default; everything else starts off.
 - **Performance:** Entity Culling skips entities and block entities that are far away or fully hidden behind solid blocks (checked on the render thread within a fixed time budget; players and named entities are always drawn). Particle Limiter, FPS Boost and Dynamic FPS add lighter settings and a lower frame rate in the background.
 - **Benchmark:** `/pretupid benchmark` measures average FPS and 1% lows for 10 seconds with the performance modules off, then 10 seconds with them on, with the FPS limit and VSync off during the test. Your settings are restored afterwards.
-- **Cosmetics:** the Pretupid badge, animated name colors, name motion (wave, bounce, float, hop, shake), capes (upload your own or pick an official one), hats, boots, shoulder pets, trails and emotes. Other Pretupid players see them; new official capes, trails and emotes arrive without a client update.
+- **Cosmetics:** the Pretupid badge, animated name colors, name motion (wave, bounce, float, hop, shake), capes (upload your own or pick an official one), hats, animated wings, a knight shield and a jetpack for your back, floating pets, trails and emotes. Other Pretupid players see them; new official capes, trails and emotes arrive without a client update.
 - **Emotes:** hold the emote wheel key, point at an emote and release, or give any emote its own hotkey in *Cosmetics → Emotes*.
 - **Skins:** a skin library with Classic/Slim detection, your current account skin, and one-click apply that also updates your own model right away.
 - **Friends:** friend requests, chat, see which server friends play on, and invite friends to your server or open your world to friends only.
@@ -30,7 +30,7 @@ Servers can pause Pretupid Client modules by sending a `pretupid:rules` play pay
 
 ## Online services and privacy
 
-Online features use Pretupid services. Your account is verified the same way a Minecraft server verifies it; your access token never leaves your computer. Pretupid stores your player ID and name, your cosmetic choices, friends and friend messages. Messages are kept for 30 days. Everything can be switched off in *Settings → Online & social*, and the client then works fully offline.
+Online features use Pretupid services. Your account is verified with the chat signing key Mojang issues to your account and your Mojang-signed profile; your access token never leaves your computer. Pretupid stores your player ID and name, your cosmetic choices, friends and friend messages. Messages are kept for 30 days. Everything can be switched off in *Settings → Online & social*, and the client then works fully offline.
 
 ## Building
 

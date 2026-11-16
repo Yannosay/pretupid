@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -20,9 +21,11 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.world.InteractionResult;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.config.ConfigStore;
+import net.pretupid.client.cosmetic.CosmeticLayer;
 import net.pretupid.client.hud.HudLayer;
 import net.pretupid.client.hud.Notifications;
 import net.pretupid.client.input.ClickTracker;
@@ -30,6 +33,13 @@ import net.pretupid.client.input.CombatTracker;
 import net.pretupid.client.input.Keybinds;
 import net.pretupid.client.module.ModuleManager;
 import net.pretupid.client.module.hud.ArmorHud;
+import net.pretupid.client.module.hud.BiomeHud;
+import net.pretupid.client.module.hud.DayHud;
+import net.pretupid.client.module.hud.LookAtHud;
+import net.pretupid.client.module.utility.CompactChatModule;
+import net.pretupid.client.module.utility.NickHiderModule;
+import net.pretupid.client.module.utility.WaypointsModule;
+import net.pretupid.client.module.visual.BlockOutlineModule;
 import net.pretupid.client.module.hud.ClockHud;
 import net.pretupid.client.module.hud.ComboHud;
 import net.pretupid.client.module.hud.ItemCounterHud;
@@ -151,6 +161,11 @@ public final class PretupidClient implements ClientModInitializer {
 		keybinds.register();
 		new HudLayer(this).register();
 		ScreenIntegration.register(this);
+		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
+			if (renderer instanceof AvatarRenderer<?> avatarRenderer) {
+				helper.register(new CosmeticLayer(avatarRenderer));
+			}
+		});
 		registerEvents();
 		registerCommands();
 		LOGGER.info("Pretupid Client {} initialized with {} modules{}", PretupidInfo.version(), modules.all().size(),
@@ -176,6 +191,9 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new SaturationHud());
 		modules.register(new ItemCounterHud());
 		modules.register(new LightLevelHud());
+		modules.register(new BiomeHud());
+		modules.register(new DayHud());
+		modules.register(new LookAtHud());
 		modules.register(new DynamicFpsModule());
 		modules.register(new EntityCullingModule());
 		modules.register(new ParticleLimiterModule());
@@ -188,6 +206,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new MotionBlurModule());
 		modules.register(new FullbrightModule());
 		modules.register(new CrosshairModule());
+		modules.register(new BlockOutlineModule());
 		modules.register(new ToggleSprintModule());
 		modules.register(new DeathCoordinatesModule());
 		modules.register(new DurabilityAlertModule());
@@ -196,6 +215,9 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new LowHealthWarningModule());
 		modules.register(new TabPingModule());
 		modules.register(new OwnNametagModule());
+		modules.register(new WaypointsModule());
+		modules.register(new CompactChatModule());
+		modules.register(new NickHiderModule());
 	}
 
 	private void registerEvents() {
@@ -203,6 +225,7 @@ public final class PretupidClient implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(minecraft -> {
 			config.shutdown();
 			realtime.disconnect();
+			hosting.shutdown();
 			presence.shutdown();
 			api.shutdown();
 		});
@@ -251,6 +274,15 @@ public final class PretupidClient implements ClientModInitializer {
 		});
 	}
 
+	private WaypointsModule waypoints() {
+		return modules.get(WaypointsModule.class);
+	}
+
+	private static int waypointFeedback(net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource source, net.minecraft.network.chat.Component message) {
+		source.sendFeedback(message);
+		return 1;
+	}
+
 	private void registerCommands() {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
 			ClientCommands.literal("pretupid")
@@ -266,6 +298,21 @@ public final class PretupidClient implements ClientModInitializer {
 						}
 						return 1;
 					}))
+				.then(ClientCommands.literal("waypoint")
+					.then(ClientCommands.literal("add")
+						.then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+							.executes(context -> waypointFeedback(context.getSource(), waypoints().add(Minecraft.getInstance(),
+								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
+					.then(ClientCommands.literal("remove")
+						.then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+							.suggests((context, builder) -> {
+								waypoints().names(Minecraft.getInstance()).forEach(builder::suggest);
+								return builder.buildFuture();
+							})
+							.executes(context -> waypointFeedback(context.getSource(), waypoints().remove(Minecraft.getInstance(),
+								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
+					.then(ClientCommands.literal("list")
+						.executes(context -> waypointFeedback(context.getSource(), waypoints().list(Minecraft.getInstance())))))
 				.then(ClientCommands.literal("reportcape")
 					.then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
 						.executes(context -> reportCape(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player")))))

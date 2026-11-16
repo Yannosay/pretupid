@@ -127,39 +127,6 @@ HATS = {
     ],
 }
 
-BOOTS = {
-    "sneakers": ("white", "red", "white"),
-    "cowboy_boots": ("fur", "orange", "gold_dark"),
-    "flame_boots": ("red", "orange", "yellow"),
-    "frost_boots": ("cyan", "white", "sapphire"),
-    "gold_boots": ("gold", "gold_dark", "halo"),
-}
-
-
-def boot_texture(base, accent, trim):
-    image = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
-
-    def put(x, y, color):
-        image.putpixel((x, y), PALETTE[color] + (255,))
-
-    for x in range(8, 12):
-        for y in range(16, 20):
-            put(x, y, accent)
-    for face in range(4):
-        x0 = face * 4
-        for x in range(x0, x0 + 4):
-            for y in range(25, 32):
-                color = base
-                if y == 25:
-                    color = trim
-                elif y == 31:
-                    color = accent
-                elif face == 1 and y in (28, 29) and x in (x0 + 1, x0 + 2):
-                    color = accent
-                put(x, y, color)
-    return image
-
-
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -175,8 +142,3 @@ for name, elements in HATS.items():
     })
     write_json(ROOT / f"items/hat/{name}.json", {"model": {"type": "minecraft:model", "model": f"pretupid:item/hat/{name}"}})
 
-for name, colors in BOOTS.items():
-    texture = ROOT / f"textures/entity/equipment/humanoid/{name}.png"
-    texture.parent.mkdir(parents=True, exist_ok=True)
-    boot_texture(*colors).save(texture)
-    write_json(ROOT / f"equipment/{name}.json", {"layers": {"humanoid": [{"texture": f"pretupid:{name}"}]}})

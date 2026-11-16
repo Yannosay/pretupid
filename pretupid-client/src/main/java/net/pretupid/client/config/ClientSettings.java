@@ -52,7 +52,7 @@ public final class ClientSettings {
 	public final TextSetting cape = add(new TextSetting("cape", "", 48));
 	public final TextSetting trail = add(new TextSetting("trail", "", 32));
 	public final TextSetting hat = add(new TextSetting("hat", "", 32));
-	public final TextSetting boots = add(new TextSetting("boots", "", 32));
+	public final TextSetting back = add(new TextSetting("back", "", 32));
 	public final TextSetting pet = add(new TextSetting("pet", "", 32));
 	public final TextSetting emoteWheel = add(new TextSetting("emote_wheel", "", 300));
 	public final TextSetting emoteKeys = add(new TextSetting("emote_keys", "", 600));

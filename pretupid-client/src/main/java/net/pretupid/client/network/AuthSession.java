@@ -1,11 +1,19 @@
 package net.pretupid.client.network;
 
 import com.google.gson.JsonObject;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.services.ProfileResult;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
+import net.minecraft.util.Signer;
+import net.minecraft.util.Util;
+import net.minecraft.world.entity.player.ProfileKeyPair;
+import net.minecraft.world.entity.player.ProfilePublicKey;
 import net.pretupid.client.PretupidClient;
 
 public final class AuthSession {
@@ -13,6 +21,7 @@ public final class AuthSession {
 		DISABLED,
 		CONNECTING,
 		ONLINE,
+		NO_ACCOUNT,
 		AUTH_FAILED,
 		UNREACHABLE,
 		SUSPENDED
@@ -101,11 +110,12 @@ public final class AuthSession {
 
 	private void authenticate(Minecraft minecraft) {
 		User user = minecraft.getUser();
-		String accessToken = user.getAccessToken();
 		UUID uuid = user.getProfileId();
 		String name = user.getName();
-		if (uuid == null || accessToken == null || accessToken.length() < 16 || uuid.version() != 4) {
-			status = Status.AUTH_FAILED;
+		String accessToken = user.getAccessToken();
+		if (uuid == null || uuid.version() != 4 || accessToken == null || accessToken.length() < 16) {
+			status = Status.NO_ACCOUNT;
+			lastError = null;
 			backoffUntil = System.currentTimeMillis() + AUTH_BACKOFF_MS;
 			return;
 		}
@@ -113,26 +123,22 @@ public final class AuthSession {
 		if (status != Status.ONLINE) {
 			status = Status.CONNECTING;
 		}
+		CompletableFuture<ProfileKeyPair> keyPair = minecraft.getProfileKeyPairManager().prepareKeyPair()
+			.thenApply(optional -> optional.orElseThrow(() -> new AccountException("No Mojang profile key")));
+		CompletableFuture<Property> textures = CompletableFuture.supplyAsync(() -> signedTextures(minecraft, uuid), Util.nonCriticalIoPool());
 		JsonObject challengeBody = new JsonObject();
 		challengeBody.addProperty("uuid", uuid.toString());
 		challengeBody.addProperty("name", name);
 		api.json("POST", "/auth/challenge", challengeBody, null)
-			.thenCompose(challenge -> {
-				String challengeId = Json.string(challenge, "challengeId");
-				String serverId = Json.string(challenge, "serverId");
-				if (challengeId == null || serverId == null || serverId.length() > 64) {
-					throw new IllegalStateException("Malformed challenge");
-				}
-				try {
-					minecraft.services().sessionService().joinServer(uuid, accessToken, serverId);
-				} catch (Exception exception) {
-					throw new AccountException(exception);
-				}
-				JsonObject verifyBody = new JsonObject();
-				verifyBody.addProperty("challengeId", challengeId);
-				verifyBody.addProperty("name", name);
-				return api.json("POST", "/auth/verify", verifyBody, null);
+			.thenCombine(keyPair, (challenge, pair) -> verifyBody(challenge, pair, uuid))
+			.thenCombine(textures, (body, property) -> {
+				JsonObject texturesJson = new JsonObject();
+				texturesJson.addProperty("value", property.value());
+				texturesJson.addProperty("signature", property.signature());
+				body.add("textures", texturesJson);
+				return body;
 			})
+			.thenCompose(body -> api.json("POST", "/auth/verify", body, null))
 			.whenComplete((session, error) -> minecraft.execute(() -> {
 				authInFlight = false;
 				if (error != null) {
@@ -151,6 +157,41 @@ public final class AuthSession {
 				lastError = null;
 				status = Status.ONLINE;
 			}));
+	}
+
+	private static JsonObject verifyBody(JsonObject challenge, ProfileKeyPair pair, UUID uuid) {
+		String challengeId = Json.string(challenge, "challengeId");
+		String serverId = Json.string(challenge, "serverId");
+		if (challengeId == null || serverId == null || serverId.length() > 64) {
+			throw new IllegalStateException("Malformed challenge");
+		}
+		ProfilePublicKey.Data key = pair.publicKey().data();
+		byte[] payload = ("pretupid-auth:" + serverId + ":" + uuid).getBytes(StandardCharsets.UTF_8);
+		byte[] signature = Signer.from(pair.privateKey(), "SHA256withRSA").sign(payload);
+		if (signature == null) {
+			throw new AccountException("Profile key could not sign");
+		}
+		Base64.Encoder base64 = Base64.getEncoder();
+		JsonObject profileKey = new JsonObject();
+		profileKey.addProperty("publicKey", base64.encodeToString(key.key().getEncoded()));
+		profileKey.addProperty("expiresAt", key.expiresAt().toEpochMilli());
+		profileKey.addProperty("keySignature", base64.encodeToString(key.keySignature()));
+		profileKey.addProperty("signature", base64.encodeToString(signature));
+		JsonObject body = new JsonObject();
+		body.addProperty("challengeId", challengeId);
+		body.add("profileKey", profileKey);
+		return body;
+	}
+
+	private static Property signedTextures(Minecraft minecraft, UUID uuid) {
+		ProfileResult result = minecraft.services().sessionService().fetchProfile(uuid, true);
+		if (result == null) {
+			throw new IllegalStateException("Profile lookup failed");
+		}
+		return result.profile().properties().get("textures").stream()
+			.filter(Property::hasSignature)
+			.findFirst()
+			.orElseThrow(() -> new IllegalStateException("Profile has no signed textures"));
 	}
 
 	private void handleFailure(Throwable error) {
@@ -176,8 +217,8 @@ public final class AuthSession {
 	}
 
 	private static final class AccountException extends RuntimeException {
-		private AccountException(Throwable cause) {
-			super(cause.getMessage(), cause);
+		private AccountException(String message) {
+			super(message);
 		}
 	}
 }

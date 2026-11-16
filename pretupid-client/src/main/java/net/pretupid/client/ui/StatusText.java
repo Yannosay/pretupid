@@ -15,6 +15,7 @@ public final class StatusText {
 				? Component.translatable("pretupid.presence.online_count", client.presence().onlineUsers())
 				: Component.translatable("pretupid.presence.online");
 			case CONNECTING -> Component.translatable("pretupid.presence.connecting");
+			case NO_ACCOUNT -> Component.translatable("pretupid.presence.no_account");
 			case AUTH_FAILED -> Component.translatable("pretupid.presence.offline_account");
 			case UNREACHABLE -> Component.translatable("pretupid.presence.unreachable");
 			case SUSPENDED -> Component.translatable("pretupid.presence.suspended");

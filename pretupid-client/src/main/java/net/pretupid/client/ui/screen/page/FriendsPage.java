@@ -18,6 +18,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.network.ApiClient;
+import net.pretupid.client.social.LocalHosting;
 import net.pretupid.client.social.SocialService;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.ScrollState;
@@ -272,7 +273,7 @@ public final class FriendsPage implements MenuPage {
 		if (friend.server() != null) {
 			buttonX -= 40;
 			Widgets.button(ui, "friends.join", buttonX, y + 3, 38, 16, Component.translatable("pretupid.friends.join"), Widgets.ButtonStyle.PRIMARY,
-				() -> confirmJoin(friend.server(), friend.name(), false));
+				() -> confirmJoin(friend.server(), friend.name(), "", false));
 		}
 		int inputHeight = 18;
 		int chatY = y + 26;
@@ -329,11 +330,13 @@ public final class FriendsPage implements MenuPage {
 		Draw.border(g, x, y, w, height, 0x8060A5FA);
 		Component title = mine ? Component.translatable("pretupid.friends.invite_sent") : Component.translatable("pretupid.friends.invite_received", friend.name());
 		Draw.text(g, font, Draw.ellipsize(font, title, w - 70), x + 6, y + 4, Theme.TEXT);
-		String target = invite.label().isEmpty() ? invite.address() : invite.label() + " (" + invite.address() + ")";
+		boolean relayed = LocalHosting.tunnelHost(invite.address()).isPresent();
+		String target = invite.label().isEmpty() ? (relayed ? friend.name() : invite.address())
+			: relayed ? invite.label() : invite.label() + " (" + invite.address() + ")";
 		Draw.text(g, font, Draw.ellipsize(font, Component.literal(target), w - 70), x + 6, y + 15, Theme.TEXT_MUTED);
 		if (!mine) {
 			Widgets.button(ui, "friends.invite.join." + entry.id(), x + w - 58, y + 5, 52, 16, Component.translatable("pretupid.friends.join"), Widgets.ButtonStyle.PRIMARY,
-				() -> confirmJoin(invite.address(), friend.name(), invite.lan()));
+				() -> confirmJoin(invite.address(), friend.name(), invite.label(), invite.lan()));
 		}
 	}
 
@@ -348,14 +351,20 @@ public final class FriendsPage implements MenuPage {
 		Minecraft minecraft = Minecraft.getInstance();
 		SocialService social = social();
 		if (minecraft.getSingleplayerServer() != null) {
-			Optional<String> address = PretupidClient.get().hosting().openToFriends();
-			if (address.isEmpty()) {
-				show(Component.translatable("pretupid.friends.host_failed"), true);
-				return;
-			}
-			PretupidClient.get().hosting().invite(friend.uuid());
+			LocalHosting hosting = PretupidClient.get().hosting();
+			hosting.invite(friend.uuid());
 			String label = minecraft.getSingleplayerServer().getWorldData().getLevelName();
-			track(social.sendInvite(friend.uuid(), address.get(), label, true), Component.translatable("pretupid.friends.invite_sent_lan", friend.name()));
+			show(Component.translatable("pretupid.friends.hosting"), false);
+			hosting.openToFriends().whenComplete((share, error) -> Minecraft.getInstance().execute(() -> {
+				if (error != null) {
+					show(Component.translatable("pretupid.friends.host_failed"), true);
+					return;
+				}
+				Component sent = share.lan()
+					? Component.translatable("pretupid.friends.invite_sent_lan", friend.name())
+					: Component.translatable("pretupid.friends.invite_sent_world", friend.name());
+				track(social.sendInvite(friend.uuid(), share.address(), label, share.lan()), sent);
+			}));
 			return;
 		}
 		ServerData server = minecraft.getCurrentServer();
@@ -366,13 +375,16 @@ public final class FriendsPage implements MenuPage {
 		track(social.sendInvite(friend.uuid(), server.ip, server.name, false), Component.translatable("pretupid.friends.invite_sent_to", friend.name()));
 	}
 
-	private void confirmJoin(String address, String friendName, boolean lan) {
+	private void confirmJoin(String address, String friendName, String label, boolean lan) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (!ServerAddress.isValidAddress(address)) {
+		Optional<UUID> tunnelHost = LocalHosting.tunnelHost(address);
+		if (tunnelHost.isEmpty() && !ServerAddress.isValidAddress(address)) {
 			show(Component.translatable("pretupid.friends.invalid_address"), true);
 			return;
 		}
-		Component body = Component.translatable(lan ? "pretupid.friends.join_confirm_lan" : "pretupid.friends.join_confirm", friendName, address);
+		Component body = tunnelHost.isPresent()
+			? Component.translatable("pretupid.friends.join_confirm_world", friendName, label.isEmpty() ? friendName : label)
+			: Component.translatable(lan ? "pretupid.friends.join_confirm_lan" : "pretupid.friends.join_confirm", friendName, address);
 		minecraft.gui.setScreen(new ConfirmScreen(accepted -> {
 			if (!accepted) {
 				minecraft.gui.setScreen(screen);
@@ -382,8 +394,18 @@ public final class FriendsPage implements MenuPage {
 				minecraft.level.disconnect(Component.translatable("pretupid.friends.joining"));
 				minecraft.disconnectWithProgressScreen();
 			}
-			ServerData data = new ServerData(friendName, address, lan ? ServerData.Type.LAN : ServerData.Type.OTHER);
-			ConnectScreen.startConnecting(new TitleScreen(), minecraft, ServerAddress.parseString(address), data, false, null);
+			String target = address;
+			if (tunnelHost.isPresent()) {
+				try {
+					target = PretupidClient.get().hosting().joinThroughTunnel(tunnelHost.get());
+				} catch (java.io.IOException exception) {
+					minecraft.gui.setScreen(screen);
+					show(Component.translatable("pretupid.friends.join_failed"), true);
+					return;
+				}
+			}
+			ServerData data = new ServerData(friendName, target, lan ? ServerData.Type.LAN : ServerData.Type.OTHER);
+			ConnectScreen.startConnecting(new TitleScreen(), minecraft, ServerAddress.parseString(target), data, false, null);
 		}, Component.translatable("pretupid.friends.join_title"), body));
 	}
 

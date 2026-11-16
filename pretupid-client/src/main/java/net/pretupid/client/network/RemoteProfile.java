@@ -29,7 +29,7 @@ public record RemoteProfile(NametagStyle style, CapeRef cape, String trail, Emot
 		}
 		Wearables.Loadout wearables = new Wearables.Loadout(
 			Wearables.validHat(Json.string(object, "hat")),
-			Wearables.validBoots(Json.string(object, "boots")),
+			Wearables.validBack(Json.string(object, "back")),
 			Wearables.validPet(Json.string(object, "pet")));
 		return Optional.of(new RemoteProfile(style.get(), cape(Json.object(object, "cape")), id(Json.string(object, "trail")), emote(Json.object(object, "emote"), receivedAt), wearables));
 	}

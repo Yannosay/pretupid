@@ -5,6 +5,7 @@ import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.module.utility.NickHiderModule;
 import net.pretupid.client.network.RemoteProfile;
 
 public final class Nametags {
@@ -39,9 +40,22 @@ public final class Nametags {
 		return isSelf(uuid) || client.presence().profileOf(uuid).isPresent();
 	}
 
+	private NickHiderModule nickHider(UUID uuid) {
+		if (!isSelf(uuid)) {
+			return null;
+		}
+		NickHiderModule module = client.modules().get(NickHiderModule.class);
+		return module.isEnabled() ? module : null;
+	}
+
 	public Component decorateNametag(UUID uuid, String name, Component original) {
 		if (original == null) {
 			return null;
+		}
+		NickHiderModule hider = nickHider(uuid);
+		if (hider != null) {
+			original = hider.hide(original);
+			name = hider.alias();
 		}
 		Optional<NametagStyle> style = styleFor(uuid);
 		if (style.isEmpty()) {
@@ -51,6 +65,11 @@ public final class Nametags {
 	}
 
 	public Component decorateTabName(UUID uuid, String name, Component original) {
+		NickHiderModule hider = nickHider(uuid);
+		if (hider != null && original != null) {
+			original = hider.hide(original);
+			name = hider.alias();
+		}
 		if (original == null || !client.settings().tabListBadges.enabled()) {
 			return original;
 		}

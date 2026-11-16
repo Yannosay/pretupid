@@ -13,14 +13,6 @@ import net.pretupid.client.PretupidClient;
 public final class NametagFormatter {
 	public static final String BADGE_GLYPH = "";
 	public static final FontDescription BADGE_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "badge"));
-	private static final FontDescription[] SHIFT_FONTS = new FontDescription[NameEffect.FONT_COUNT];
-
-	static {
-		for (int i = 0; i < SHIFT_FONTS.length; i++) {
-			SHIFT_FONTS[i] = new FontDescription.Resource(Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "shift_" + i));
-		}
-	}
-
 	private NametagFormatter() {
 	}
 
@@ -81,8 +73,8 @@ public final class NametagFormatter {
 					int color = style.animation().colorAt(nameIndex, name.length(), seconds, style.primary(), style.secondary(), style.speed());
 					charStyle = charStyle.withColor(color & 0xFFFFFF);
 				}
-				if (style.effect().moves() && codePoint < 0x80) {
-					charStyle = charStyle.withFont(SHIFT_FONTS[style.effect().fontIndex(nameIndex, name.length(), seconds, style.speed())]);
+				if (style.effect().moves()) {
+					charStyle = charStyle.withInsertion(style.effect().marker(nameIndex, style.speed()));
 				}
 				result.append(Component.literal(new String(Character.toChars(codePoint))).withStyle(charStyle));
 				i += width;

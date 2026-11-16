@@ -8,30 +8,63 @@ public enum NameEffect {
 	HOP,
 	SHAKE;
 
-	public static final int FONT_COUNT = 7;
-	public static final int REST_INDEX = 1;
+	private static final String MARKER = "\u0000pretupid-fx:";
+	private static final NameEffect[] VALUES = values();
 
 	public boolean moves() {
 		return this != NONE;
 	}
 
-	public int fontIndex(int index, int length, float seconds, float speed) {
+	public String marker(int index, float speed) {
+		return MARKER + ordinal() + ':' + index + ':' + Float.floatToRawIntBits(speed);
+	}
+
+	public float offsetX(int index, float seconds, float speed) {
+		if (this != SHAKE) {
+			return 0f;
+		}
 		float time = seconds * speed;
-		int offset = switch (this) {
-			case NONE -> 0;
-			case WAVE -> (int) Math.floor(1.99f * (float) Math.sin(time * 3.6 - index * 0.55) + 0.5f);
-			case BOUNCE -> (int) Math.floor(1f - 2.99f * (float) Math.abs(Math.sin(time * 3.2)) + 0.5f);
-			case FLOAT -> (int) Math.floor(1.49f * (float) Math.sin(time * 1.6) + 0.5f);
+		return 0.45f * (float) (Math.sin(time * 29.0 + index * 2.3) * 0.6 + Math.sin(time * 17.0 + index * 5.1) * 0.4);
+	}
+
+	public float offsetY(int index, float seconds, float speed) {
+		float time = seconds * speed;
+		return switch (this) {
+			case NONE -> 0f;
+			case WAVE -> -1.6f * (float) Math.sin(time * 3.6 - index * 0.55);
+			case BOUNCE -> -2.6f * (float) Math.abs(Math.sin(time * 3.2)) + 1f;
+			case FLOAT -> -1.4f * (float) Math.sin(time * 1.6);
 			case HOP -> {
 				double phase = Math.sin(time * 4.5 - index * 0.75);
-				yield 1 - (phase > 0 ? Math.round((float) Math.pow(phase, 4) * 2f) : 0);
+				yield phase > 0 ? -2.4f * (float) (phase * phase * phase) + 0.5f : 0.5f;
 			}
-			case SHAKE -> {
-				long bucket = (long) Math.floor(time * 14f);
-				long hash = (bucket * 31L + index * 17L) * 0x9E3779B97F4A7C15L;
-				yield (int) Math.floorMod(hash >>> 33, 3L) - 1;
-			}
+			case SHAKE -> 0.45f * (float) (Math.sin(time * 23.0 + index * 3.7) * 0.6 + Math.sin(time * 13.0 + index * 1.9) * 0.4);
 		};
-		return Math.clamp(REST_INDEX + offset, 0, FONT_COUNT - 1);
+	}
+
+	public static Offset decode(String insertion, float seconds) {
+		if (insertion == null || !insertion.startsWith(MARKER)) {
+			return null;
+		}
+		int first = insertion.indexOf(':', MARKER.length());
+		int second = first < 0 ? -1 : insertion.indexOf(':', first + 1);
+		if (second < 0) {
+			return null;
+		}
+		try {
+			int ordinal = Integer.parseInt(insertion, MARKER.length(), first, 10);
+			int index = Integer.parseInt(insertion, first + 1, second, 10);
+			float speed = Float.intBitsToFloat(Integer.parseInt(insertion, second + 1, insertion.length(), 10));
+			if (ordinal < 0 || ordinal >= VALUES.length || !Float.isFinite(speed)) {
+				return null;
+			}
+			NameEffect effect = VALUES[ordinal];
+			return new Offset(effect.offsetX(index, seconds, speed), effect.offsetY(index, seconds, speed));
+		} catch (NumberFormatException exception) {
+			return null;
+		}
+	}
+
+	public record Offset(float x, float y) {
 	}
 }

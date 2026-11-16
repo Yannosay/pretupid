@@ -128,8 +128,8 @@ public final class PresenceService {
 		if (wearables.hat() != null) {
 			equipped.addProperty("hat", wearables.hat());
 		}
-		if (wearables.boots() != null) {
-			equipped.addProperty("boots", wearables.boots());
+		if (wearables.back() != null) {
+			equipped.addProperty("back", wearables.back());
 		}
 		if (wearables.pet() != null) {
 			equipped.addProperty("pet", wearables.pet());

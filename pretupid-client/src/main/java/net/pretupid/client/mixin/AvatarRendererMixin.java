@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.cosmetic.CosmeticStateHolder;
 import net.pretupid.client.cosmetic.EmotePoseHolder;
 import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.module.visual.OwnNametagModule;
@@ -31,6 +32,9 @@ public abstract class AvatarRendererMixin {
 		}
 		if (state instanceof EmotePoseHolder holder) {
 			holder.pretupid$setEmotePose(client.emotes().pose(player.getUUID()));
+		}
+		if (state instanceof CosmeticStateHolder holder) {
+			holder.pretupid$setCosmetics(null, null);
 		}
 		if (state.nameTag != null) {
 			state.nameTag = client.nametags().decorateNametag(player.getUUID(), player.getGameProfile().name(), state.nameTag);

@@ -342,12 +342,12 @@ public final class CosmeticsPage implements MenuPage {
 
 	private void drawWearables(UiContext ui, int x, int y, int w, int h) {
 		ClientSettings settings = PretupidClient.get().settings();
-		int rows = 3 + Wearables.HATS.size() + Wearables.BOOTS.size() + Wearables.PET_ORDER.size();
+		int rows = 3 + Wearables.HATS.size() + Wearables.BACK.size() + Wearables.PETS.size();
 		scroll.begin(ui, "cosmetics.wearables", x, y, w, h, 3 * 16 + rows * 24 + Widgets.ROW_HEIGHT + 12);
 		int rowY = y - scroll.offset();
 		rowY = drawWearableGroup(ui, "hat", Wearables.HATS, settings.hat, x, rowY, w - 6);
-		rowY = drawWearableGroup(ui, "boots", Wearables.BOOTS, settings.boots, x, rowY, w - 6);
-		rowY = drawWearableGroup(ui, "pet", Wearables.PET_ORDER, settings.pet, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "back", Wearables.BACK, settings.back, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "pet", Wearables.PETS, settings.pet, x, rowY, w - 6);
 		Widgets.settingRow(ui, screen, settings.showCosmetics, x, rowY + 4, w - 6);
 		scroll.end(ui, x, y, w, h);
 	}

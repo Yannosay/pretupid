@@ -78,6 +78,11 @@ public final class RealtimeClient {
 		if (minecraft.level == null) {
 			return null;
 		}
+		ServerData current = minecraft.getCurrentServer();
+		var tunnel = PretupidClient.get().hosting().tunnelRoom(current == null ? null : current.ip);
+		if (tunnel.isPresent()) {
+			return hash(tunnel.get());
+		}
 		var hosted = PretupidClient.get().hosting().lanAddress();
 		if (hosted.isPresent()) {
 			return hash("lan:" + hosted.get());

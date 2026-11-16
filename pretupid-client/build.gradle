@@ -115,6 +115,16 @@ def generateBranding = tasks.register("generateBranding", GenerateBranding) {
 
 sourceSets.main.resources.srcDir(generateBranding)
 
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "pretupid-gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
 processResources {
 	def props = [
 		version          : project.version,

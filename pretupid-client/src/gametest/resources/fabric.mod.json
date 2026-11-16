@@ -1,0 +1,14 @@
+{
+	"schemaVersion": 1,
+	"id": "pretupid-gametest",
+	"version": "1.0.0",
+	"name": "Pretupid Client game tests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": ["net.pretupid.client.gametest.PretupidClientGameTest"]
+	},
+	"depends": {
+		"pretupid": "*",
+		"fabric-client-gametest-api-v1": "*"
+	}
+}
