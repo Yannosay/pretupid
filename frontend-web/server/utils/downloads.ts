@@ -51,7 +51,7 @@ export async function latestClientRelease(event: H3Event) {
   const releases = await githubReleases(event)
   let best: { version: string; minecraft: string; url: string } | null = null
   for (const release of releases) {
-    if (release.prerelease || !release.tag_name.startsWith('client-v')) {
+    if (release.prerelease || !/^(client-)?v\d/.test(release.tag_name)) {
       continue
     }
     const manifest = await releaseAssetJson<ClientManifest>(event, release, 'client-manifest.json').catch(() => null)

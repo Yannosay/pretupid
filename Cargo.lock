@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "mc-launch"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "flate2",
  "futures-util",
@@ -2664,7 +2664,7 @@ dependencies = [
 
 [[package]]
 name = "modrinth-client"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "reqwest 0.12.28",
  "serde",
@@ -3441,7 +3441,7 @@ checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
 name = "pretupid"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -3473,7 +3473,7 @@ dependencies = [
 
 [[package]]
 name = "pretupid-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "base64 0.22.1",
  "chacha20poly1305",

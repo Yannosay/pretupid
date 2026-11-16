@@ -37,8 +37,8 @@ Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_
 
 ## Releases
 
-- **Launcher:** bump the version in `crates/tauri-app/tauri.conf.json` and the workspace `Cargo.toml`, then push a `v*` tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
-- **Client:** bump `mod_version` in `pretupid-client/gradle.properties`, then push a `client-v*` tag. The workflow publishes the jar and a `client-manifest.json` with its hashes; the launcher and the in-game updater only install builds that match those hashes.
+- **Every release** ships the launcher and the client together under one `v<version>` tag (no `client-` prefix). Bump the version in `crates/tauri-app/tauri.conf.json`, the workspace `Cargo.toml`, the `package.json` files and `mod_version` in `pretupid-client/gradle.properties`, add release notes to `.github/release-notes/v<version>.md`, then push the tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
+- The same workflow builds the client jar, attaches it with a `client-manifest.json` holding its hashes (the launcher and the in-game updater only install builds that match those hashes), then names the release `Pretupid v<version>`, adds the notes and marks it as the latest release. GitHub attaches the source archives.
 
 ## Assets
 

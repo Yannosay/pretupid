@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const releases = await githubReleases(event)
   let best: { manifest: ClientManifest; release: GithubRelease } | null = null
   for (const release of releases) {
-    if (!release.tag_name.startsWith('client-v')) {
+    if (!/^(client-)?v\d/.test(release.tag_name)) {
       continue
     }
     const manifest = await releaseAssetJson<ClientManifest>(event, release, 'client-manifest.json').catch(() => null)
