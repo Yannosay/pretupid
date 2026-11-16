@@ -72,4 +72,5 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+          tauriScript: npx tauri
           args: --config crates/tauri-app/tauri.conf.json ${{ matrix.args }}
