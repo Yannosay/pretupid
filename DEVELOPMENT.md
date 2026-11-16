@@ -43,7 +43,7 @@ Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_
 ## Assets
 
 - `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.
-- `python scripts/generate-wearables.py` regenerates the hat models and boot textures of Pretupid Client.
+- `python scripts/generate-wearables.py` regenerates the hat models of Pretupid Client. Wings, back items and pets are built in code (`cosmetic/model/CosmeticModels.java`), and their textures are painted when the game loads.
 - `npm run dev:desktop` serves the launcher UI in a browser with a mocked backend (`frontend/src/dev/tauriMock.ts`), which is handy for layout work.
 
 ## Conventions

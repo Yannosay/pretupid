@@ -4,10 +4,10 @@ Rules for anyone, human or AI agent, changing this repository. `DEVELOPMENT.md` 
 
 ## Hard rules
 
-- No comments in code, in any language. Comments the maintainer wrote stay unless they are no longer true.
+- No comments in code (NOTE: This rule applies to only AI agents), in any language unless required by given instructions (e.g. if user writes 'provide helpful comments explaining certain code or todo's in source'). Comments a maintainer wrote stay unless they are no longer true.
 - Never edit `assets/branding/pretupid_logo_512x.png` or `assets/branding/pretupid_logo_full.png`. Derived copies (app icons, favicons, client textures) are generated from them.
-- Do not change the root `README.md` or text the maintainer has rephrased unless asked.
-- Every claim on the website, in the launcher or in a README must match a shipped feature. Update the copy in the same change as the feature.
+- Do not change the root `README.md` or text a maintainer has rephrased unless asked.
+- Every claim on the website, in the launcher or in a README must match a shipped feature. A maintainer will most likely review some texts and rewrite some other. Update the copy in the same change as the feature.
 - Keep each file's existing line endings. Many files use CRLF; rewriting them as LF produces whole-file diffs.
 - Never commit secrets, `.dev.vars`, `todo.txt`, `run/` folders or build output.
 
