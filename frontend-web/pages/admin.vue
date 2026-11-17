@@ -142,28 +142,47 @@
       </section>
 
       <section v-if="tab === 'cosmetics'" class="admin__section">
-        <div class="admin__split">
+        <div class="admin__chips" role="tablist">
+          <button
+            v-for="category in cosmeticCategories"
+            :key="category.id"
+            class="admin__chip"
+            :class="{ 'admin__chip--active': cosmeticCategory === category.id }"
+            role="tab"
+            :aria-selected="cosmeticCategory === category.id"
+            @click="selectCosmeticCategory(category.id)"
+          >
+            {{ category.label }} <span class="admin__chip-count">{{ categoryCount(category.id) }}</span>
+          </button>
+        </div>
+        <p class="admin__muted">{{ activeCosmeticCategory.hint }} Changes reach players within a minute, no client update needed.</p>
+
+        <div class="admin__split" :class="{ 'admin__split--wide': isWearable }">
           <div class="admin__list">
-            <button class="btn btn--small" @click="editCosmetic(null)">New cosmetic</button>
+            <button class="btn btn--small" @click="editCosmetic(null)">New {{ activeCosmeticCategory.singular.toLowerCase() }}</button>
+            <button v-if="cosmeticCategory === 'cape'" class="admin__list-item" @click="selectTab('capes')">
+              <strong>Player capes</strong>
+              <span class="admin__muted">{{ customCapes.active }} uploaded · {{ customCapes.equipped }} wearing · moderate in Capes</span>
+            </button>
+            <p v-if="catalogItems.length === 0" class="admin__muted">No {{ activeCosmeticCategory.label.toLowerCase() }} yet.</p>
             <button
-              v-for="item in cosmetics"
+              v-for="item in catalogItems"
               :key="item.id"
-              class="admin__list-item"
+              class="admin__list-item admin__list-item--media"
               :class="{ 'admin__list-item--active': cosmeticForm.existing && cosmeticForm.id === item.id }"
               @click="editCosmetic(item)"
             >
-              <strong>{{ item.name }}</strong>
-              <span class="admin__muted">{{ item.type }} · {{ item.id }}{{ item.enabled ? '' : ' · hidden' }}</span>
+              <span v-if="item.type === 'cape' && item.imageUrl" class="admin__cape-thumb" :style="{ backgroundImage: `url(${item.imageUrl})` }" />
+              <span class="admin__list-text">
+                <strong>{{ item.name }}</strong>
+                <span class="admin__muted">{{ item.id }}{{ item.enabled ? '' : ' · hidden' }}{{ item.equipped !== null ? ` · ${item.equipped} wearing` : '' }}</span>
+              </span>
             </button>
           </div>
           <form class="admin__editor" @submit.prevent="saveCosmetic">
             <div class="admin__row">
               <input v-model="cosmeticForm.id" class="input" placeholder="id (e.g. founders-cape)" :disabled="cosmeticForm.existing" pattern="[a-z0-9][a-z0-9_\-]{0,31}" required />
-              <select v-model="cosmeticForm.type" class="input" :disabled="cosmeticForm.existing">
-                <option value="cape">Cape</option>
-                <option value="trail">Trail</option>
-                <option value="emote">Emote</option>
-              </select>
+              <span class="admin__type">{{ activeCosmeticCategory.singular }}</span>
             </div>
             <input v-model="cosmeticForm.name" class="input" placeholder="Display name" maxlength="40" required />
             <input v-model="cosmeticForm.description" class="input" placeholder="Description" maxlength="160" />
@@ -176,6 +195,45 @@
               <input type="file" accept="image/png" @change="pickImage" />
               <img v-if="cosmeticForm.preview" :src="cosmeticForm.preview" alt="Cape preview" class="admin__cape-image" />
             </template>
+            <div v-else-if="isWearable" class="admin__wearable-editor">
+              <div class="admin__wearable-fields">
+                <div class="admin__texture">
+                  <strong>Texture (optional)</strong>
+                  <p class="admin__muted">
+                    PNG with sides of 16, 32, 64, 128 or 256 pixels, up to 128 KB. Boxes with a <code>uv</code> use it with the Minecraft box layout;
+                    boxes without one are painted from their colors and pattern.
+                  </p>
+                  <div class="admin__row">
+                    <input type="file" accept="image/png" @change="pickImage" />
+                    <button v-if="cosmeticForm.preview" class="btn btn--ghost btn--small" type="button" @click="clearTexture">Remove texture</button>
+                  </div>
+                  <img v-if="cosmeticForm.preview" :src="cosmeticForm.preview" alt="Texture" class="admin__texture-image" />
+                </div>
+                <details class="admin__help">
+                  <summary>Model format</summary>
+                  <p>
+                    <code>nodes</code>: parts with <code>name</code>, <code>pivot</code> [x, y, z], <code>rotation</code> [x, y, z] in degrees, <code>boxes</code>,
+                    <code>children</code> and <code>animations</code>. Units are Minecraft pixels; y points down. Hats hang off the head (top of the head is y −8),
+                    back items off the body (the back is z 2), pets float beside the player.
+                  </p>
+                  <p>
+                    Box: <code>from</code> [x, y, z], <code>size</code> [w, h, d], <code>color</code>, <code>accent</code>, <code>pattern</code>
+                    ({{ wearableOptions.patterns.join(', ') }}), optional <code>uv</code> [u, v] and <code>mirror</code>.
+                  </p>
+                  <p>
+                    Animation: <code>property</code> ({{ wearableOptions.properties.join(', ') }}), <code>wave</code> ({{ wearableOptions.waves.join(', ') }}),
+                    <code>amplitude</code>, <code>speed</code> (per tick), <code>phase</code>, <code>offset</code>, <code>walk</code> (amplitude boost while walking),
+                    <code>walkOffset</code> and <code>crouch</code> (added while sneaking). Rotations are degrees, scale values multiply.
+                  </p>
+                  <p>Limits: {{ wearableOptions.limits.nodes }} nodes, {{ wearableOptions.limits.boxes }} boxes, {{ wearableOptions.limits.depth }} levels, {{ wearableOptions.limits.channels }} animations per node.</p>
+                </details>
+                <textarea v-model="cosmeticForm.data" class="input admin__textarea admin__textarea--tall admin__mono" spellcheck="false" />
+                <p v-if="modelError" class="admin__warning">{{ modelError }}</p>
+              </div>
+              <ClientOnly>
+                <WearablePreview :kind="wearableKind" :model="previewModel" :texture-url="cosmeticForm.preview || null" />
+              </ClientOnly>
+            </div>
             <template v-else>
               <p class="admin__muted">
                 <template v-if="cosmeticForm.type === 'trail'">
@@ -188,7 +246,8 @@
               <textarea v-model="cosmeticForm.data" class="input admin__textarea admin__mono" spellcheck="false" />
             </template>
             <div class="admin__row">
-              <button class="btn" type="submit" :disabled="busy">{{ cosmeticForm.existing ? 'Save changes' : 'Create cosmetic' }}</button>
+              <button class="btn" type="submit" :disabled="busy">{{ cosmeticForm.existing ? 'Save changes' : `Create ${activeCosmeticCategory.singular.toLowerCase()}` }}</button>
+              <button v-if="cosmeticForm.existing" class="btn btn--ghost" type="button" @click="duplicateCosmetic">Duplicate</button>
               <button v-if="cosmeticForm.existing" class="btn btn--danger" type="button" @click="deleteCosmetic">Delete</button>
             </div>
           </form>
@@ -293,13 +352,23 @@ interface NewsPost {
 
 interface Cosmetic {
   id: string
-  type: 'cape' | 'trail' | 'emote'
+  type: CosmeticCategory
   name: string
   description: string
   imageUrl: string | null
   data: unknown
   enabled: boolean
   sort: number
+  equipped: number | null
+}
+
+type CosmeticCategory = 'cape' | 'trail' | 'emote' | WearableKind
+
+interface WearableOptions {
+  patterns: string[]
+  properties: string[]
+  waves: string[]
+  limits: { nodes: number; boxes: number; depth: number; channels: number }
 }
 
 interface AuditEntry {
@@ -334,8 +403,59 @@ const emptyCosmetic = () => ({
   sort: 0,
   data: '{\n  "particle": "end_rod",\n  "colors": ["#FFFFFF"],\n  "density": 2,\n  "pattern": "stream",\n  "size": 1\n}',
   image: '',
-  preview: ''
+  preview: '',
+  removeImage: false
 })
+
+const WEARABLE_TEMPLATES: Record<WearableKind, object> = {
+  hat: {
+    nodes: [
+      {
+        name: 'hat',
+        pivot: [0, 0, 0],
+        boxes: [
+          { from: [-4.5, -9, -4.5], size: [9, 1, 9], color: '#2B2235' },
+          { from: [-3, -14, -3], size: [6, 5, 6], color: '#2B2235', accent: '#C0392B', pattern: 'banded' }
+        ],
+        animations: []
+      }
+    ]
+  },
+  back: {
+    nodes: [
+      {
+        name: 'left_wing',
+        pivot: [1.5, 1.5, 3.6],
+        boxes: [{ from: [0, -1, 0], size: [10, 8, 1], color: '#F4F5FA', accent: '#C9D2E3', pattern: 'tipped' }],
+        animations: [{ property: 'rotZ', wave: 'sine', amplitude: -6, speed: 0.12, offset: -12, walk: 2 }]
+      },
+      {
+        name: 'right_wing',
+        pivot: [-1.5, 1.5, 3.6],
+        boxes: [{ from: [-10, -1, 0], size: [10, 8, 1], color: '#F4F5FA', accent: '#C9D2E3', pattern: 'tipped' }],
+        animations: [{ property: 'rotZ', wave: 'sine', amplitude: 6, speed: 0.12, offset: 12, walk: 2 }]
+      }
+    ]
+  },
+  pet: {
+    nodes: [
+      {
+        name: 'pet',
+        pivot: [0, 0, 0],
+        boxes: [
+          { from: [-3, -3, -3], size: [6, 6, 6], color: '#8FC4FF', accent: '#4A9EFF', pattern: 'rim' },
+          { from: [-2, -1.5, -3.4], size: [1, 2, 1], color: '#1E1A22', pattern: 'glow' },
+          { from: [1, -1.5, -3.4], size: [1, 2, 1], color: '#1E1A22', pattern: 'glow' }
+        ],
+        animations: [{ property: 'y', wave: 'sine', amplitude: 1.2, speed: 0.12 }]
+      }
+    ]
+  }
+}
+
+function isWearableCategory(value: string): value is WearableKind {
+  return value === 'hat' || value === 'back' || value === 'pet'
+}
 
 const checking = ref(true)
 const authenticated = ref(false)
@@ -355,6 +475,46 @@ const news = ref<NewsPost[]>([])
 const newsForm = reactive(emptyNews())
 const cosmetics = ref<Cosmetic[]>([])
 const cosmeticForm = reactive(emptyCosmetic())
+const customCapes = ref({ active: 0, equipped: 0 })
+const wearableOptions = ref<WearableOptions>({ patterns: [], properties: [], waves: [], limits: { nodes: 0, boxes: 0, depth: 0, channels: 0 } })
+const cosmeticCategory = ref<CosmeticCategory>('cape')
+const cosmeticCategories: { id: CosmeticCategory; label: string; singular: string; hint: string }[] = [
+  { id: 'cape', label: 'Capes', singular: 'Cape', hint: 'Official capes everyone can equip.' },
+  { id: 'trail', label: 'Trails', singular: 'Trail', hint: 'Particle trails that follow the player.' },
+  { id: 'emote', label: 'Emotes', singular: 'Emote', hint: 'Animations players start from the emote wheel.' },
+  { id: 'hat', label: 'Hats', singular: 'Hat', hint: 'Models worn on the head, hidden when a helmet is worn.' },
+  { id: 'back', label: 'Back items', singular: 'Back item', hint: 'Wings, shields and other models on the back, hidden while gliding.' },
+  { id: 'pet', label: 'Pets', singular: 'Pet', hint: 'Companions that float beside the player and follow them.' }
+]
+const activeCosmeticCategory = computed(() => cosmeticCategories.find((category) => category.id === cosmeticCategory.value) ?? cosmeticCategories[0])
+const catalogItems = computed(() => cosmetics.value.filter((item) => item.type === cosmeticCategory.value))
+const isWearable = computed(() => isWearableCategory(cosmeticForm.type))
+const wearableKind = computed<WearableKind>(() => (isWearableCategory(cosmeticForm.type) ? cosmeticForm.type : 'hat'))
+const parsedModel = computed<{ model: PreviewModel | null; error: string }>(() => {
+  if (!isWearable.value) return { model: null, error: '' }
+  try {
+    const value = JSON.parse(cosmeticForm.data) as PreviewModel
+    if (!value || !Array.isArray(value.nodes)) return { model: null, error: 'The model needs a "nodes" list' }
+    return { model: value, error: '' }
+  } catch (problem) {
+    return { model: null, error: problem instanceof Error ? `JSON: ${problem.message}` : 'Invalid JSON' }
+  }
+})
+const lastValidModel = ref<PreviewModel | null>(null)
+watch(parsedModel, (value) => {
+  if (value.model) lastValidModel.value = value.model
+})
+const previewModel = computed(() => parsedModel.value.model ?? lastValidModel.value)
+const modelError = computed(() => parsedModel.value.error)
+
+function categoryCount(category: CosmeticCategory): number {
+  return cosmetics.value.filter((item) => item.type === category).length
+}
+
+function selectCosmeticCategory(category: CosmeticCategory) {
+  cosmeticCategory.value = category
+  editCosmetic(null)
+}
 const particles = ref<string[]>([])
 const patterns = ref<string[]>([])
 const parts = ref<string[]>([])
@@ -434,7 +594,10 @@ async function selectTab(next: Tab) {
   if (next === 'capes') await loadCapes(capeStatus.value, capePage.value)
   if (next === 'players') await loadPlayers()
   if (next === 'news') await loadNews()
-  if (next === 'cosmetics') await loadCosmetics()
+  if (next === 'cosmetics') {
+    await loadCosmetics()
+    if (!cosmeticForm.existing) editCosmetic(null)
+  }
   if (next === 'rules') await loadRules()
   if (next === 'audit') auditLog.value = (await api<{ entries: AuditEntry[] }>('/api/admin/audit')).entries
 }
@@ -535,8 +698,17 @@ async function deleteRule() {
 }
 
 async function loadCosmetics() {
-  const result = await api<{ cosmetics: Cosmetic[]; particles: string[]; patterns: string[]; parts: string[] }>('/api/admin/cosmetics')
+  const result = await api<{
+    cosmetics: Cosmetic[]
+    customCapes: { active: number; equipped: number }
+    particles: string[]
+    patterns: string[]
+    parts: string[]
+    wearable: WearableOptions
+  }>('/api/admin/cosmetics')
   cosmetics.value = result.cosmetics
+  customCapes.value = result.customCapes
+  wearableOptions.value = result.wearable
   particles.value = result.particles
   patterns.value = result.patterns
   parts.value = result.parts
@@ -545,8 +717,12 @@ async function loadCosmetics() {
 function editCosmetic(item: Cosmetic | null) {
   if (!item) {
     Object.assign(cosmeticForm, emptyCosmetic())
+    cosmeticForm.type = cosmeticCategory.value
+    cosmeticForm.data = defaultCosmeticData(cosmeticForm.type)
+    lastValidModel.value = null
     return
   }
+  lastValidModel.value = null
   Object.assign(cosmeticForm, {
     existing: true,
     id: item.id,
@@ -555,10 +731,46 @@ function editCosmetic(item: Cosmetic | null) {
     description: item.description,
     enabled: item.enabled,
     sort: item.sort,
-    data: JSON.stringify(item.data, null, 2),
+    data: prettyJson(item.data),
     image: '',
-    preview: item.imageUrl ?? ''
+    preview: item.imageUrl ?? '',
+    removeImage: false
   })
+}
+
+function duplicateCosmetic() {
+  const base = cosmeticForm.id.replace(/-copy(-\d+)?$/, '')
+  let candidate = `${base}-copy`.slice(0, 32)
+  let counter = 2
+  while (cosmetics.value.some((item) => item.id === candidate)) {
+    candidate = `${base}-copy-${counter++}`.slice(0, 32)
+  }
+  Object.assign(cosmeticForm, { existing: false, id: candidate, name: `${cosmeticForm.name} copy`.slice(0, 40), removeImage: false })
+  if (cosmeticForm.preview && !cosmeticForm.image) {
+    if (cosmeticForm.type === 'cape' || isWearableCategory(cosmeticForm.type)) {
+      void fetch(cosmeticForm.preview)
+        .then((response) => response.blob())
+        .then(
+          (blob) =>
+            new Promise<void>((resolve) => {
+              const reader = new FileReader()
+              reader.onload = () => {
+                cosmeticForm.image = String(reader.result)
+                resolve()
+              }
+              reader.readAsDataURL(blob)
+            })
+        )
+        .catch(() => undefined)
+    }
+  }
+  flash('Copy ready — change the id and save to create it')
+}
+
+function clearTexture() {
+  cosmeticForm.image = ''
+  cosmeticForm.preview = ''
+  cosmeticForm.removeImage = true
 }
 
 function pickImage(event: Event) {
@@ -572,6 +784,21 @@ function pickImage(event: Event) {
   reader.onload = () => {
     cosmeticForm.image = String(reader.result)
     cosmeticForm.preview = String(reader.result)
+    cosmeticForm.removeImage = false
+    if (isWearableCategory(cosmeticForm.type)) {
+      const image = new Image()
+      image.onload = () => {
+        try {
+          const model = JSON.parse(cosmeticForm.data) as Record<string, unknown>
+          model.textureWidth = image.naturalWidth
+          model.textureHeight = image.naturalHeight
+          cosmeticForm.data = prettyJson(model)
+        } catch {
+          return
+        }
+      }
+      image.src = cosmeticForm.preview
+    }
   }
   reader.readAsDataURL(file)
 }
@@ -596,7 +823,8 @@ async function saveCosmetic() {
       enabled: cosmeticForm.enabled,
       sort: cosmeticForm.sort,
       data,
-      image: cosmeticForm.image || undefined
+      image: cosmeticForm.image || undefined,
+      removeImage: cosmeticForm.removeImage || undefined
     }
     if (cosmeticForm.existing) {
       await api(`/api/admin/cosmetics/${cosmeticForm.id}`, { method: 'PUT', body })
@@ -620,21 +848,23 @@ async function deleteCosmetic() {
   await loadCosmetics()
 }
 
-watch(
-  () => cosmeticForm.type,
-  (type) => {
-    if (cosmeticForm.existing) return
-    if (type === 'emote') {
-      cosmeticForm.data = JSON.stringify(
-        { duration: 1.5, loop: false, ease: 'smooth', parts: { right_arm: [{ t: 0, x: 0, y: 0, z: 0 }, { t: 0.5, x: -160, y: 0, z: -20 }, { t: 1, x: 0, y: 0, z: 0 }] } },
-        null,
-        2
-      )
-    } else if (type === 'trail') {
-      cosmeticForm.data = emptyCosmetic().data
-    }
+function prettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2).replace(/\[\s*(-?[\d.e+-]+(?:,\s*-?[\d.e+-]+)*)\s*\]/g, (_match, inner: string) => `[${inner.split(/,\s*/).join(', ')}]`)
+}
+
+function defaultCosmeticData(type: CosmeticCategory): string {
+  if (isWearableCategory(type)) {
+    return prettyJson(WEARABLE_TEMPLATES[type])
   }
-)
+  if (type === 'emote') {
+    return JSON.stringify(
+      { duration: 1.5, loop: false, ease: 'smooth', parts: { right_arm: [{ t: 0, x: 0, y: 0, z: 0 }, { t: 0.5, x: -160, y: 0, z: -20 }, { t: 1, x: 0, y: 0, z: 0 }] } },
+      null,
+      2
+    )
+  }
+  return type === 'trail' ? emptyCosmetic().data : '{}'
+}
 
 onMounted(async () => {
   try {
@@ -901,6 +1131,140 @@ onMounted(async () => {
     vertical-align: top;
     border-bottom: 1px solid var(--border-color);
   }
+}
+
+.admin__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.admin__chip--active {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-tertiary));
+}
+
+.admin__chip-count {
+  min-width: 1.4rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.admin__type {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.admin__list-item--media {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin__list-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.admin__cape-thumb {
+  flex: none;
+  width: 20px;
+  height: 32px;
+  background-repeat: no-repeat;
+  background-size: 128px 64px;
+  background-position: -2px -2px;
+  image-rendering: pixelated;
+  border: 1px solid var(--border-color);
+}
+
+
+
+
+
+
+.admin__split.admin__split--wide {
+  grid-template-columns: minmax(200px, 260px) 1fr;
+}
+
+.admin__wearable-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  gap: 1rem;
+  align-items: start;
+
+  @media (max-width: 1000px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin__wearable-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.admin__texture {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.admin__texture-image {
+  width: 128px;
+  height: 128px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  background: repeating-conic-gradient(#3a3f4b 0% 25%, #2a2e37 0% 50%) 50% / 16px 16px;
+  border: 1px solid var(--border-color);
+}
+
+.admin__help {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+
+  summary {
+    cursor: pointer;
+    color: var(--text-primary);
+  }
+
+  p {
+    margin: 0.4rem 0 0;
+  }
+}
+
+.admin__textarea--tall {
+  min-height: 340px;
 }
 
 .admin__split {

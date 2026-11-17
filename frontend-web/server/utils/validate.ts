@@ -26,14 +26,6 @@ export interface Equipped {
   pet: string | null
 }
 
-export const HAT_IDS = ['top_hat', 'crown', 'halo', 'party_hat', 'wizard_hat', 'cat_ears', 'propeller_cap', 'headphones'] as const
-export const BACK_IDS = ['angel_wings', 'dragon_wings', 'butterfly_wings', 'knight_shield', 'jetpack'] as const
-export const PET_IDS = ['ghost', 'penguin', 'owl', 'drone'] as const
-
-function pickAllowed<T extends string>(value: unknown, allowed: readonly T[]): T | null {
-  return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? (value as T) : null
-}
-
 export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value)
 }
@@ -88,7 +80,8 @@ export function sanitizeEquipped(input: unknown): Equipped {
     cape = raw.cape
   }
   const trail = isCosmeticId(raw.trail) ? raw.trail : null
-  return { cape, trail, hat: pickAllowed(raw.hat, HAT_IDS), back: pickAllowed(raw.back, BACK_IDS), pet: pickAllowed(raw.pet, PET_IDS) }
+  const wearable = (value: unknown) => (isCosmeticId(value) ? value : null)
+  return { cape, trail, hat: wearable(raw.hat), back: wearable(raw.back), pet: wearable(raw.pet) }
 }
 
 export function parseJsonColumn<T>(value: unknown, fallback: T): T {

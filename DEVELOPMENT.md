@@ -37,13 +37,13 @@ Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_
 
 ## Releases
 
-- **Every release** ships the launcher and the client together under one `v<version>` tag (no `client-` prefix). Bump the version in `crates/tauri-app/tauri.conf.json`, the workspace `Cargo.toml`, the `package.json` files and `mod_version` in `pretupid-client/gradle.properties`, add release notes to `.github/release-notes/v<version>.md`, then push the tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
+- **Every release** ships the launcher and the client together under one `v<version>` tag (no `client-` prefix) that matches `mod_version` in `pretupid-client/gradle.properties`. The launcher keeps its own version (`crates/tauri-app/tauri.conf.json`, the workspace `Cargo.toml` and the `package.json` files) and is only bumped when it changes; the website reads each version from the release manifests. Bump the versions that changed, add release notes to `.github/release-notes/v<version>.md`, then push the tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
 - The same workflow builds the client jar, attaches it with a `client-manifest.json` holding its hashes (the launcher and the in-game updater only install builds that match those hashes), then names the release `Pretupid v<version>`, adds the notes and marks it as the latest release. GitHub attaches the source archives.
 
 ## Assets
 
 - `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.
-- `python scripts/generate-wearables.py` regenerates the hat models of Pretupid Client. Wings, back items and pets are built in code (`cosmetic/model/CosmeticModels.java`), and their textures are painted when the game loads.
+- Hats, back items and pets are catalog cosmetics like capes, trails and emotes: admins create and edit their boxes, colors, optional textures and animations in the admin page, and players get changes without a client update. The client bundles the starting set in `pretupid-client/src/main/resources/assets/pretupid/wearables/defaults.json` for its first offline start; keep it in sync with `frontend-web/migrations/0005_wearables.sql` when the starting set changes.
 - `npm run dev:desktop` serves the launcher UI in a browser with a mocked backend (`frontend/src/dev/tauriMock.ts`), which is handy for layout work.
 
 ## Conventions

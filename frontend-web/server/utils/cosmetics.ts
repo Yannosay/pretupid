@@ -122,7 +122,7 @@ export function catalogAssetUrl(event: H3Event, key: string): string {
 
 interface CatalogRow {
   id: string
-  type: 'cape' | 'trail' | 'emote'
+  type: CosmeticType
   name: string
   description: string
   asset_key: string | null
@@ -136,13 +136,21 @@ export interface Catalog {
   capes: { id: string; name: string; description: string; url: string; sha256: string }[]
   trails: ({ id: string; name: string; description: string } & TrailData)[]
   emotes: { id: string; name: string; description: string; animation: EmoteData }[]
+  wearables: {
+    id: string
+    kind: WearableKind
+    name: string
+    description: string
+    model: WearableModel
+    texture: { url: string; sha256: string } | null
+  }[]
 }
 
 export async function loadCatalog(event: H3Event): Promise<Catalog> {
   const { results } = await db(event)
     .prepare('SELECT id, type, name, description, asset_key, asset_sha256, data, updated_at FROM cosmetics WHERE enabled = 1 ORDER BY sort, name')
     .all<CatalogRow>()
-  const catalog: Catalog = { version: 0, capes: [], trails: [], emotes: [] }
+  const catalog: Catalog = { version: 0, capes: [], trails: [], emotes: [], wearables: [] }
   for (const row of results) {
     catalog.version = Math.max(catalog.version, row.updated_at)
     const base = { id: row.id, name: row.name, description: row.description }
@@ -152,6 +160,10 @@ export async function loadCatalog(event: H3Event): Promise<Catalog> {
       catalog.trails.push({ ...base, ...parseJsonColumn<TrailData>(row.data, { particle: 'end_rod', colors: ['#FFFFFF'], density: 2, pattern: 'stream', size: 1 }) })
     } else if (row.type === 'emote') {
       catalog.emotes.push({ ...base, animation: parseJsonColumn<EmoteData>(row.data, { duration: 1, loop: false, ease: 'smooth', parts: {} }) })
+    } else if (isWearableKind(row.type)) {
+      const model = parseJsonColumn<WearableModel>(row.data, { nodes: [] })
+      const texture = row.asset_key && row.asset_sha256 ? { url: catalogAssetUrl(event, row.asset_key), sha256: row.asset_sha256 } : null
+      catalog.wearables.push({ ...base, kind: row.type, model, texture })
     }
   }
   return catalog
