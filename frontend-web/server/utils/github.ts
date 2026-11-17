@@ -1,8 +1,10 @@
 import type { H3Event } from 'h3'
 
-interface GithubAsset {
+export interface GithubAsset {
+  id?: number
   name: string
   browser_download_url: string
+  updated_at?: string
 }
 
 export interface GithubRelease {
@@ -44,7 +46,12 @@ function slim(releases: GithubRelease[]): GithubRelease[] {
       prerelease: release.prerelease,
       published_at: release.published_at,
       html_url: release.html_url,
-      assets: release.assets.map((asset) => ({ name: asset.name, browser_download_url: asset.browser_download_url }))
+      assets: release.assets.map((asset) => ({
+        id: asset.id,
+        name: asset.name,
+        browser_download_url: asset.browser_download_url,
+        updated_at: asset.updated_at
+      }))
     }))
 }
 
@@ -104,7 +111,8 @@ export async function releaseAssetJson<T>(event: H3Event, release: GithubRelease
   if (!asset) {
     return null
   }
-  const key = `github:asset:${asset.browser_download_url}`
+  const revision = asset.id !== undefined || asset.updated_at ? `#${asset.id ?? ''}@${asset.updated_at ?? ''}` : ''
+  const key = `github:asset:${asset.browser_download_url}${revision}`
   const cached = await stored<T>(event, key)
   if (cached) {
     return cached.value

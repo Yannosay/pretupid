@@ -35,10 +35,15 @@ export default defineEventHandler(async (event) => {
       allowRequests ? 1 : 0
     )
     .run()
-  const online = await db(event)
-    .prepare('SELECT COUNT(*) AS count FROM players WHERE online = 1 AND last_seen >= ?')
-    .bind(now - PRESENCE_TTL_SECONDS)
-    .first<{ count: number }>()
+  const [online, catalog] = await Promise.all([
+    db(event)
+      .prepare('SELECT COUNT(*) AS count FROM players WHERE online = 1 AND last_seen >= ?')
+      .bind(now - PRESENCE_TTL_SECONDS)
+      .first<{ count: number }>(),
+    db(event)
+      .prepare('SELECT COALESCE(MAX(updated_at), 0) AS version, COUNT(*) AS count FROM cosmetics WHERE enabled = 1')
+      .first<{ version: number; count: number }>()
+  ])
   if (Math.random() < 0.02) {
     event.waitUntil(
       Promise.all([
@@ -48,5 +53,9 @@ export default defineEventHandler(async (event) => {
       ]).catch(() => undefined)
     )
   }
-  return { nextHeartbeatSeconds: HEARTBEAT_SECONDS, online: online?.count ?? 0 }
+  return {
+    nextHeartbeatSeconds: HEARTBEAT_SECONDS,
+    online: online?.count ?? 0,
+    catalogVersion: `${catalog?.version ?? 0}-${catalog?.count ?? 0}`
+  }
 })
