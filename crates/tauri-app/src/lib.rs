@@ -144,6 +144,8 @@ pub fn run() {
             commands::profile::export_skin_slot_to_downloads,
             commands::profile::reorder_skin_slots,
             commands::profile::get_current_skin,
+            commands::profile::list_minecraft_capes,
+            commands::profile::set_minecraft_cape,
             commands::launch::fetch_versions,
             commands::launch::launch_instance,
             commands::launch::prepare_instance,

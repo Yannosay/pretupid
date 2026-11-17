@@ -44,11 +44,12 @@ type AnimationType = 'idle' | 'walk' | 'fly'
 const props = withDefaults(
   defineProps<{
     skinUrl: string
+    capeUrl?: string | null
     width?: number
     height?: number
     compact?: boolean
   }>(),
-  { width: 300, height: 480, compact: false }
+  { width: 300, height: 480, compact: false, capeUrl: null }
 )
 
 const DEFAULT_SKIN_URL = 'https://mc-heads.net/skin/MHF_Steve'
@@ -109,6 +110,15 @@ async function loadSkin(url: string) {
   }
 }
 
+async function loadCape(url: string | null) {
+  if (!viewer) return
+  if (!url) {
+    viewer.resetCape()
+    return
+  }
+  await viewer.loadCape(url).catch(() => viewer?.resetCape())
+}
+
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return
   window.getSelection()?.removeAllRanges()
@@ -136,11 +146,17 @@ onMounted(() => {
   viewer.controls.enableRotate = true
   applyAnimation('idle')
   void loadSkin(props.skinUrl)
+  void loadCape(props.capeUrl)
 })
 
 watch(
   () => props.skinUrl,
   (url) => void loadSkin(url)
+)
+
+watch(
+  () => props.capeUrl,
+  (url) => void loadCape(url)
 )
 
 watch(

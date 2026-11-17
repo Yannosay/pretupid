@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as profileApi from '@/api/profile'
-import type { SkinSlotDto, SkinModelType } from '@/types/profile'
+import type { MinecraftCapeDto, SkinSlotDto, SkinModelType } from '@/types/profile'
 
 interface CurrentSkinData {
   preview_path: string
@@ -19,6 +19,42 @@ export const useProfileStore = defineStore('profile', () => {
   const applying = ref(false)
   const error = ref<string | null>(null)
   const success = ref<string | null>(null)
+  const capes = ref<MinecraftCapeDto[]>([])
+  const capesLoaded = ref(false)
+  const capesLoading = ref(false)
+  const capeSaving = ref(false)
+  const capeError = ref<string | null>(null)
+
+  const activeCape = computed(() => capes.value.find((cape) => cape.active) ?? null)
+
+  async function loadCapes() {
+    capesLoading.value = true
+    capeError.value = null
+    try {
+      capes.value = await profileApi.listMinecraftCapes()
+      capesLoaded.value = true
+    } catch (e) {
+      capeError.value = String(e)
+    } finally {
+      capesLoading.value = false
+    }
+  }
+
+  async function equipCape(capeId: string | null): Promise<boolean> {
+    if (capeSaving.value) return false
+    capeSaving.value = true
+    capeError.value = null
+    try {
+      capes.value = await profileApi.setMinecraftCape(capeId)
+      capesLoaded.value = true
+      return true
+    } catch (e) {
+      capeError.value = String(e)
+      return false
+    } finally {
+      capeSaving.value = false
+    }
+  }
 
   const activeSlot = computed(
     () => skinSlots.value.find((slot) => slot.is_active) ?? skinSlots.value[0] ?? null
@@ -251,6 +287,14 @@ export const useProfileStore = defineStore('profile', () => {
   }
 
   return {
+    capes,
+    capesLoaded,
+    capesLoading,
+    capeSaving,
+    capeError,
+    activeCape,
+    loadCapes,
+    equipCape,
     profileId,
     skinSlots,
     currentSkin,

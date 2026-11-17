@@ -784,3 +784,152 @@ pub async fn export_skin_slot_to_downloads(
 
     Ok(target.to_string_lossy().to_string())
 }
+
+const MINECRAFT_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
+const MINECRAFT_ACTIVE_CAPE_URL: &str =
+    "https://api.minecraftservices.com/minecraft/profile/capes/active";
+const MAX_CAPE_BYTES: usize = 256 * 1024;
+
+#[derive(Debug, serde::Serialize)]
+pub struct MinecraftCapeDto {
+    pub id: String,
+    pub alias: String,
+    pub active: bool,
+    pub data_url: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct ProfileCapes {
+    #[serde(default)]
+    capes: Vec<RawCape>,
+}
+
+#[derive(serde::Deserialize)]
+struct RawCape {
+    id: String,
+    #[serde(default)]
+    state: String,
+    url: String,
+    #[serde(default)]
+    alias: Option<String>,
+}
+
+fn cape_alias(alias: Option<&str>) -> String {
+    let spaced = alias.unwrap_or("").replace('_', " ");
+    let spaced = spaced.trim();
+    if spaced.is_empty() {
+        return "Cape".to_string();
+    }
+    if spaced != spaced.to_uppercase() {
+        return spaced.to_string();
+    }
+    spaced
+        .to_lowercase()
+        .split_whitespace()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn is_valid_cape_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= 64 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
+async fn cape_data_url(client: &reqwest::Client, url: &str) -> Option<String> {
+    let parsed = reqwest::Url::parse(url).ok()?;
+    if parsed.host_str() != Some("textures.minecraft.net") {
+        return None;
+    }
+    let secure = format!("https://textures.minecraft.net{}", parsed.path());
+    let response = client.get(secure).send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let bytes = response.bytes().await.ok()?;
+    if bytes.is_empty() || bytes.len() > MAX_CAPE_BYTES || !bytes.starts_with(b"\x89PNG") {
+        return None;
+    }
+    Some(format!("data:image/png;base64,{}", STANDARD.encode(&bytes)))
+}
+
+async fn capes_from_response(
+    client: &reqwest::Client,
+    response: reqwest::Response,
+) -> Result<Vec<MinecraftCapeDto>, String> {
+    let status = response.status();
+    if status.as_u16() == 429 {
+        return Err("Too many cape changes. Try again in a minute.".to_string());
+    }
+    if status.as_u16() == 401 || status.as_u16() == 403 {
+        return Err("Sign in with your Microsoft account again to manage capes.".to_string());
+    }
+    if !status.is_success() {
+        return Err(format!("Minecraft services answered with status {status}"));
+    }
+    let profile: ProfileCapes = response.json().await.map_err(|e| e.to_string())?;
+    let mut capes = Vec::with_capacity(profile.capes.len());
+    for cape in profile.capes.into_iter().take(64) {
+        if !is_valid_cape_id(&cape.id) {
+            continue;
+        }
+        capes.push(MinecraftCapeDto {
+            data_url: cape_data_url(client, &cape.url).await,
+            alias: cape_alias(cape.alias.as_deref()),
+            active: cape.state.eq_ignore_ascii_case("ACTIVE"),
+            id: cape.id,
+        });
+    }
+    Ok(capes)
+}
+
+async fn minecraft_access_token(state: &AppState) -> Result<String, String> {
+    let oauth = OAuthClient::new(state.pool.clone());
+    oauth
+        .ensure_valid_token()
+        .await
+        .map(|tokens| tokens.access_token)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn list_minecraft_capes(
+    state: State<'_, AppState>,
+) -> Result<Vec<MinecraftCapeDto>, String> {
+    let token = minecraft_access_token(&state).await?;
+    let client = reqwest::Client::new();
+    let response = client
+        .get(MINECRAFT_PROFILE_URL)
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    capes_from_response(&client, response).await
+}
+
+#[tauri::command]
+pub async fn set_minecraft_cape(
+    state: State<'_, AppState>,
+    cape_id: Option<String>,
+) -> Result<Vec<MinecraftCapeDto>, String> {
+    let token = minecraft_access_token(&state).await?;
+    let client = reqwest::Client::new();
+    let request = match cape_id.as_deref() {
+        Some(id) if is_valid_cape_id(id) => client
+            .put(MINECRAFT_ACTIVE_CAPE_URL)
+            .json(&serde_json::json!({ "capeId": id })),
+        Some(_) => return Err("Unknown cape".to_string()),
+        None => client.delete(MINECRAFT_ACTIVE_CAPE_URL),
+    };
+    let response = request
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    capes_from_response(&client, response).await
+}

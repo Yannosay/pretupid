@@ -49,6 +49,7 @@
             <span class="profile-view__preview-name">{{ authStore.profile?.name }}</span>
             <SkinPreview3D
               :skin-url="previewSkinUrl"
+              :cape-url="profileStore.activeCape?.data_url ?? null"
             />
           </div>
 
@@ -111,6 +112,55 @@
           </div>
         </section>
       </div>
+
+      <section class="profile-view__panel">
+        <div class="profile-view__panel-heading">
+          <h3>Minecraft Capes</h3>
+          <span class="profile-view__panel-hint">Capes on your Microsoft account. Everyone sees the one you equip.</span>
+        </div>
+
+        <div v-if="profileStore.capeError" class="profile-view__cape-error">{{ profileStore.capeError }}</div>
+
+        <div v-if="profileStore.capesLoading && !profileStore.capesLoaded" class="pixel-loader">
+          Loading Capes
+          <span class="pixel-loader__dots">
+            <span class="pixel-loader__dot"></span>
+            <span class="pixel-loader__dot"></span>
+            <span class="pixel-loader__dot"></span>
+          </span>
+        </div>
+
+        <div v-else-if="profileStore.capesLoaded" class="cape-grid">
+          <button
+            type="button"
+            class="cape-card"
+            :class="{ 'cape-card--active': !profileStore.activeCape }"
+            :disabled="profileStore.capeSaving"
+            @click="handleEquipCape(null)"
+          >
+            <span class="cape-card__art cape-card__art--empty">No cape</span>
+            <span class="cape-card__name">Hidden</span>
+          </button>
+          <button
+            v-for="cape in profileStore.capes"
+            :key="cape.id"
+            type="button"
+            class="cape-card"
+            :class="{ 'cape-card--active': cape.active }"
+            :disabled="profileStore.capeSaving"
+            @click="handleEquipCape(cape.id)"
+          >
+            <span
+              class="cape-card__art"
+              :style="cape.data_url ? { backgroundImage: `url(${cape.data_url})` } : undefined"
+            ></span>
+            <span class="cape-card__name">{{ cape.alias }}</span>
+          </button>
+          <p v-if="profileStore.capes.length === 0" class="cape-grid__empty">
+            This account has no Minecraft capes yet.
+          </p>
+        </div>
+      </section>
     </template>
 
     <SkinImportModal
@@ -157,7 +207,7 @@ async function loadProfileData() {
   await authStore.check()
 
   if (authStore.profile) {
-    await profileStore.load(authStore.profile.id)
+    await Promise.all([profileStore.load(authStore.profile.id), profileStore.loadCapes()])
   }
 }
 
@@ -192,6 +242,18 @@ async function handleImportUrl(payload: { url: string; name: string; modelType: 
 async function handleImportUsername(payload: { username: string; name: string }) {
   await profileStore.importFromUsername(payload.username, payload.name)
   finishImport()
+}
+
+async function handleEquipCape(capeId: string | null) {
+  const current = profileStore.activeCape?.id ?? null
+  if (current === capeId) return
+  const saved = await profileStore.equipCape(capeId)
+  if (saved) {
+    notifications.notifySuccess(
+      capeId ? 'Cape equipped' : 'Cape hidden',
+      'Players see the change after they reload your skin.'
+    )
+  }
 }
 
 async function handleApplyActive() {
@@ -425,6 +487,80 @@ onMounted(loadProfileData)
   justify-content: center;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.profile-view__cape-error {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--edge-radius);
+}
+
+.cape-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 0.75rem;
+}
+
+.cape-grid__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.cape-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 0.5rem 0.7rem;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.7;
+  }
+
+  &--active {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+}
+
+.cape-card__art {
+  width: 60px;
+  height: 96px;
+  background-color: var(--bg-secondary);
+  background-repeat: no-repeat;
+  background-size: 384px 192px;
+  background-position: -6px -6px;
+  image-rendering: pixelated;
+  border: 1px solid var(--border-color);
+
+  &--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+}
+
+.cape-card__name {
+  font-size: 0.85rem;
+  text-align: center;
+  line-height: 1.2;
 }
 
 .profile-view__slot-list {

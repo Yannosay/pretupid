@@ -16,3 +16,10 @@ export interface SkinSlotDto {
   preview_path: string
   data_url: string
 }
+
+export interface MinecraftCapeDto {
+  id: string
+  alias: string
+  active: boolean
+  data_url: string | null
+}

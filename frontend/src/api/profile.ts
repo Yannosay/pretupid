@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { SkinSlotDto, SkinModelType } from '@/types/profile'
+import type { MinecraftCapeDto, SkinSlotDto, SkinModelType } from '@/types/profile'
 
 export async function listSkinSlots(profileId: string): Promise<SkinSlotDto[]> {
   return invoke('list_skin_slots', { profileId })
@@ -106,4 +106,12 @@ export interface PlayerSkinPreview {
 
 export async function lookupPlayerSkin(username: string): Promise<PlayerSkinPreview> {
   return invoke('lookup_player_skin', { username })
+}
+
+export async function listMinecraftCapes(): Promise<MinecraftCapeDto[]> {
+  return invoke('list_minecraft_capes')
+}
+
+export async function setMinecraftCape(capeId: string | null): Promise<MinecraftCapeDto[]> {
+  return invoke('set_minecraft_cape', { capeId })
 }

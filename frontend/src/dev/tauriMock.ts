@@ -35,6 +35,28 @@ const instances: Instance[] = [
   instance('4f9d8062-51de-4397-9e95-71506f1c2d45', 'Test Instance With A Remarkably Long Name', '1.20.1', 'forge', null, 0)
 ]
 
+function capeDataUrl(base: string, accent: string): string | null {
+  if (typeof document === 'undefined') return null
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 32
+  const context = canvas.getContext('2d')
+  if (!context) return null
+  context.fillStyle = base
+  context.fillRect(0, 0, 22, 17)
+  context.fillStyle = accent
+  context.fillRect(1, 1, 10, 2)
+  context.fillRect(4, 6, 4, 6)
+  context.fillRect(1, 15, 10, 2)
+  return canvas.toDataURL('image/png')
+}
+
+const mockCapes = [
+  { id: 'migrator-cape', alias: 'Migrator', active: true, data_url: capeDataUrl('#1f3c88', '#f4c542') },
+  { id: 'vanilla-cape', alias: 'Vanilla', active: false, data_url: capeDataUrl('#3f7f3f', '#e6e6e6') },
+  { id: 'pan-cape', alias: 'Pan', active: false, data_url: capeDataUrl('#5a3a22', '#f2a541') }
+]
+
 const mods = new Map<string, InstanceMod[]>()
 
 const settingsByInstance = new Map<string, InstanceSettings>()
@@ -219,6 +241,11 @@ async function handle(cmd: string, args: Args): Promise<unknown> {
     case 'set_active_skin_slot':
       for (const slot of skinSlots) slot.is_active = slot.id === args.slotId
       return null
+    case 'list_minecraft_capes':
+      return mockCapes.map((cape) => ({ ...cape }))
+    case 'set_minecraft_cape':
+      for (const cape of mockCapes) cape.active = cape.id === args.capeId
+      return mockCapes.map((cape) => ({ ...cape }))
     case 'apply_skin_slot':
     case 'open_instance_folder':
     case 'open_external_link':
