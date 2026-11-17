@@ -142,6 +142,10 @@ export async function installPerformancePack(instanceId: string): Promise<Instal
   return invoke('install_performance_pack', { instanceId })
 }
 
+export async function pretupidClientAvailable(minecraftVersion: string): Promise<boolean> {
+  return invoke('pretupid_client_available', { minecraftVersion })
+}
+
 export async function installPretupidClient(instanceId: string): Promise<InstallResult> {
   return invoke('install_pretupid_client', { instanceId })
 }
@@ -235,4 +239,17 @@ export interface NewsPost {
 
 export async function fetchNews(): Promise<NewsPost[]> {
   return invoke('fetch_news')
+}
+
+export interface NewsArticle {
+  id: string
+  title: string
+  summary: string
+  category: string
+  publishedAt: number | null
+  body: string
+}
+
+export async function fetchNewsPost(id: string): Promise<NewsArticle> {
+  return invoke('fetch_news_post', { id })
 }

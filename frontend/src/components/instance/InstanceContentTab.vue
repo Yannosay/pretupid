@@ -47,6 +47,11 @@
 
     <PretupidClientCard :instance="instance" :locked="busy" :revision="revision" @installed="load" />
 
+    <div v-if="setupTasks.length > 0" class="panel panel--compact panel--accent content-tab__setup">
+      <span class="content-tab__setup-text">{{ setupMessage }}</span>
+      <div class="progress-bar progress-bar--indeterminate"><div class="progress-bar__fill" /></div>
+    </div>
+
     <p v-if="instance.mod_loader === 'vanilla'" class="content-tab__note">
       <AppIcon name="info" :size="14" />
       This is a vanilla instance, so it can use resource packs but not mods. Create a Fabric or Forge instance to add
@@ -63,14 +68,14 @@
       <span class="pixel-loader__dots"><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /><span class="pixel-loader__dot" /></span>
     </div>
 
-    <div v-else-if="entries.length === 0" class="empty empty--centered">
+    <div v-else-if="entries.length === 0 && setupTasks.length === 0" class="empty empty--centered">
       <AppIcon name="puzzle" :size="30" class="empty__icon" />
       <p class="empty__title">Nothing installed yet</p>
       <p class="empty__hint">Find mods, resource packs and shaders on Browse, or drag files onto this page.</p>
       <button class="btn btn--small" @click="browse">Find content</button>
     </div>
 
-    <div v-else-if="visible.length === 0" class="empty empty--centered">
+    <div v-else-if="entries.length > 0 && visible.length === 0" class="empty empty--centered">
       <p class="empty__title">No matches</p>
       <p class="empty__hint">Try a different filter.</p>
     </div>
@@ -84,6 +89,7 @@
       >
         <div class="list__icon">
           <img v-if="entry.icon_url" :src="entry.icon_url" :alt="''" loading="lazy" />
+          <img v-else-if="isPretupidClient(entry)" :src="pretupidLogo" alt="" class="content-tab__pixel-icon" />
           <AppIcon v-else :name="iconFor(entry.project_type)" :size="18" />
         </div>
         <div class="list__body">
@@ -141,6 +147,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import PretupidClientCard from '@/components/instance/PretupidClientCard.vue'
+import pretupidLogo from '@shared/branding/pretupid_logo_512x.png'
 import {
   checkInstanceUpdates,
   importInstanceFiles,
@@ -150,6 +157,7 @@ import {
   updateInstanceMods
 } from '@/api'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useSetupStore } from '@/stores/setup'
 import type { Instance, InstanceMod, ModUpdate, InstallResult } from '@/types'
 
 type Filter = 'all' | 'mod' | 'resourcepack' | 'shader'
@@ -159,6 +167,7 @@ const emit = defineEmits<{ (e: 'count', value: number): void }>()
 
 const router = useRouter()
 const notifications = useNotificationsStore()
+const setup = useSetupStore()
 
 const entries = ref<InstanceMod[]>([])
 const updates = ref<ModUpdate[]>([])
@@ -174,6 +183,16 @@ const revision = ref(0)
 let unlistenDrop: UnlistenFn | null = null
 
 const busy = computed(() => props.locked || checking.value || updating.value || importing.value)
+
+const setupTasks = computed(() => setup.tasksFor(props.instance.id))
+const setupMessage = computed(() => {
+  const parts = setupTasks.value.map((task) => (task === 'client' ? 'Pretupid Client' : 'performance mods'))
+  return `Adding ${parts.join(' and ')} to this instance`
+})
+
+function isPretupidClient(entry: InstanceMod): boolean {
+  return entry.project_id === 'pretupid-client' || (entry.file_name ?? '').toLowerCase().startsWith('pretupid-client-')
+}
 
 const filters: { value: Filter; label: string; icon: IconName }[] = [
   { value: 'all', label: 'All', icon: 'layers' },
@@ -339,6 +358,11 @@ watch(
   }
 )
 
+watch(
+  () => setup.revision(props.instance.id),
+  () => load()
+)
+
 onMounted(async () => {
   await load()
   try {
@@ -450,6 +474,20 @@ defineExpose({ reload: load })
   .list__icon {
     color: var(--text-secondary);
   }
+}
+
+.content-tab__setup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.content-tab__setup-text {
+  color: var(--text-primary);
+}
+
+.content-tab__pixel-icon {
+  image-rendering: pixelated;
 }
 
 .content-tab__item--disabled {

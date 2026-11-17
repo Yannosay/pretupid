@@ -105,6 +105,36 @@ async function modrinth<T>(path: string, params: Record<string, string | number 
 
 type Args = Record<string, unknown>
 
+const MOCK_CLIENT_VERSION = '0.1.4'
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function clientSupports(loader: Instance['mod_loader'], version: string): boolean {
+  return (loader === 'fabric' || loader === 'quilt') && version === '26.3'
+}
+
+function mockMod(instanceId: string, projectId: string, title: string, version: string): InstanceMod {
+  const entry: InstanceMod = {
+    id: crypto.randomUUID(),
+    instance_id: instanceId,
+    project_id: projectId,
+    project_type: 'mod',
+    title,
+    icon_url: null,
+    version_id: version,
+    version_name: version,
+    file_url: null,
+    file_name: `${projectId}-${version}.jar`,
+    created_at: new Date().toISOString(),
+    enabled: true,
+    sha1: null
+  }
+  mods.set(instanceId, [...(mods.get(instanceId) ?? []), entry])
+  return entry
+}
+
 const listeners = new Map<number, string>()
 let nextListener = 1
 
@@ -186,8 +216,31 @@ async function handle(cmd: string, args: Args): Promise<unknown> {
       return mods.get(String(args.instanceId)) ?? []
     case 'check_instance_updates':
       return []
-    case 'pretupid_client_status':
-      return { supported: true, installed: false, enabled: false, mod_id: null, version_name: null, latest_version: '0.1.0-alpha' }
+    case 'pretupid_client_status': {
+      const target = instances.find((i) => i.id === args.instanceId)
+      const installed = (mods.get(String(args.instanceId)) ?? []).find((entry) => entry.project_id === 'pretupid-client')
+      const supported = !!target && clientSupports(target.mod_loader, target.minecraft_version)
+      return {
+        supported: supported || !!installed,
+        installed: !!installed,
+        enabled: installed?.enabled ?? false,
+        mod_id: installed?.id ?? null,
+        version_name: installed?.version_name ?? null,
+        latest_version: supported ? MOCK_CLIENT_VERSION : null
+      }
+    }
+    case 'pretupid_client_available':
+      return args.minecraftVersion === '26.3'
+    case 'install_pretupid_client': {
+      await delay(1800)
+      const entry = mockMod(String(args.instanceId), 'pretupid-client', 'Pretupid Client', MOCK_CLIENT_VERSION)
+      return { installed: [entry], warnings: [] }
+    }
+    case 'install_performance_pack': {
+      await delay(1200)
+      const installed = ['Sodium', 'Lithium', 'FerriteCore'].map((title) => mockMod(String(args.instanceId), title.toLowerCase(), title, '1.0.0'))
+      return { installed, warnings: [] }
+    }
     case 'fetch_versions': {
       const manifest = await fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json').then((r) => r.json())
       return (manifest.versions as { id: string; type: string; url: string; time: string; releaseTime: string; sha1: string }[]).map((v) => ({
@@ -225,6 +278,27 @@ async function handle(cmd: string, args: Args): Promise<unknown> {
         { id: 'cosmetics', title: 'Wings, pets and hats arrive', summary: 'Pretupid Client now has animated wings, floating pets and hats that every Pretupid player can see.', category: 'announcement', pinned: false, publishedAt: Math.floor(Date.now() / 1000) - 4 * 86_400 },
         { id: 'event', title: 'Build contest this weekend', summary: 'Show off your best base and win an exclusive cape.', category: 'event', pinned: false, publishedAt: Math.floor(Date.now() / 1000) - 9 * 86_400 }
       ]
+    case 'fetch_news_post':
+      return {
+        id: args.id,
+        title: 'Wings, pets and hats arrive',
+        summary: 'Pretupid Client now has animated wings, floating pets and hats that every Pretupid player can see.',
+        category: 'announcement',
+        publishedAt: Math.floor(Date.now() / 1000) - 4 * 86_400,
+        body: [
+          '## Dress up',
+          '',
+          'Pretupid Client now has **animated wings**, floating pets and hats that every Pretupid player can see.',
+          '',
+          '- Pets follow you around',
+          '- Hats sit on top of your skin layer',
+          '- Wings flap while you fly',
+          '',
+          '> Open *Cosmetics* in game to try them.',
+          '',
+          '[[Read the full changelog]](https://github.com/Yannosay/pretupid/releases)'
+        ].join(String.fromCharCode(10))
+      }
     case 'get_block_textures': {
       const names = (args.names as string[]) ?? []
       const available = new Set(await devTextureIndex())

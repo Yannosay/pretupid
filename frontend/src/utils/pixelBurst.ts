@@ -1,6 +1,6 @@
 const COLORS = ['#4ade80', '#86efac', '#22c55e', '#facc15', '#ffffff']
 
-export function pixelBurst(origin: HTMLElement, count = 18) {
+export function pixelBurst(origin: HTMLElement, count = 18, colors: string[] = COLORS) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   const bounds = origin.getBoundingClientRect()
   const centerX = bounds.left + bounds.width / 2
@@ -8,7 +8,7 @@ export function pixelBurst(origin: HTMLElement, count = 18) {
   for (let i = 0; i < count; i++) {
     const pixel = document.createElement('span')
     const size = 4 + Math.round(Math.random() * 4)
-    pixel.style.cssText = `position:fixed;left:${centerX}px;top:${centerY}px;width:${size}px;height:${size}px;background:${COLORS[i % COLORS.length]};pointer-events:none;z-index:9999;image-rendering:pixelated`
+    pixel.style.cssText = `position:fixed;left:${centerX}px;top:${centerY}px;width:${size}px;height:${size}px;background:${colors[i % colors.length]};pointer-events:none;z-index:9999;image-rendering:pixelated`
     document.body.appendChild(pixel)
     const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4
     const distance = 40 + Math.random() * 50

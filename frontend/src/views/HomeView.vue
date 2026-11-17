@@ -116,7 +116,7 @@
 
     <div class="home__body">
       <RouterLink
-        v-if="clientPromo && featured"
+        v-if="clientPromo && featured && !setup.isPending(featured.id)"
         :to="{ name: 'instance-detail', params: { id: featured.id } }"
         class="home__promo"
       >
@@ -164,14 +164,19 @@
           </button>
         </header>
         <div class="home__news">
-          <button v-for="post in news" :key="post.id" class="home__news-card" @click="openWebsite(`/news/${encodeURIComponent(post.id)}`)">
+          <button v-for="post in news" :key="post.id" class="home__news-card" @click="readingPost = post">
             <span class="home__news-tag" :class="`home__news-tag--${post.category}`">{{ categoryLabel(post.category) }}</span>
             <span class="home__news-title">{{ post.title }}</span>
             <span class="home__news-summary">{{ post.summary }}</span>
-            <span v-if="post.publishedAt" class="home__news-date">{{ formatRelative(new Date(post.publishedAt * 1000).toISOString()) }}</span>
+            <span class="home__news-footer">
+              <span v-if="post.publishedAt" class="home__news-date">{{ formatRelative(new Date(post.publishedAt * 1000).toISOString()) }}</span>
+              <span class="home__news-read">Read</span>
+            </span>
           </button>
         </div>
       </section>
+
+      <NewsReaderModal v-if="readingPost" :preview="readingPost" @close="readingPost = null" />
 
       <section v-if="authStore.authenticated" class="home__section">
         <header class="home__section-header">
@@ -224,6 +229,8 @@ import InstanceIcon from '@/components/InstanceIcon.vue'
 import PlayButton from '@/components/PlayButton.vue'
 import PixelScenery from '@ui/PixelScenery.vue'
 import SkinPreview3D from '@/components/SkinPreview3D.vue'
+import NewsReaderModal from '@/components/NewsReaderModal.vue'
+import { useSetupStore } from '@/stores/setup'
 import CreateInstanceModal from '@/components/CreateInstanceModal.vue'
 import DropdownMenu from '@/components/DropdownMenu.vue'
 import { WEBSITE_URL } from '@/config'
@@ -288,7 +295,9 @@ function onAvatarClick(event: MouseEvent) {
 }
 
 const news = ref<NewsPost[]>([])
+const readingPost = ref<NewsPost | null>(null)
 const clientPromo = ref(false)
+const setup = useSetupStore()
 
 const featured = computed(() => (heroId.value ? instanceStore.byId(heroId.value) : undefined) ?? instanceStore.recent[0] ?? null)
 const others = computed(() => instanceStore.recent.filter((i) => i.id !== featured.value?.id).slice(0, 6))
@@ -379,6 +388,7 @@ onMounted(() => {
 
 watch(() => authStore.profile?.id, loadAccountData)
 watch(() => featured.value?.id, refreshPromo, { immediate: true })
+watch(() => (featured.value ? setup.revision(featured.value.id) : 0), refreshPromo)
 </script>
 
 <style scoped lang="scss">
@@ -778,10 +788,34 @@ watch(() => featured.value?.id, refreshPromo, { immediate: true })
   -webkit-box-orient: vertical;
 }
 
-.home__news-date {
+.home__news-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
   margin-top: auto;
+}
+
+.home__news-date {
   font-size: 0.78rem;
   color: var(--text-dim);
+}
+
+.home__news-read {
+  margin-left: auto;
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  color: var(--accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.home__news-card:hover .home__news-read,
+.home__news-card:focus-visible .home__news-read {
+  opacity: 1;
+  transform: none;
 }
 
 .home__shortcuts {

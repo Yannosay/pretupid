@@ -9,7 +9,7 @@
 
     <template v-if="instance">
       <header class="instance-view__header surface-dark">
-        <PixelScenery :seed="instance.id" class="instance-view__scenery" />
+        <PixelScenery :seed="instance.id" :moving="settingsStore.settings.sceneryMotion" class="instance-view__scenery" />
         <InstanceIcon :instance="instance" :size="88" class="instance-view__icon" />
         <div class="instance-view__heading">
           <h1 class="instance-view__title" :title="instance.name">{{ instance.name }}</h1>
@@ -161,6 +161,7 @@ import { useLaunchStore } from '@/stores/launch'
 import { useInstallsStore } from '@/stores/installs'
 import { useInstanceStore } from '@/stores/instances'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useSettingsStore } from '@/stores/settings'
 import { formatPlaytime, formatRelative, loaderLabel } from '@/utils/format'
 import type { Instance } from '@/types'
 
@@ -172,6 +173,7 @@ const launchStore = useLaunchStore()
 const installs = useInstallsStore()
 const instanceStore = useInstanceStore()
 const notifications = useNotificationsStore()
+const settingsStore = useSettingsStore()
 
 const instance = ref<Instance | null>(null)
 const loadError = ref<string | null>(null)
@@ -312,6 +314,18 @@ async function handleDelete() {
     confirmDelete.value = false
   }
 }
+
+watch(
+  () => route.params.id,
+  (id, previous) => {
+    if (!id || id === previous) return
+    launchStore.ensureState(String(id))
+    loadError.value = null
+    contentCount.value = null
+    repairReport.value = null
+    refresh().catch((e) => (loadError.value = String(e)))
+  }
+)
 
 onMounted(async () => {
   await launchStore.initListeners()

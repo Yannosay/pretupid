@@ -96,3 +96,73 @@ pub async fn fetch_news() -> Result<Vec<NewsPost>, String> {
     }
     Ok(body.posts)
 }
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewsArticle {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub summary: String,
+    #[serde(default)]
+    pub category: String,
+    #[serde(default)]
+    pub published_at: Option<i64>,
+    #[serde(default)]
+    pub body: String,
+}
+
+const MAX_NEWS_BODY_CHARS: usize = 60_000;
+
+fn is_news_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 64
+        && id
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+#[tauri::command]
+pub async fn fetch_news_post(id: String) -> Result<NewsArticle, String> {
+    if !is_news_id(&id) {
+        return Err("This post does not exist.".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .user_agent(super::util::USER_AGENT)
+        .connect_timeout(std::time::Duration::from_secs(6))
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let response = client
+        .get(format!("{NEWS_ENDPOINT}/{id}"))
+        .send()
+        .await
+        .map_err(|_| "This post is unavailable right now.".to_string())?;
+    if response.status() == reqwest::StatusCode::NOT_FOUND {
+        return Err("This post was removed.".to_string());
+    }
+    if !response.status().is_success() {
+        return Err("This post is unavailable right now.".to_string());
+    }
+    let mut article: NewsArticle = response
+        .json()
+        .await
+        .map_err(|_| "This post could not be read.".to_string())?;
+    article.title = article.title.chars().take(120).collect();
+    article.body = article.body.chars().take(MAX_NEWS_BODY_CHARS).collect();
+    Ok(article)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_news_id;
+
+    #[test]
+    fn news_ids_are_slugs() {
+        assert!(is_news_id("pretupid-0-1-3-a1b2c3"));
+        assert!(!is_news_id(""));
+        assert!(!is_news_id("../admin"));
+        assert!(!is_news_id("Upper"));
+        assert!(!is_news_id(&"a".repeat(65)));
+    }
+}

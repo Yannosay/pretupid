@@ -278,13 +278,18 @@ pub async fn pretupid_client_status(
         .flatten()
         .map(|release| release.version);
     Ok(PretupidClientStatus {
-        supported: true,
+        supported: installed.is_some() || latest.is_some(),
         installed: installed.is_some(),
         enabled: installed.is_some_and(|entry| entry.enabled),
         mod_id: installed.map(|entry| entry.id.clone()),
         version_name: installed.and_then(|entry| entry.version_name.clone()),
         latest_version: latest,
     })
+}
+
+#[tauri::command]
+pub async fn pretupid_client_available(minecraft_version: String) -> Result<bool, String> {
+    Ok(fetch_release(&minecraft_version).await?.is_some())
 }
 
 #[tauri::command]

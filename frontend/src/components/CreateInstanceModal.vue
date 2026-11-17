@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
+  <div class="modal-overlay" v-backdrop-close="handleClose">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-instance-title">
       <div class="modal__header">
         <div>
@@ -106,22 +106,15 @@
             <span class="form-hint">{{ loaderHint }}</span>
           </div>
 
-          <label v-if="loader === 'fabric' || loader === 'quilt'" class="toggle create__client">
-            <input v-model="withClient" type="checkbox" class="toggle__input" :disabled="creating" />
-            <span class="toggle__track" />
-            <span class="create__client-text">
-              <strong>Install Pretupid Client</strong>
-              <span class="form-hint">Mod menu, HUD, FPS boost, zoom and the Pretupid badge. You can remove it any time.</span>
-            </span>
-          </label>
+          <PretupidClientOffer v-if="clientOffered" v-model="withClient" :disabled="creating" />
 
           <label v-if="loader === 'fabric' || loader === 'quilt'" class="toggle create__client">
             <input v-model="withPerformance" type="checkbox" class="toggle__input" :disabled="creating" />
-            <span class="toggle__track" />
             <span class="create__client-text">
               <strong>Install performance mods</strong>
               <span class="form-hint">Sodium, Lithium, FerriteCore, ImmediatelyFast and Entity Culling. Often doubles your FPS.</span>
             </span>
+            <span class="toggle__track" />
           </label>
 
           <details class="create__advanced">
@@ -175,17 +168,20 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import { ref, computed, onMounted, watch } from 'vue'
 import { open } from '@tauri-apps/plugin-dialog'
 import AppIcon from '@/components/AppIcon.vue'
 import InstanceIcon from '@/components/InstanceIcon.vue'
+import PretupidClientOffer from '@/components/instance/PretupidClientOffer.vue'
 import { BLOCK_MATERIALS, blockTexture } from '@/utils/instanceIcon'
-import { fetchVersions, getLoaderVersions, importModpackFile, installPerformancePack, installPretupidClient } from '@/api'
+import { fetchVersions, getLoaderVersions, importModpackFile, pretupidClientAvailable } from '@/api'
 import { useInstanceStore } from '@/stores/instances'
 import { useSettingsStore } from '@/stores/settings'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useInstallsStore } from '@/stores/installs'
+import { useSetupStore } from '@/stores/setup'
 import { loaderLabel } from '@/utils/format'
 import type { VersionEntry, LoaderVersion, Instance } from '@/types'
 
@@ -200,6 +196,7 @@ const instanceStore = useInstanceStore()
 const settingsStore = useSettingsStore()
 const notifications = useNotificationsStore()
 const installs = useInstallsStore()
+const setup = useSetupStore()
 
 const mode = ref<'new' | 'import'>('new')
 const versions = ref<VersionEntry[]>([])
@@ -217,6 +214,7 @@ const loaderVersions = ref<LoaderVersion[]>([])
 const loadingLoaderVersions = ref(false)
 const withClient = ref(true)
 const withPerformance = ref(true)
+const clientAvailability = ref<Record<string, boolean>>({})
 let loaderRequest = 0
 
 const modpackPath = ref<string | null>(null)
@@ -261,6 +259,19 @@ const filteredVersions = computed(() => {
 
 const loaderName = computed(() => loaderLabel(loader.value))
 
+const supportsMods = computed(() => loader.value === 'fabric' || loader.value === 'quilt')
+const clientOffered = computed(() => supportsMods.value && clientAvailability.value[minecraftVersion.value] === true)
+
+async function refreshClientAvailability(version: string) {
+  if (!version || version in clientAvailability.value) return
+  try {
+    const available = await pretupidClientAvailable(version)
+    clientAvailability.value = { ...clientAvailability.value, [version]: available }
+  } catch {
+    clientAvailability.value = { ...clientAvailability.value, [version]: false }
+  }
+}
+
 const suggestedName = computed(() => {
   if (!minecraftVersion.value) return 'My instance'
   return loader.value === 'vanilla' ? `Minecraft ${minecraftVersion.value}` : `${loaderName.value} ${minecraftVersion.value}`
@@ -304,6 +315,7 @@ async function refreshLoaderVersions() {
 watch([minecraftVersion, loader], () => {
   submitError.value = null
   refreshLoaderVersions()
+  if (supportsMods.value) void refreshClientAvailability(minecraftVersion.value)
 })
 
 watch(showSnapshots, () => {
@@ -349,9 +361,13 @@ async function submit() {
         ...(group.value.trim() ? { group_name: group.value.trim() } : {})
       })
       if (updated) instance = updated
-      notifications.notifySuccess('Instance created', `${instance.name} is ready. Press Play to download and start it.`)
-      if (loader.value === 'fabric' || loader.value === 'quilt') {
-        void installExtras(instance, withClient.value, withPerformance.value)
+      const extras = supportsMods.value && ((withClient.value && clientOffered.value) || withPerformance.value)
+      notifications.notifySuccess(
+        'Instance created',
+        extras ? `${instance.name} is ready. Mods are being added in the background.` : `${instance.name} is ready. Press Play to download and start it.`
+      )
+      if (supportsMods.value) {
+        void setup.runExtras(instance, withClient.value && clientOffered.value, withPerformance.value)
       }
     }
     emit('created', instance)
@@ -360,27 +376,6 @@ async function submit() {
     submitError.value = String(e)
   } finally {
     creating.value = false
-  }
-}
-
-async function installExtras(created: Instance, client: boolean, performance: boolean) {
-  if (performance) {
-    try {
-      const result = await installPerformancePack(created.id)
-      if (result.installed.length > 0) {
-        notifications.notifySuccess('Performance mods added', result.installed.map((m) => m.title).join(', '))
-      }
-    } catch (e) {
-      notifications.notifyWarning('Performance mods not installed', String(e))
-    }
-  }
-  if (client) {
-    try {
-      await installPretupidClient(created.id)
-      notifications.notifySuccess('Pretupid Client added', `Press Right Shift in ${created.name} to open the menu.`)
-    } catch (e) {
-      notifications.notifyWarning('Pretupid Client not installed', String(e))
-    }
   }
 }
 
@@ -550,16 +545,18 @@ useEscapeKey(() => true, handleClose)
 }
 
 .create__client {
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--bg-tertiary);
   cursor: pointer;
 }
 
 .create__client-text {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
