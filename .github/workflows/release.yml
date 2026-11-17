@@ -6,7 +6,54 @@ on:
       - "v*"
 
 jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      launcher: ${{ steps.kind.outputs.launcher }}
+      client: ${{ steps.kind.outputs.client }}
+      title: ${{ steps.kind.outputs.title }}
+      notes: ${{ steps.kind.outputs.notes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide what this tag releases
+        id: kind
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          launcher_version=$(jq -r '.version' crates/tauri-app/tauri.conf.json)
+          client_version=$(grep '^mod_version=' pretupid-client/gradle.properties | cut -d= -f2)
+          launcher=false
+          client=false
+          [ "$version" = "$launcher_version" ] && launcher=true
+          [ "$version" = "$client_version" ] && client=true
+          if [ "$launcher" = false ] && [ "$client" = false ]; then
+            echo "Tag ${GITHUB_REF_NAME} matches neither the launcher (${launcher_version}) nor the client (${client_version})" >&2
+            exit 1
+          fi
+          if [ "$launcher" = true ] && [ "$client" = true ]; then
+            title="Pretupid ${GITHUB_REF_NAME}"
+            notes=".github/release-notes/${GITHUB_REF_NAME}.md"
+          elif [ "$launcher" = true ]; then
+            title="Pretupid Launcher ${GITHUB_REF_NAME}"
+            notes=".github/release-notes/launcher-${GITHUB_REF_NAME}.md"
+          else
+            title="Pretupid Client ${GITHUB_REF_NAME}"
+            notes=".github/release-notes/client-${GITHUB_REF_NAME}.md"
+          fi
+          if [ ! -f "$notes" ]; then
+            echo "Missing $notes" >&2
+            exit 1
+          fi
+          {
+            echo "launcher=$launcher"
+            echo "client=$client"
+            echo "title=$title"
+            echo "notes=$notes"
+          } >> "$GITHUB_OUTPUT"
+
   build-and-release:
+    needs: detect
+    if: needs.detect.outputs.launcher == 'true'
     permissions:
       contents: write
     strategy:
@@ -65,8 +112,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Pretupid ${{ github.ref_name }}"
-          releaseBody: "See what is new in Pretupid ${{ github.ref_name }}: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          releaseName: ${{ needs.detect.outputs.title }}
+          releaseBody: "See what is new: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
@@ -74,7 +121,8 @@ jobs:
           args: --config crates/tauri-app/tauri.conf.json ${{ matrix.args }}
 
   client:
-    needs: build-and-release
+    needs: [detect, build-and-release]
+    if: always() && needs.detect.result == 'success' && needs.detect.outputs.client == 'true' && needs.build-and-release.result != 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -97,6 +145,7 @@ jobs:
       - name: Write manifest and upload
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TITLE: ${{ needs.detect.outputs.title }}
         run: |
           jar=$(ls build/libs/*.jar | grep -v -- '-sources.jar' | head -n 1)
           file=$(basename "$jar")
@@ -107,10 +156,14 @@ jobs:
             exit 1
           fi
           jq -n             --arg version "$mod_version"             --arg minecraft "$minecraft_version"             --arg file "$file"             --arg sha256 "$(sha256sum "$jar" | cut -d' ' -f1)"             --arg sha1 "$(sha1sum "$jar" | cut -d' ' -f1)"             --arg sha512 "$(sha512sum "$jar" | cut -d' ' -f1)"             --argjson size "$(stat -c%s "$jar")"             '{version: $version, minecraft: $minecraft, file: $file, sha256: $sha256, sha1: $sha1, sha512: $sha512, size: $size}'             > build/libs/client-manifest.json
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${RELEASE_TITLE}" --notes "Pretupid Client ${GITHUB_REF_NAME}"
+          fi
           gh release upload "${GITHUB_REF_NAME}" "$jar" build/libs/client-manifest.json --clobber
 
   publish:
-    needs: client
+    needs: [detect, build-and-release, client]
+    if: always() && needs.detect.result == 'success' && needs.build-and-release.result != 'failure' && needs.client.result != 'failure'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -120,10 +173,7 @@ jobs:
       - name: Publish release notes and mark as latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TITLE: ${{ needs.detect.outputs.title }}
+          RELEASE_NOTES: ${{ needs.detect.outputs.notes }}
         run: |
-          notes=".github/release-notes/${GITHUB_REF_NAME}.md"
-          if [ ! -f "$notes" ]; then
-            echo "Missing $notes" >&2
-            exit 1
-          fi
-          gh release edit "${GITHUB_REF_NAME}" --title "Pretupid ${GITHUB_REF_NAME}" --notes-file "$notes" --latest --prerelease=false --draft=false
+          gh release edit "${GITHUB_REF_NAME}" --title "${RELEASE_TITLE}" --notes-file "${RELEASE_NOTES}" --latest --prerelease=false --draft=false

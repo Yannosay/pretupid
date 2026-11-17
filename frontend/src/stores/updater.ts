@@ -32,7 +32,7 @@ interface TauriUpdate {
 async function fetchReleaseNotes(version: string): Promise<PendingReleaseNotes | null> {
   const repo = REPOSITORY
   const cleanVersion = version.replace(/^v/, '')
-  const candidates = [`v${cleanVersion}`, cleanVersion]
+  const candidates = [`launcher-v${cleanVersion}`, `v${cleanVersion}`, cleanVersion]
 
   for (const tag of candidates) {
     try {
@@ -42,6 +42,7 @@ async function fetchReleaseNotes(version: string): Promise<PendingReleaseNotes |
       )
       if (!response.ok) continue
       const data = await response.json()
+      if (typeof data.name === 'string' && /^Pretupid Client /i.test(data.name)) continue
       return {
         version: typeof data.tag_name === 'string' ? data.tag_name : tag,
         body: typeof data.body === 'string' ? data.body : '',

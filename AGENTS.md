@@ -11,8 +11,20 @@ Rules for anyone, human or AI agent, changing this repository. `DEVELOPMENT.md` 
 - Keep each file's existing line endings. Many files use CRLF; rewriting them as LF produces whole-file diffs.
 - Never commit secrets, `.dev.vars`, `todo.txt`, `run/` folders or build output.
 - When pushing, full release (Latest) the version in GitHub releases, so that user's can actually access it via website or GitHub (version tag should not hold 'client' prefix as this would be wrong)
+- when adding new cosmetics, follow the existing cosmetic addition system (which appears and is editable in Pretupid Admin Panel) instead of hardcoding it
+- note, that users will receive an Visual Text Note when getting offered a new update, so do not forget to write that (Pretupid Client Update Notification and Pretupid Launcher Notification) These are fetched from GitHub Releases. Look on existing Releases for more details
 
 Tags should be named like this: `v[version]`, release should contain promotion for the new version and what's new. These should be named like this: `Pretupid v[version]` and must contain client mod (.jar), full launcher (Windows, Mac, Linux) and source.
+
+- Note that **Pretupid Launcher** and **Pretupid Client** may have different versions, as they work independent from each other. Follow given user instructions. If unsure, ask what to do when releasing (What version each of these two should have)
+- You do not have to ask for deploying to web, except user says otherwise or an confirmation/user overview is strictly needed, same applies to GitHub commits
+
+Release always two latest releases:
+`Pretupid Launcher v[version]`
+and
+`Pretupid Client v[version]`
+
+with their own text. Make sure that `Pretupid Launcher v[version]` holds not Client as download.
 
 ## Project map
 

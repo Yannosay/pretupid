@@ -37,13 +37,20 @@ Local secrets go into `frontend-web/.dev.vars` (ignored by git): `NUXT_PRESENCE_
 
 ## Releases
 
-- **Every release** ships the launcher and the client together under one `v<version>` tag (no `client-` prefix) that matches `mod_version` in `pretupid-client/gradle.properties`. The launcher keeps its own version (`crates/tauri-app/tauri.conf.json`, the workspace `Cargo.toml` and the `package.json` files) and is only bumped when it changes; the website reads each version from the release manifests. Bump the versions that changed, add release notes to `.github/release-notes/v<version>.md`, then push the tag. The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with one combined `latest.json` update manifest. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
-- The same workflow builds the client jar, attaches it with a `client-manifest.json` holding its hashes (the launcher and the in-game updater only install builds that match those hashes), then names the release `Pretupid v<version>`, adds the notes and marks it as the latest release. GitHub attaches the source archives.
+The launcher and the client are released separately, each as its own GitHub release on a `v<version>` tag (no `client-` or `launcher-` prefix):
+
+- **Pretupid Launcher v<version>**: the tag matches the launcher version (`crates/tauri-app/tauri.conf.json`, the workspace `Cargo.toml` and the `package.json` files). The release workflow builds Windows, macOS (Apple Silicon and Intel) and Linux bundles, signs them and publishes them with the `latest.json` update manifest. Notes go in `.github/release-notes/launcher-v<version>.md`. It needs the `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` repository secrets; the matching public key is in `tauri.conf.json`.
+- **Pretupid Client v<version>**: the tag matches `mod_version` in `pretupid-client/gradle.properties`. The workflow builds the jar and attaches it with a `client-manifest.json` holding its hashes (the launcher and the in-game updater only install builds that match those hashes). Notes go in `.github/release-notes/client-v<version>.md`.
+
+The workflow decides from the tag which of the two it builds; a tag that matches neither version fails. It then names the release, adds the notes and marks it as the latest release, and GitHub attaches the source archives. Bump only the versions that changed. When both change, push the client tag first and the launcher tag last, so the launcher release stays the one marked latest (launchers fall back to its `latest.json`).
+
+Update notes reach players from these releases: the in-game updater and the launcher show the body of the client release, the launcher's What's new screen shows the body of the launcher release, and the website picks each download from the newest release that carries it. Older combined `Pretupid v<version>` releases keep working.
 
 ## Assets
 
 - `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.
 - Hats, back items and pets are catalog cosmetics like capes, trails and emotes: admins create and edit their boxes, colors, optional textures and animations in the admin page, and players get changes without a client update. The client bundles the starting set in `pretupid-client/src/main/resources/assets/pretupid/wearables/defaults.json` for its first offline start; keep it in sync with `frontend-web/migrations/0005_wearables.sql` when the starting set changes.
+- Nametag styles are catalog cosmetics too. The client bundles the starting set in `pretupid-client/src/main/resources/assets/pretupid/nametags/defaults.json`; keep it in sync with `frontend-web/migrations/0006_nametag_styles.sql`.
 - `npm run dev:desktop` serves the launcher UI in a browser with a mocked backend (`frontend/src/dev/tauriMock.ts`), which is handy for layout work.
 
 ## Conventions
