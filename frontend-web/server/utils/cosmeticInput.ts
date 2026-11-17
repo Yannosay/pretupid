@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 const MAX_IMAGE_BYTES = 128 * 1024
 
-export const COSMETIC_TYPES = ['cape', 'trail', 'emote', ...WEARABLE_KINDS] as const
+export const COSMETIC_TYPES = ['cape', 'trail', 'emote', 'nametag', ...WEARABLE_KINDS] as const
 export type CosmeticType = (typeof COSMETIC_TYPES)[number]
 
 export interface CosmeticInput {
@@ -64,7 +64,7 @@ export function parseCosmeticInput(raw: Record<string, unknown>): CosmeticInput 
     rawData: raw.data,
     enabled: raw.enabled !== false,
     sort,
-    image: raw.type === 'trail' || raw.type === 'emote' ? null : image,
+    image: raw.type === 'trail' || raw.type === 'emote' || raw.type === 'nametag' ? null : image,
     removeImage: raw.removeImage === true && isWearableKind(raw.type)
   }
 }
@@ -107,6 +107,8 @@ export async function storeCosmetic(event: H3Event, id: string, input: CosmeticI
   let data = '{}'
   if (input.type === 'trail') {
     data = JSON.stringify(parseTrailData(input.rawData))
+  } else if (input.type === 'nametag') {
+    data = JSON.stringify(parseNametagData(input.rawData))
   } else if (input.type === 'emote') {
     data = JSON.stringify(parseEmoteData(input.rawData))
     if (data.length > 32 * 1024) {

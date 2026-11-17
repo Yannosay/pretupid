@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       enabled: row.enabled === 1,
       sort: row.sort,
       updatedAt: row.updated_at,
-      equipped: row.type === 'emote' ? null : (equipped.get(usageKey(row)) ?? 0)
+      equipped: row.type === 'emote' || row.type === 'nametag' ? null : (equipped.get(usageKey(row)) ?? 0)
     })),
     customCapes: {
       active: (customCapes.results[0] as { count: number } | undefined)?.count ?? 0,
@@ -49,6 +49,10 @@ export default defineEventHandler(async (event) => {
     particles: TRAIL_PARTICLES,
     patterns: TRAIL_PATTERNS,
     parts: EMOTE_PARTS,
+    nametag: {
+      animations: COLOR_ANIMATIONS,
+      effects: MOTION_EFFECTS
+    },
     wearable: {
       patterns: BOX_PATTERNS,
       properties: CHANNEL_PROPERTIES,
