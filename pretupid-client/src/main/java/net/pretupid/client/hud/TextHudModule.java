@@ -36,7 +36,7 @@ public abstract class TextHudModule extends HudModule {
 		super(id, category, icon, enabledByDefault, position);
 		this.showLabel = shared(new BooleanSetting("show_label", true));
 		this.brackets = shared(new EnumSetting<>("brackets", Brackets.NONE));
-		this.labelColor = shared(new ColorSetting("label_color", 0xFF8FC4FF));
+		this.labelColor = shared(new ColorSetting("label_color", 0xFF8FC4FF).followingAccent());
 		this.valueColor = shared(new ColorSetting("value_color", 0xFFFFFFFF));
 	}
 

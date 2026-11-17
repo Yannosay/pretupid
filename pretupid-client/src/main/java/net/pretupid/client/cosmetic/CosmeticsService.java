@@ -29,6 +29,7 @@ public final class CosmeticsService {
 	private final ApiClient api;
 	private final AuthSession session;
 	private final CapeTextures capes;
+	private final WearableTextures wearableTextures;
 	private final Path catalogFile;
 	private final HttpClient catalogHttp = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(6)).followRedirects(HttpClient.Redirect.NEVER).build();
 	private volatile Catalog catalog = Catalog.EMPTY;
@@ -48,6 +49,7 @@ public final class CosmeticsService {
 		this.api = api;
 		this.session = session;
 		this.capes = new CapeTextures(api, root.resolve("cache").resolve("capes"));
+		this.wearableTextures = new WearableTextures(api, root.resolve("cache").resolve("wearables"));
 		this.catalogFile = root.resolve("cache").resolve("catalog.json");
 		JsonFiles.read(catalogFile).ifPresent(json -> catalog = Catalog.fromJson(json));
 	}
@@ -58,6 +60,10 @@ public final class CosmeticsService {
 
 	public CapeTextures capes() {
 		return capes;
+	}
+
+	public WearableTextures wearableTextures() {
+		return wearableTextures;
 	}
 
 	public OwnCape ownCape() {

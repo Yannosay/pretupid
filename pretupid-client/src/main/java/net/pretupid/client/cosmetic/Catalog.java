@@ -7,12 +7,37 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import net.pretupid.client.PretupidClient;
 import net.pretupid.client.network.Json;
 import net.pretupid.client.network.RemoteProfile;
 
-public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trails, List<EmoteEntry> emotes) {
+public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trails, List<EmoteEntry> emotes, List<WearableEntry> wearables) {
 	private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
-	public static final Catalog EMPTY = new Catalog(0L, List.of(), List.of(), List.of());
+	private static final String BUNDLED_WEARABLES = "/assets/pretupid/wearables/defaults.json";
+	public static final List<WearableEntry> DEFAULT_WEARABLES = loadDefaultWearables();
+	public static final Catalog EMPTY = new Catalog(0L, List.of(), List.of(), List.of(), DEFAULT_WEARABLES);
+
+	public enum WearableKind {
+		HAT,
+		BACK,
+		PET;
+
+		public String id() {
+			return name().toLowerCase(java.util.Locale.ROOT);
+		}
+
+		static WearableKind of(String value) {
+			for (WearableKind kind : values()) {
+				if (kind.id().equals(value)) {
+					return kind;
+				}
+			}
+			return null;
+		}
+	}
+
+	public record WearableEntry(String id, WearableKind kind, String name, String description, JsonObject model, RemoteProfile.CapeRef texture) {
+	}
 
 	public record CapeEntry(String id, String name, String description, RemoteProfile.CapeRef texture) {
 	}
@@ -50,7 +75,36 @@ public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trai
 				emotes.add(new EmoteEntry(id, name(entry), description(entry), EmoteAnimation.fromJson(animation)));
 			}
 		}
-		return new Catalog(Json.number(object, "version", 0L), Collections.unmodifiableList(capes), Collections.unmodifiableList(trails), Collections.unmodifiableList(emotes));
+		List<WearableEntry> wearables = object.has("wearables") ? wearables(Json.array(object, "wearables")) : DEFAULT_WEARABLES;
+		return new Catalog(Json.number(object, "version", 0L), Collections.unmodifiableList(capes), Collections.unmodifiableList(trails), Collections.unmodifiableList(emotes),
+			wearables);
+	}
+
+	private static List<WearableEntry> wearables(com.google.gson.JsonArray array) {
+		List<WearableEntry> wearables = new ArrayList<>();
+		for (JsonElement element : array) {
+			JsonObject entry = element.isJsonObject() ? element.getAsJsonObject() : null;
+			String id = id(entry);
+			WearableKind kind = WearableKind.of(Json.string(entry, "kind"));
+			JsonObject model = Json.object(entry, "model");
+			if (id != null && kind != null && model != null) {
+				wearables.add(new WearableEntry(id, kind, name(entry), description(entry), model, RemoteProfile.cape(Json.object(entry, "texture"))));
+			}
+		}
+		return Collections.unmodifiableList(wearables);
+	}
+
+	private static List<WearableEntry> loadDefaultWearables() {
+		try (var stream = Catalog.class.getResourceAsStream(BUNDLED_WEARABLES)) {
+			if (stream == null) {
+				return List.of();
+			}
+			var parsed = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
+			return parsed.isJsonArray() ? wearables(parsed.getAsJsonArray()) : List.of();
+		} catch (java.io.IOException | RuntimeException exception) {
+			PretupidClient.LOGGER.warn("Could not read the bundled wearables", exception);
+			return List.of();
+		}
 	}
 
 	private static String id(JsonObject entry) {
@@ -78,5 +132,16 @@ public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trai
 
 	public Optional<EmoteEntry> emote(String id) {
 		return emotes.stream().filter(entry -> entry.id().equals(id)).findFirst();
+	}
+
+	public Optional<WearableEntry> wearable(WearableKind kind, String id) {
+		if (id == null) {
+			return Optional.empty();
+		}
+		return wearables.stream().filter(entry -> entry.kind() == kind && entry.id().equals(id)).findFirst();
+	}
+
+	public List<WearableEntry> wearables(WearableKind kind) {
+		return wearables.stream().filter(entry -> entry.kind() == kind).toList();
 	}
 }

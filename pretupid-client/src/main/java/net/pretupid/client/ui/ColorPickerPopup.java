@@ -29,11 +29,11 @@ public final class ColorPickerPopup implements Popup {
 		this.setting = setting;
 		this.anchorRight = anchorRight;
 		this.anchorTop = anchorTop;
-		float[] hsv = Colors.toHsv(setting.argb());
+		float[] hsv = Colors.toHsv(setting.displayArgb());
 		this.hue = hsv[0];
 		this.saturation = hsv[1];
 		this.value = hsv[2];
-		this.alpha = Colors.alpha(setting.argb());
+		this.alpha = Colors.alpha(setting.displayArgb());
 		this.hexInput = new TextInput(9, cp -> cp == '#' || Character.digit(cp, 16) >= 0);
 		this.hexInput.setValueSilently(hexText());
 		this.hexInput.onChange(text -> {
@@ -52,7 +52,7 @@ public final class ColorPickerPopup implements Popup {
 	}
 
 	private String hexText() {
-		return setting.allowsAlpha() ? Colors.toHex(setting.argb()) : Colors.toRgbHex(setting.argb());
+		return setting.allowsAlpha() ? Colors.toHex(setting.displayArgb()) : Colors.toRgbHex(setting.displayArgb());
 	}
 
 	private void commit(boolean refreshHex) {
@@ -64,7 +64,7 @@ public final class ColorPickerPopup implements Popup {
 	}
 
 	private int height() {
-		return 8 + SQUARE_HEIGHT + 6 + 14 + 6 + 12 + 8;
+		return 8 + SQUARE_HEIGHT + 6 + 14 + 6 + 12 + 8 + (setting.canFollowAccent() ? 18 : 0);
 	}
 
 	@Override
@@ -124,6 +124,22 @@ public final class ColorPickerPopup implements Popup {
 			}));
 			Draw.chamfer(g, px, presetY, size, size, preset);
 			Draw.border(g, px, presetY, size, size, hover ? 0xFFFFFFFF : 0x40FFFFFF);
+		}
+		if (setting.canFollowAccent()) {
+			int followY = presetY + size + 8;
+			Draw.text(g, ui.font(), Component.translatable("pretupid.ui.interface_color"), sx, followY + 3, Theme.TEXT_MUTED);
+			Widgets.toggle(ui, "color.follow", x + WIDTH - 28, followY + 2, setting.followsAccent(), () -> {
+				if (setting.followsAccent()) {
+					setting.setArgb(setting.displayArgb());
+				} else {
+					setting.reset();
+				}
+				float[] hsv = Colors.toHsv(setting.displayArgb());
+				hue = hsv[0];
+				saturation = hsv[1];
+				value = hsv[2];
+				hexInput.setValueSilently(hexText());
+			});
 		}
 		g.pose().popMatrix();
 	}

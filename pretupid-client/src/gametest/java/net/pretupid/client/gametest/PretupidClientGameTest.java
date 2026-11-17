@@ -20,7 +20,6 @@ import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
-import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.module.hud.BiomeHud;
 import net.pretupid.client.module.hud.DayHud;
@@ -48,8 +47,10 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			context.waitTicks(10);
 
 			testHudModules(context, feet);
+			testAccentLabels(context);
 			testChatModules(context);
 			testWaypoints(context, world, feet);
+			testTexturedWearable(context);
 			testCosmetics(context);
 			testEmotes(context);
 			testHudEditor(context);
@@ -80,6 +81,27 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		String target = context.computeOnClient(minecraft -> minecraft.level.getBlockState(feet.offset(0, 0, 3)).getBlock().getName().getString());
 		check(target.toLowerCase().contains("diamond"), "Looking At target is " + target);
 		context.takeScreenshot("pretupid-hud-modules");
+	}
+
+	private static void testAccentLabels(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> {
+			ClientSettings settings = PretupidClient.get().settings();
+			settings.accent.setArgb(0xFFFF5577);
+			try {
+				Field field = net.pretupid.client.hud.TextHudModule.class.getDeclaredField("labelColor");
+				field.setAccessible(true);
+				net.pretupid.client.setting.ColorSetting label = (net.pretupid.client.setting.ColorSetting) field.get(PretupidClient.get().modules().get(BiomeHud.class));
+				check(label.resolve() == 0xFFFF5577, "HUD labels did not follow the interface color");
+				label.setArgb(0xFF00FF00);
+				check(label.resolve() == 0xFF00FF00, "A custom label color was overridden by the interface color");
+				label.reset();
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("HUD label color is not reachable", exception);
+			}
+		});
+		context.waitTicks(3);
+		context.takeScreenshot("pretupid-hud-accent");
+		context.runOnClient(minecraft -> PretupidClient.get().settings().accent.reset());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -160,7 +182,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(4);
 		context.takeScreenshot("pretupid-cape-stopping");
 		context.waitTicks(30);
-		for (String back : Wearables.BACK) {
+		for (String back : wearableIds(Catalog.WearableKind.BACK)) {
 			context.runOnClient(minecraft -> PretupidClient.get().settings().back.set(back));
 			context.waitTicks(15);
 			context.takeScreenshot("pretupid-back-" + back);
@@ -169,7 +191,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			PretupidClient.get().settings().back.set("");
 			minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
 		});
-		for (String pet : Wearables.PETS) {
+		for (String pet : wearableIds(Catalog.WearableKind.PET)) {
 			context.runOnClient(minecraft -> PretupidClient.get().settings().pet.set(pet));
 			context.waitTicks(15);
 			context.takeScreenshot("pretupid-pet-" + pet);
@@ -204,6 +226,31 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		} catch (ReflectiveOperationException exception) {
 			throw new AssertionError("Cosmetics page is not reachable", exception);
 		}
+	}
+
+	private static void testTexturedWearable(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> {
+			com.google.gson.JsonObject model = com.google.gson.JsonParser.parseString(
+				"{\"textureWidth\":16,\"textureHeight\":16,\"nodes\":[{\"name\":\"pet\",\"boxes\":["
+					+ "{\"from\":[-2,-2,-2],\"size\":[4,4,4],\"uv\":[0,0]},"
+					+ "{\"from\":[-1,2,-1],\"size\":[2,1,2],\"color\":\"#FF0000\"}],"
+					+ "\"animations\":[{\"property\":\"y\",\"wave\":\"sine\",\"amplitude\":1,\"speed\":0.1}]}]}").getAsJsonObject();
+			com.mojang.blaze3d.platform.NativeImage texture = new com.mojang.blaze3d.platform.NativeImage(16, 16, true);
+			texture.fillRect(0, 0, 16, 16, 0xFF3366FF);
+			net.pretupid.client.cosmetic.model.Shape shape = net.pretupid.client.cosmetic.model.WearableParser.parse(model, net.pretupid.client.cosmetic.model.Shape.Anchor.ROOT, true);
+			net.pretupid.client.cosmetic.model.ShapeBaker.Baked baked = net.pretupid.client.cosmetic.model.ShapeBaker.bake(shape, texture);
+			check(baked.texture().getWidth() >= 16 && baked.texture().getHeight() > 16, "Textured wearable did not reserve room for painted boxes");
+			check(baked.texture().getPixel(5, 5) == 0xFF3366FF, "Uploaded texture was not copied into the wearable texture");
+			check(baked.root().getChild("pet") != null, "Textured wearable lost its node");
+			baked.texture().close();
+			texture.close();
+			boolean known = PretupidClient.get().cosmetics().catalog().wearable(Catalog.WearableKind.HAT, "crown").isPresent();
+			check(known, "The crown is missing from the wearable catalog");
+		});
+	}
+
+	private static java.util.List<String> wearableIds(Catalog.WearableKind kind) {
+		return PretupidClient.get().cosmetics().catalog().wearables(kind).stream().map(Catalog.WearableEntry::id).toList();
 	}
 
 	private static void testEmotes(ClientGameTestContext context) {

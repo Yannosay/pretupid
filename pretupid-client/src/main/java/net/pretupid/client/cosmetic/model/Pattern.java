@@ -8,7 +8,8 @@ public enum Pattern {
 	SPOTTED,
 	VEINED,
 	QUARTERED,
-	GLOW;
+	GLOW,
+	TOP;
 
 	boolean useAccent(Face face, int x, int y, int width, int height, int hash) {
 		return switch (this) {
@@ -19,6 +20,7 @@ public enum Pattern {
 			case SPOTTED -> Math.floorMod(hash, 7) == 0;
 			case VEINED -> face.broad() && x % 3 == 0;
 			case QUARTERED -> face.broad() && (x < width / 2) != (y < height / 2);
+			case TOP -> face == Face.TOP;
 		};
 	}
 

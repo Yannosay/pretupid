@@ -47,7 +47,7 @@ public final class WaypointsModule extends HudModule {
 	private final BooleanSetting deathWaypoint = add(new BooleanSetting("death_waypoint", true));
 	private final BooleanSetting showCoordinates = add(new BooleanSetting("show_coordinates", false));
 	private final KeySetting addKey = add(new KeySetting("add_key", KeySetting.UNBOUND));
-	private final ColorSetting nameColor = add(new ColorSetting("name_color", 0xFF8FC4FF));
+	private final ColorSetting nameColor = add(new ColorSetting("name_color", 0xFF8FC4FF).followingAccent());
 	private final ColorSetting distanceColor = add(new ColorSetting("distance_color", 0xFFFFFFFF));
 
 	private final Path file = FabricLoader.getInstance().getConfigDir().resolve(PretupidClient.MOD_ID).resolve("waypoints.json");

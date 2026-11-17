@@ -37,7 +37,7 @@ public abstract class AvatarRendererMixin {
 			holder.pretupid$setEmotePose(client.emotes().pose(player.getUUID()));
 		}
 		if (state instanceof CosmeticStateHolder holder) {
-			holder.pretupid$setCosmetics(null, null);
+			holder.pretupid$setCosmetics(null, null, null);
 		}
 		if (state.nameTag != null) {
 			state.nameTag = client.nametags().decorateNametag(player.getUUID(), player.getGameProfile().name(), state.nameTag);

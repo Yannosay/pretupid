@@ -2,10 +2,12 @@ package net.pretupid.client.setting;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.pretupid.client.PretupidClient;
 import net.pretupid.client.util.Colors;
 
 public final class ColorSetting extends Setting<ColorSetting.Value> {
 	private final boolean allowAlpha;
+	private boolean accentFollower;
 
 	public ColorSetting(String id, int argb, boolean allowAlpha) {
 		super(id, new Value(allowAlpha ? argb : (argb | 0xFF000000), false));
@@ -28,7 +30,32 @@ public final class ColorSetting extends Setting<ColorSetting.Value> {
 		return get().chroma();
 	}
 
+	public ColorSetting followingAccent() {
+		this.accentFollower = true;
+		return this;
+	}
+
+	public boolean canFollowAccent() {
+		return accentFollower;
+	}
+
+	public boolean followsAccent() {
+		return accentFollower && isDefault();
+	}
+
+	public int displayArgb() {
+		return followsAccent() ? Colors.withAlpha(accentArgb(0f), Colors.alpha(argb())) : argb();
+	}
+
+	private static int accentArgb(float phase) {
+		PretupidClient client = PretupidClient.getOrNull();
+		return client == null ? 0xFF4A9EFF : client.settings().accent.resolve(phase);
+	}
+
 	public int resolve(float phase) {
+		if (followsAccent()) {
+			return Colors.withAlpha(accentArgb(phase), Colors.alpha(argb()));
+		}
 		Value value = get();
 		if (!value.chroma()) {
 			return value.argb();

@@ -28,7 +28,6 @@ import net.pretupid.client.ui.Theme;
 import net.pretupid.client.ui.UiContext;
 import net.pretupid.client.ui.Widgets;
 import net.pretupid.client.ui.screen.ClientMenuScreen;
-import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.ui.screen.MenuPage;
 import net.pretupid.client.util.Colors;
 import net.pretupid.client.util.PlatformOpener;
@@ -396,17 +395,21 @@ public final class CosmeticsPage implements MenuPage {
 
 	private void drawWearables(UiContext ui, int x, int y, int w, int h) {
 		ClientSettings settings = PretupidClient.get().settings();
-		int rows = 3 + Wearables.HATS.size() + Wearables.BACK.size() + Wearables.PETS.size();
+		Catalog catalog = PretupidClient.get().cosmetics().catalog();
+		List<Catalog.WearableEntry> hats = catalog.wearables(Catalog.WearableKind.HAT);
+		List<Catalog.WearableEntry> backs = catalog.wearables(Catalog.WearableKind.BACK);
+		List<Catalog.WearableEntry> pets = catalog.wearables(Catalog.WearableKind.PET);
+		int rows = 3 + hats.size() + backs.size() + pets.size();
 		scroll.begin(ui, "cosmetics.wearables", x, y, w, h, 3 * 16 + rows * 24 + Widgets.ROW_HEIGHT + 12);
 		int rowY = y - scroll.offset();
-		rowY = drawWearableGroup(ui, "hat", Wearables.HATS, settings.hat, x, rowY, w - 6);
-		rowY = drawWearableGroup(ui, "back", Wearables.BACK, settings.back, x, rowY, w - 6);
-		rowY = drawWearableGroup(ui, "pet", Wearables.PETS, settings.pet, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "hat", hats, settings.hat, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "back", backs, settings.back, x, rowY, w - 6);
+		rowY = drawWearableGroup(ui, "pet", pets, settings.pet, x, rowY, w - 6);
 		Widgets.settingRow(ui, screen, settings.showCosmetics, x, rowY + 4, w - 6);
 		scroll.end(ui, x, y, w, h);
 	}
 
-	private int drawWearableGroup(UiContext ui, String kind, List<String> ids, net.pretupid.client.setting.TextSetting setting, int x, int y, int w) {
+	private int drawWearableGroup(UiContext ui, String kind, List<Catalog.WearableEntry> entries, net.pretupid.client.setting.TextSetting setting, int x, int y, int w) {
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.wearable." + kind), x, y + 2, w);
 		int rowY = y + 16;
 		String current = setting.get();
@@ -414,10 +417,10 @@ public final class CosmeticsPage implements MenuPage {
 			setting.set("");
 			PretupidClient.get().presence().requestHeartbeat();
 		});
-		for (String id : ids) {
-			rowY = drawChoice(ui, "wearable." + kind + "." + id, x, rowY, w, Component.translatable("pretupid.wearable." + kind + "." + id),
-				Component.translatable("pretupid.wearable." + kind + "." + id + ".description"), current.equals(id), () -> {
-					setting.set(id);
+		for (Catalog.WearableEntry entry : entries) {
+			rowY = drawChoice(ui, "wearable." + kind + "." + entry.id(), x, rowY, w, Component.literal(entry.name()), Component.literal(entry.description()),
+				current.equals(entry.id()), () -> {
+					setting.set(entry.id());
 					PretupidClient.get().presence().requestHeartbeat();
 				});
 		}

@@ -223,9 +223,10 @@ public final class Widgets {
 				Draw.rect(ui.g(), sx + i, sy, 1, sh, Colors.withAlpha(Colors.chroma(i / (float) sw), Colors.alpha(setting.argb())));
 			}
 		} else {
-			Draw.rect(ui.g(), sx, sy, sw, sh, setting.argb());
+			Draw.rect(ui.g(), sx, sy, sw, sh, setting.displayArgb());
 		}
-		String hex = setting.chroma() ? I18n.get("pretupid.ui.chroma") : (setting.allowsAlpha() ? Colors.toHex(setting.argb()) : Colors.toRgbHex(setting.argb()));
+		String hex = setting.followsAccent() ? I18n.get("pretupid.ui.interface_color")
+			: setting.chroma() ? I18n.get("pretupid.ui.chroma") : (setting.allowsAlpha() ? Colors.toHex(setting.argb()) : Colors.toRgbHex(setting.argb()));
 		Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), hex, w - sw - 10), sx + sw + 4, y + 3, Theme.TEXT_MUTED);
 	}
 

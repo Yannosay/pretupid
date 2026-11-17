@@ -13,6 +13,9 @@ public abstract class AvatarRenderStateMixin implements EmotePoseHolder, Cosmeti
 	private float[][] pretupid$emotePose;
 
 	@Unique
+	private String pretupid$hat;
+
+	@Unique
 	private String pretupid$back;
 
 	@Unique
@@ -35,6 +38,11 @@ public abstract class AvatarRenderStateMixin implements EmotePoseHolder, Cosmeti
 	}
 
 	@Override
+	public String pretupid$hat() {
+		return pretupid$hat;
+	}
+
+	@Override
 	public String pretupid$back() {
 		return pretupid$back;
 	}
@@ -45,7 +53,8 @@ public abstract class AvatarRenderStateMixin implements EmotePoseHolder, Cosmeti
 	}
 
 	@Override
-	public void pretupid$setCosmetics(String back, String pet) {
+	public void pretupid$setCosmetics(String hat, String back, String pet) {
+		this.pretupid$hat = hat;
 		this.pretupid$back = back;
 		this.pretupid$pet = pet;
 	}

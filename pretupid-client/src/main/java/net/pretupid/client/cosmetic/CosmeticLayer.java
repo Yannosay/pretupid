@@ -21,9 +21,13 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		if (state.isInvisible || !(state instanceof CosmeticStateHolder holder)) {
 			return;
 		}
+		String hat = holder.pretupid$hat();
+		if (hat != null) {
+			draw(CosmeticModels.get(Catalog.WearableKind.HAT, hat), poseStack, collector, light, state);
+		}
 		String back = holder.pretupid$back();
 		if (back != null && !state.chestEquipment.has(DataComponents.GLIDER)) {
-			draw(CosmeticModels.back(back), poseStack, collector, light, state);
+			draw(CosmeticModels.get(Catalog.WearableKind.BACK, back), poseStack, collector, light, state);
 		}
 	}
 
@@ -32,7 +36,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			return;
 		}
 		PetFollower.Placement placement = holder.pretupid$petPlacement();
-		CosmeticModels.Entry entry = placement == null ? null : CosmeticModels.pet(holder.pretupid$pet());
+		CosmeticModels.Entry entry = placement == null ? null : CosmeticModels.get(Catalog.WearableKind.PET, holder.pretupid$pet());
 		if (entry == null) {
 			return;
 		}
