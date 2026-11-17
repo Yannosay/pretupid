@@ -1,5 +1,5 @@
 <template>
-  <div v-if="crash" class="modal-overlay" @click.self="dismiss">
+  <div v-if="crash" class="modal-overlay" v-backdrop-close="dismiss">
     <div class="modal" role="alertdialog" aria-modal="true">
       <div class="modal__header">
         <div>
@@ -45,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'

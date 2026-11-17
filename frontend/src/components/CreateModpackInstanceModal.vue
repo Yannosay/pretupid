@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="handleClose">
+  <div class="modal-overlay" v-backdrop-close="handleClose">
     <div class="modal">
       <div class="modal__header">
         <h3 class="modal__title">Create Modpack Instance</h3>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import { ref, computed, onMounted } from 'vue'
 import { getModrinthVersions, createInstanceFromModpack } from '@/api'

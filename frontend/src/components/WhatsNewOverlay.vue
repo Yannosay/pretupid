@@ -1,6 +1,6 @@
 <template>
   <Transition name="whats-new">
-    <div v-if="visible" class="whats-new-overlay" @click.self="dismiss">
+    <div v-if="visible" class="whats-new-overlay" v-backdrop-close="dismiss">
       <div class="whats-new">
         <header class="whats-new__header">
           <div>
@@ -41,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { computed, onMounted, ref } from 'vue'
 import { useUpdaterStore, type PendingReleaseNotes } from '@/stores/updater'
 import { REPOSITORY_URL } from '@/config'

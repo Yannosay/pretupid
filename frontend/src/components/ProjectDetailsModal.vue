@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="emit('close')">
+  <div class="modal-overlay" v-backdrop-close="() => emit('close')">
     <div class="modal modal--wide" role="dialog" aria-modal="true">
       <div class="modal__header">
         <div class="details__heading">
@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed, onMounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'

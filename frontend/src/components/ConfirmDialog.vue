@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="emit('cancel')" @keydown.esc="emit('cancel')">
+  <div class="modal-overlay" v-backdrop-close="() => emit('cancel')" @keydown.esc="emit('cancel')">
     <div class="modal modal--narrow" role="alertdialog" aria-modal="true" :aria-label="title">
       <div class="modal__header">
         <h3 class="modal__title">{{ title }}</h3>
@@ -20,6 +20,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { onMounted, ref } from 'vue'
 
 withDefaults(

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="modelValue" class="modal-overlay" @click.self="close">
+  <div v-if="modelValue" class="modal-overlay" v-backdrop-close="close">
     <div class="modal">
       <div class="modal__header">
         <h2 class="modal__title">Settings</h2>
@@ -66,6 +66,7 @@
               @click="chooseFont(option.value)"
             >
               {{ option.label }}
+              <span v-if="option.recommended" class="theme-toggle__tag">Best</span>
             </button>
           </div>
           <p v-if="settings.font === 'custom' && settings.customFontPath" class="settings-font__path">
@@ -75,15 +76,15 @@
 
         <section class="section">
           <h3 class="section__title section__title--sm">Home</h3>
-          <label class="toggle">
+          <label class="settings-checkbox">
             <input
               type="checkbox"
-              class="toggle__input"
+              class="settings-checkbox__input"
               :checked="settings.sceneryMotion"
               @change="settingsStore.setSceneryMotion(($event.target as HTMLInputElement).checked)"
             />
-            <span class="toggle__track" />
-            <span class="toggle__label">Animated landscape</span>
+            <span class="settings-checkbox__box" aria-hidden="true"></span>
+            <span class="settings-checkbox__label">Animated landscape</span>
           </label>
         </section>
 
@@ -213,6 +214,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import ColorPicker from '@ui/ColorPicker.vue'
 import { useSettingsStore } from '@/stores/settings'
@@ -241,8 +243,8 @@ const presetColors = ['#4a9eff', '#7c5cff', '#e879f9', '#f87171', '#fb923c', '#f
 const customOpen = ref(false)
 const customAccent = computed(() => !presetColors.includes(settings.value.accentColor.toLowerCase()))
 
-const fontOptions: { value: FontChoice; label: string }[] = [
-  { value: 'minecraft', label: 'Minecraft (Recommended)' },
+const fontOptions: { value: FontChoice; label: string; recommended?: boolean }[] = [
+  { value: 'minecraft', label: 'Minecraft', recommended: true },
   { value: 'press-start', label: 'Press Start' },
   { value: 'custom', label: 'Custom font' }
 ]
@@ -461,6 +463,21 @@ useEscapeKey(() => props.modelValue, close)
   background-color: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
+}
+
+.theme-toggle__btn {
+  white-space: nowrap;
+}
+
+.theme-toggle__tag {
+  padding: 0.1rem 0.35rem;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  border-radius: var(--edge-radius);
+  opacity: 0.85;
 }
 
 .color-presets {

@@ -1,5 +1,19 @@
 <template>
   <div class="color-picker">
+    <div class="color-picker__dyes" role="group" aria-label="Dye colors">
+      <button
+        v-for="dye in dyes"
+        :key="dye.name"
+        type="button"
+        class="color-picker__dye"
+        :class="{ 'color-picker__dye--active': hex === dye.color }"
+        :style="{ backgroundColor: dye.color }"
+        :title="dye.name"
+        :aria-label="dye.name"
+        @click="pickDye(dye.color)"
+      />
+    </div>
+
     <div
       ref="padRef"
       class="color-picker__pad"
@@ -28,11 +42,11 @@
       @pointerdown="startHue"
       @keydown="onHueKey"
     >
-      <span class="color-picker__hue-thumb" :style="{ left: `${(hue / 360) * 100}%`, backgroundColor: `hsl(${hue} 100% 50%)` }" />
+      <span class="color-picker__hue-thumb" :style="{ left: `${(hue / 360) * 100}%` }" />
     </div>
 
     <div class="color-picker__row">
-      <span class="color-picker__swatch" :style="{ backgroundColor: hex }" />
+      <span class="color-picker__swatch"><span :style="{ backgroundColor: hex }" /></span>
       <label class="color-picker__hex">
         <span>#</span>
         <input
@@ -103,6 +117,25 @@ function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
   }
   return [(h + 360) % 360, max === 0 ? 0 : d / max, max]
 }
+
+const dyes = [
+  { name: 'White', color: '#f9fffe' },
+  { name: 'Light Gray', color: '#9d9d97' },
+  { name: 'Gray', color: '#474f52' },
+  { name: 'Black', color: '#1d1d21' },
+  { name: 'Brown', color: '#835432' },
+  { name: 'Red', color: '#b02e26' },
+  { name: 'Orange', color: '#f9801d' },
+  { name: 'Yellow', color: '#fed83d' },
+  { name: 'Lime', color: '#80c71f' },
+  { name: 'Green', color: '#5e7c16' },
+  { name: 'Cyan', color: '#169c9c' },
+  { name: 'Light Blue', color: '#3ab3da' },
+  { name: 'Blue', color: '#3c44aa' },
+  { name: 'Purple', color: '#8932b8' },
+  { name: 'Magenta', color: '#c74ebd' },
+  { name: 'Pink', color: '#f38baa' }
+]
 
 const hex = computed(() => toHex(...hsvToRgb(hue.value, saturation.value, value.value)))
 
@@ -193,6 +226,11 @@ function onHueKey(event: KeyboardEvent) {
   commit()
 }
 
+function pickDye(color: string) {
+  syncFromProp(color)
+  commit()
+}
+
 function onHexInput(event: Event) {
   const input = event.target as HTMLInputElement
   const cleaned = input.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6)
@@ -213,18 +251,58 @@ onBeforeUnmount(stopDrag)
 
 <style scoped>
 .color-picker {
+  --mc-slot: #8b8b8b;
+  --mc-slot-dark: #373737;
+  --mc-slot-light: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   width: 100%;
-  max-width: 280px;
+  max-width: 296px;
   user-select: none;
+  image-rendering: pixelated;
+}
+
+.color-picker__dyes {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--mc-slot);
+  box-shadow: inset 2px 2px 0 var(--mc-slot-dark), inset -2px -2px 0 var(--mc-slot-light);
+}
+
+.color-picker__dye {
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.35), inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+  transition: transform 0.08s ease;
+}
+
+.color-picker__dye:hover {
+  transform: translateY(-1px);
+  outline: 2px solid #ffffff;
+  outline-offset: -1px;
+}
+
+.color-picker__dye--active {
+  outline: 2px solid #ffffff;
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.55);
+}
+
+.color-picker__dye:focus-visible {
+  outline: 2px solid var(--text-primary, #fff);
+  outline-offset: 1px;
 }
 
 .color-picker__pad {
   position: relative;
   height: 150px;
-  border-radius: var(--edge-radius, 0);
+  border: 3px solid var(--mc-slot);
+  box-shadow: 0 0 0 2px var(--mc-slot-dark);
   cursor: crosshair;
   touch-action: none;
   outline: none;
@@ -239,7 +317,6 @@ onBeforeUnmount(stopDrag)
 .color-picker__pad-black {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   pointer-events: none;
 }
 
@@ -251,22 +328,21 @@ onBeforeUnmount(stopDrag)
   background: linear-gradient(0deg, #000, rgba(0, 0, 0, 0));
 }
 
-.color-picker__thumb,
-.color-picker__hue-thumb {
+.color-picker__thumb {
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.4);
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px #000000;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
 .color-picker__hue {
   position: relative;
-  height: 14px;
-  border-radius: 7px;
+  height: 18px;
+  margin: 0 5px;
+  border: 2px solid var(--mc-slot-dark);
   background: linear-gradient(90deg, #f00, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00);
   cursor: pointer;
   touch-action: none;
@@ -274,7 +350,15 @@ onBeforeUnmount(stopDrag)
 }
 
 .color-picker__hue-thumb {
+  position: absolute;
   top: 50%;
+  width: 10px;
+  height: 26px;
+  background-color: #c6c6c6;
+  border: 2px solid #000000;
+  box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #555555;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .color-picker__row {
@@ -284,37 +368,46 @@ onBeforeUnmount(stopDrag)
 }
 
 .color-picker__swatch {
-  width: 34px;
-  height: 34px;
+  display: flex;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
-  border-radius: var(--edge-radius, 0);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  padding: 4px;
+  background-color: var(--mc-slot);
+  box-shadow: inset 2px 2px 0 var(--mc-slot-dark), inset -2px -2px 0 var(--mc-slot-light);
+}
+
+.color-picker__swatch span {
+  flex: 1;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.3), inset -2px -2px 0 rgba(0, 0, 0, 0.3);
 }
 
 .color-picker__hex {
   display: flex;
   flex: 1;
+  min-width: 0;
   align-items: center;
   gap: 0.2rem;
-  height: 34px;
+  height: 36px;
   padding: 0 0.7rem;
-  font-family: var(--font-mono, monospace);
-  color: var(--text-secondary, #aaa);
-  background-color: var(--bg-tertiary, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: var(--edge-radius, 0);
+  font-family: var(--font-pixel, monospace);
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  background-color: #000000;
+  border: 2px solid #a0a0a0;
 }
 
 .color-picker__hex:focus-within {
-  border-color: var(--accent, #4a9eff);
+  border-color: #ffffff;
 }
 
 .color-picker__hex input {
   flex: 1;
+  width: 100%;
   min-width: 0;
   font: inherit;
   text-transform: uppercase;
-  color: var(--text-primary, #fff);
+  color: #ffffff;
   background: none;
   border: none;
   outline: none;

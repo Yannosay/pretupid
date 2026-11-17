@@ -10,6 +10,7 @@
       @selectstart.prevent
       @contextmenu.prevent
     >
+      <slot name="backdrop" />
       <canvas ref="canvasRef" class="skin-preview__canvas" draggable="false"></canvas>
     </div>
 
@@ -204,6 +205,8 @@ onBeforeUnmount(() => {
 }
 
 .skin-preview__canvas {
+  position: relative;
+  z-index: 1;
   display: block;
   max-width: none;
   pointer-events: auto;

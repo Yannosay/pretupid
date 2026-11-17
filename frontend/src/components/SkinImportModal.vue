@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" v-backdrop-close="() => $emit('close')">
     <div class="modal skin-import" role="dialog" aria-modal="true" aria-labelledby="skin-import-title">
       <div class="modal__header">
         <h3 id="skin-import-title" class="modal__title">Add a skin</h3>
@@ -98,6 +98,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { useEscapeKey } from '@/composables/useEscapeKey'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'

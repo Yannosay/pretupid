@@ -12,6 +12,11 @@
         <g v-if="phase === 'night'" class="scenery__stars">
           <rect v-for="(star, i) in stars" :key="i" :x="star.x" :y="star.y" :width="star.s" :height="star.s" :style="{ animationDelay: `${star.d}s` }" />
         </g>
+        <g v-if="phase === 'night'" class="scenery__shooting" :style="{ animationDelay: `${shootingDelay}s` }">
+          <rect x="600" y="40" width="4" height="4" fill="#ffffff" />
+          <rect x="604" y="36" width="8" height="4" fill="#ffffff" opacity="0.6" />
+          <rect x="612" y="32" width="12" height="4" fill="#ffffff" opacity="0.3" />
+        </g>
         <g class="scenery__orb">
           <rect :x="orb.x" :y="orb.y" :width="orb.size" :height="orb.size" :fill="palette.orb" />
           <rect :x="orb.x - 8" :y="orb.y - 8" :width="orb.size + 16" :height="orb.size + 16" :fill="palette.orb" opacity="0.14" />
@@ -22,10 +27,30 @@
           <rect v-for="(part, j) in cloud.parts" :key="j" :x="cloud.x + part[0]" :y="cloud.y + part[1]" :width="part[2]" :height="BLOCK" :fill="palette.cloud" />
         </g>
       </g>
+      <g v-if="phase !== 'night'" :transform="depth(CLOUD_DEPTH)" class="scenery__birds">
+        <g v-for="(bird, i) in birds" :key="i" class="scenery__bird" :style="{ animationDuration: `${bird.speed}s`, animationDelay: `${-bird.offset}s` }">
+          <g class="scenery__wings" :style="{ animationDelay: `${bird.flap}s` }">
+            <rect :x="bird.x" :y="bird.y" width="4" height="4" :fill="palette.bird" />
+            <rect :x="bird.x + 4" :y="bird.y + 4" width="4" height="4" :fill="palette.bird" />
+            <rect :x="bird.x + 8" :y="bird.y" width="4" height="4" :fill="palette.bird" />
+          </g>
+        </g>
+      </g>
       <g v-for="(layer, i) in layers" :key="i" :transform="depth(LAYER_DEPTHS[i])">
         <g class="scenery__layer" :style="{ animationDuration: `${DRIFT_SECONDS[i]}s`, animationDelay: `${-layer.offset}s` }">
           <path :d="layer.path" :fill="layer.fill" />
         </g>
+      </g>
+      <g v-if="phase === 'night' || phase === 'dusk'" :transform="depth(LAYER_DEPTHS[3])" class="scenery__fireflies">
+        <rect
+          v-for="(fly, i) in fireflies"
+          :key="i"
+          :x="fly.x"
+          :y="fly.y"
+          width="4"
+          height="4"
+          :style="{ animationDelay: `${fly.d}s, ${fly.d / 2}s`, animationDuration: `${fly.blink}s, ${fly.bob}s` }"
+        />
       </g>
     </svg>
     <div v-if="fade" class="scenery__fade" />
@@ -80,11 +105,11 @@ const phase = computed<Phase>(() => {
   return 'night'
 })
 
-const PALETTES: Record<Phase, { skyTop: string; skyBottom: string; orb: string; cloud: string; hills: string[] }> = {
-  dawn: { skyTop: '#2a2d5c', skyBottom: '#e8957a', orb: '#ffd9a0', cloud: 'rgba(255, 214, 196, 0.55)', hills: ['#5b4a78', '#3d3459', '#262240', '#14131f'] },
-  day: { skyTop: '#2f6fb3', skyBottom: '#8fc6e8', orb: '#fff3b0', cloud: 'rgba(255, 255, 255, 0.75)', hills: ['#4f86a8', '#3b6a55', '#2a5038', '#132219'] },
-  dusk: { skyTop: '#1f1838', skyBottom: '#c75a5a', orb: '#ffb36b', cloud: 'rgba(255, 170, 150, 0.45)', hills: ['#57345a', '#3a2444', '#24172d', '#120c17'] },
-  night: { skyTop: '#05070f', skyBottom: '#1a2547', orb: '#e9eef7', cloud: 'rgba(160, 175, 210, 0.22)', hills: ['#1d2a4a', '#152036', '#0e1626', '#070b14'] }
+const PALETTES: Record<Phase, { skyTop: string; skyBottom: string; orb: string; cloud: string; bird: string; hills: string[] }> = {
+  dawn: { skyTop: '#2a2d5c', skyBottom: '#e8957a', orb: '#ffd9a0', cloud: 'rgba(255, 214, 196, 0.55)', bird: '#3a2c4d', hills: ['#5b4a78', '#3d3459', '#262240', '#14131f'] },
+  day: { skyTop: '#2f6fb3', skyBottom: '#8fc6e8', orb: '#fff3b0', cloud: 'rgba(255, 255, 255, 0.75)', bird: '#1f3346', hills: ['#4f86a8', '#3b6a55', '#2a5038', '#132219'] },
+  dusk: { skyTop: '#1f1838', skyBottom: '#c75a5a', orb: '#ffb36b', cloud: 'rgba(255, 170, 150, 0.45)', bird: '#2a1a30', hills: ['#57345a', '#3a2444', '#24172d', '#120c17'] },
+  night: { skyTop: '#05070f', skyBottom: '#1a2547', orb: '#e9eef7', cloud: 'rgba(160, 175, 210, 0.22)', bird: '#0e1626', hills: ['#1d2a4a', '#152036', '#0e1626', '#070b14'] }
 }
 
 const palette = computed(() => PALETTES[phase.value])
@@ -172,6 +197,30 @@ const clouds = computed(() => {
   })
 })
 
+const birds = computed(() => {
+  const rand = rng(hash(props.seed + 'birds'))
+  return Array.from({ length: 3 }, () => ({
+    x: Math.floor(rand() * 200),
+    y: 60 + Math.floor(rand() * 20) * 4,
+    speed: 70 + rand() * 50,
+    offset: rand() * 120,
+    flap: Math.round(rand() * 10) / 10
+  }))
+})
+
+const fireflies = computed(() => {
+  const rand = rng(hash(props.seed + 'fireflies'))
+  return Array.from({ length: 14 }, () => ({
+    x: Math.floor(rand() * (WIDTH / 4)) * 4,
+    y: HEIGHT - 24 - Math.floor(rand() * 16) * 4,
+    d: Math.round(rand() * 60) / 10,
+    blink: 2.5 + rand() * 3,
+    bob: 3 + rand() * 3
+  }))
+})
+
+const shootingDelay = computed(() => Math.round(rng(hash(props.seed + 'meteor'))() * 120) / 10)
+
 const orb = computed(() => {
   const size = 36
   const positions: Record<Phase, [number, number]> = { dawn: [140, 150], day: [700, 48], dusk: [820, 140], night: [760, 56] }
@@ -209,11 +258,45 @@ const orb = computed(() => {
   animation: scenery-drift linear infinite;
 }
 
+.scenery__bird {
+  animation: scenery-fly linear infinite;
+}
+
+.scenery__wings {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: scenery-flap 0.6s steps(1) infinite;
+}
+
+.scenery__fireflies rect {
+  fill: #f7f39a;
+  opacity: 0;
+  animation-name: scenery-glow, scenery-bob;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.scenery__shooting {
+  opacity: 0;
+  animation: scenery-meteor 14s linear infinite;
+}
+
 .scenery--still {
   .scenery__layer,
   .scenery__cloud,
+  .scenery__bird,
+  .scenery__wings,
+  .scenery__fireflies rect,
   .scenery__stars rect {
     animation-play-state: paused;
+  }
+
+  .scenery__shooting {
+    display: none;
+  }
+
+  .scenery__fireflies rect {
+    opacity: 0.7;
   }
 }
 
@@ -241,6 +324,55 @@ const orb = computed(() => {
   }
 }
 
+@keyframes scenery-fly {
+  from {
+    transform: translateX(-240px);
+  }
+  to {
+    transform: translateX(1200px);
+  }
+}
+
+@keyframes scenery-flap {
+  50% {
+    transform: translateY(2px) scaleY(0.6);
+  }
+}
+
+@keyframes scenery-glow {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes scenery-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes scenery-meteor {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  2% {
+    opacity: 1;
+  }
+  7% {
+    opacity: 0;
+    transform: translate(-220px, 110px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-220px, 110px);
+  }
+}
+
 @keyframes scenery-twinkle {
   50% {
     opacity: 0.25;
@@ -250,8 +382,19 @@ const orb = computed(() => {
 @media (prefers-reduced-motion: reduce) {
   .scenery__layer,
   .scenery__cloud,
+  .scenery__bird,
+  .scenery__wings,
   .scenery__stars rect {
     animation: none;
+  }
+
+  .scenery__shooting {
+    display: none;
+  }
+
+  .scenery__fireflies rect {
+    animation: none;
+    opacity: 0.7;
   }
 }
 </style>

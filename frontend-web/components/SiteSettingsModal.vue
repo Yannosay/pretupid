@@ -1,5 +1,5 @@
 <template>
-  <div v-if="open" class="modal-overlay" @click.self="$emit('close')">
+  <div v-if="open" class="modal-overlay" v-backdrop-close="() => $emit('close')">
     <div class="modal">
       <div class="modal__header">
         <h3 class="modal__title">Appearance</h3>
@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import { vBackdropClose } from '@ui/backdropClose'
 import { onMounted, ref } from 'vue'
 import ColorPicker from '@ui/ColorPicker.vue'
 import { useLauncherBridge } from '~/composables/useLauncherBridge'

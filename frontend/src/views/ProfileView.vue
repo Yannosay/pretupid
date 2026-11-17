@@ -1,166 +1,164 @@
 <template>
   <div class="profile-view">
     <header class="profile-view__header">
-      <h1 class="profile-view__title">Profile</h1>
+      <h1 class="profile-view__title">Skins</h1>
+      <p class="profile-view__subtitle">Pick how you look in game. Changes reach every server you join.</p>
     </header>
 
     <div v-if="!authStore.authenticated" class="profile-view__auth">
-      <p class="text-secondary">You must be logged in to manage skins.</p>
+      <p class="text-secondary">Sign in with your Microsoft account to manage skins and capes.</p>
       <button class="btn" :disabled="authStore.loading" @click="authStore.login">
-        {{ authStore.loading ? 'Logging in...' : 'Login with Microsoft' }}
+        {{ authStore.loading ? 'Signing in...' : 'Sign in with Microsoft' }}
       </button>
     </div>
 
     <template v-else>
-      <section class="profile-card">
-        <div class="profile-card__body">
-          <img
-            class="profile-card__avatar"
-            :src="`https://mc-heads.net/avatar/${authStore.profile?.id}/100`"
-            :alt="authStore.profile?.name"
-          />
-
-          <div class="profile-card__info">
-            <span class="profile-card__label">Player</span>
-            <span class="profile-card__name">{{ authStore.profile?.name }}</span>
-
-            <span class="profile-card__label profile-card__uuid-label">UUID</span>
-            <span class="profile-card__uuid">{{ authStore.profile?.id }}</span>
-          </div>
-
-          <div class="profile-card__actions">
-            <button class="btn btn--ghost btn--small" @click="copyUuid">Copy UUID</button>
-            <button class="btn btn--ghost btn--small" @click="refreshProfile">Refresh</button>
-          </div>
-        </div>
-      </section>
-
-      <div v-if="profileStore.error" class="profile-view__error">{{ profileStore.error }}</div>
-      <div v-if="profileStore.success" class="profile-view__success">{{ profileStore.success }}</div>
+      <div v-if="profileStore.error" class="profile-view__notice profile-view__notice--danger">{{ profileStore.error }}</div>
+      <div v-if="profileStore.success" class="profile-view__notice profile-view__notice--success">{{ profileStore.success }}</div>
 
       <div class="profile-view__grid">
-        <section class="profile-view__panel">
-          <div class="profile-view__panel-heading">
-            <h3>3D Preview</h3>
-            <span class="profile-view__panel-hint">Scroll to zoom, drag to rotate</span>
-          </div>
+        <section class="profile-stage">
+          <SkinPreview3D
+            :skin-url="previewSkinUrl"
+            :cape-url="profileStore.activeCape?.data_url ?? null"
+            :width="320"
+            :height="440"
+          >
+            <template #backdrop>
+              <PixelScenery
+                :seed="authStore.profile?.id ?? 'skins'"
+                :moving="settingsStore.settings.sceneryMotion"
+                :fade="false"
+                class="profile-stage__scenery"
+              />
+              <span class="profile-stage__ground" />
+              <span class="profile-stage__nametag">{{ authStore.profile?.name }}</span>
+            </template>
+          </SkinPreview3D>
 
-          <div class="profile-view__preview">
-            <span class="profile-view__preview-name">{{ authStore.profile?.name }}</span>
-            <SkinPreview3D
-              :skin-url="previewSkinUrl"
-              :cape-url="profileStore.activeCape?.data_url ?? null"
-            />
-          </div>
-
-          <div class="profile-view__panel-actions">
-            <button
-              class="btn"
-              :disabled="!activeSlot || profileStore.applying"
-              @click="handleApplyActive"
-            >
+          <div class="profile-stage__actions">
+            <button class="btn" :disabled="!activeSlot || profileStore.applying" @click="handleApplyActive">
               {{ profileStore.applying ? 'Applying...' : 'Apply to Minecraft' }}
             </button>
-            <button
-              class="btn btn--ghost"
-              :disabled="!activeSlot || profileStore.exporting"
-              @click="handleExportActive"
-            >
+            <button class="btn btn--ghost" :disabled="!activeSlot || profileStore.exporting" @click="handleExportActive">
+              <AppIcon name="download" :size="14" />
               {{ profileStore.exporting ? 'Exporting...' : 'Export PNG' }}
             </button>
           </div>
         </section>
 
-        <section class="profile-view__panel">
-          <div class="profile-view__panel-header">
-            <h3>Skin Slots</h3>
-            <button
-              class="btn"
-              :disabled="profileStore.skinSlots.length >= 5 || profileStore.importing"
-              @click="importModalOpen = true"
-            >
-              Add Skin
-            </button>
-          </div>
-
-          <div v-if="profileStore.loading" class="pixel-loader">
-            Loading Slots
-            <span class="pixel-loader__dots">
-              <span class="pixel-loader__dot"></span>
-              <span class="pixel-loader__dot"></span>
-              <span class="pixel-loader__dot"></span>
-            </span>
-          </div>
-
-          <div v-else-if="profileStore.skinSlots.length === 0" class="profile-view__empty">
-            No skin slots saved yet.
-          </div>
-
-          <div v-else class="profile-view__slot-list">
-            <SkinSlotCard
-              v-for="slot in profileStore.skinSlots"
-              :key="slot.id"
-              :slot="slot"
-              :active="slot.id === activeSlot?.id"
-              :preview-url="slot.data_url || mcHeadsSkinUrl"
-              @select="handleSelectSlot(slot.id)"
-              @export="handleExportSlot(slot.id)"
-              @delete="confirmDelete(slot.id)"
-              @drag-start="draggedSlotId = slot.id"
-              @drop="handleDrop(slot.id)"
+        <div class="profile-view__side">
+          <section class="profile-card">
+            <img
+              class="profile-card__avatar"
+              :src="`https://mc-heads.net/avatar/${authStore.profile?.id}/100`"
+              :alt="authStore.profile?.name"
             />
-          </div>
-        </section>
+            <div class="profile-card__info">
+              <span class="profile-card__name">{{ authStore.profile?.name }}</span>
+              <button class="profile-card__uuid" :title="copied ? 'Copied' : 'Copy UUID'" @click="copyUuid">
+                <span>{{ authStore.profile?.id }}</span>
+                <AppIcon :name="copied ? 'check' : 'copy'" :size="12" />
+              </button>
+            </div>
+            <button class="btn btn--ghost btn--small" @click="refreshProfile">Refresh</button>
+          </section>
+
+          <section class="profile-view__panel">
+            <div class="profile-view__panel-header">
+              <div>
+                <h3>Wardrobe</h3>
+                <span class="profile-view__panel-hint">{{ profileStore.skinSlots.length }} of {{ MAX_SLOTS }} slots · drag to reorder</span>
+              </div>
+            </div>
+
+            <div v-if="profileStore.loading" class="pixel-loader">
+              Loading skins
+              <span class="pixel-loader__dots">
+                <span class="pixel-loader__dot"></span>
+                <span class="pixel-loader__dot"></span>
+                <span class="pixel-loader__dot"></span>
+              </span>
+            </div>
+
+            <div v-else class="wardrobe">
+              <SkinSlotCard
+                v-for="slot in profileStore.skinSlots"
+                :key="slot.id"
+                :slot="slot"
+                :active="slot.id === activeSlot?.id"
+                :preview-url="slot.data_url || mcHeadsSkinUrl"
+                @select="handleSelectSlot(slot.id)"
+                @export="handleExportSlot(slot.id)"
+                @delete="pendingDelete = slot.id"
+                @drag-start="draggedSlotId = slot.id"
+                @drop="handleDrop(slot.id)"
+              />
+              <button
+                v-if="profileStore.skinSlots.length < MAX_SLOTS"
+                type="button"
+                class="wardrobe__add"
+                :disabled="profileStore.importing"
+                @click="importModalOpen = true"
+              >
+                <AppIcon name="plus" :size="20" />
+                <span>Add skin</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="profile-view__panel">
+            <div class="profile-view__panel-header">
+              <div>
+                <h3>Minecraft Capes</h3>
+                <span class="profile-view__panel-hint">Capes on your Microsoft account. Everyone sees the one you equip.</span>
+              </div>
+            </div>
+
+            <div v-if="profileStore.capeError" class="profile-view__notice profile-view__notice--danger">{{ profileStore.capeError }}</div>
+
+            <div v-if="profileStore.capesLoading && !profileStore.capesLoaded" class="pixel-loader">
+              Loading capes
+              <span class="pixel-loader__dots">
+                <span class="pixel-loader__dot"></span>
+                <span class="pixel-loader__dot"></span>
+                <span class="pixel-loader__dot"></span>
+              </span>
+            </div>
+
+            <div v-else-if="profileStore.capesLoaded" class="cape-grid">
+              <button
+                type="button"
+                class="cape-card"
+                :class="{ 'cape-card--active': !profileStore.activeCape }"
+                :disabled="profileStore.capeSaving"
+                @click="handleEquipCape(null)"
+              >
+                <span class="cape-card__art cape-card__art--empty"><AppIcon name="x" :size="18" /></span>
+                <span class="cape-card__name">No cape</span>
+              </button>
+              <button
+                v-for="cape in profileStore.capes"
+                :key="cape.id"
+                type="button"
+                class="cape-card"
+                :class="{ 'cape-card--active': cape.active }"
+                :disabled="profileStore.capeSaving"
+                @click="handleEquipCape(cape.id)"
+              >
+                <span
+                  class="cape-card__art"
+                  :style="cape.data_url ? { backgroundImage: `url(${cape.data_url})` } : undefined"
+                ></span>
+                <span class="cape-card__name">{{ cape.alias }}</span>
+              </button>
+              <p v-if="profileStore.capes.length === 0" class="cape-grid__empty">
+                This account has no Minecraft capes yet.
+              </p>
+            </div>
+          </section>
+        </div>
       </div>
-
-      <section class="profile-view__panel">
-        <div class="profile-view__panel-heading">
-          <h3>Minecraft Capes</h3>
-          <span class="profile-view__panel-hint">Capes on your Microsoft account. Everyone sees the one you equip.</span>
-        </div>
-
-        <div v-if="profileStore.capeError" class="profile-view__cape-error">{{ profileStore.capeError }}</div>
-
-        <div v-if="profileStore.capesLoading && !profileStore.capesLoaded" class="pixel-loader">
-          Loading Capes
-          <span class="pixel-loader__dots">
-            <span class="pixel-loader__dot"></span>
-            <span class="pixel-loader__dot"></span>
-            <span class="pixel-loader__dot"></span>
-          </span>
-        </div>
-
-        <div v-else-if="profileStore.capesLoaded" class="cape-grid">
-          <button
-            type="button"
-            class="cape-card"
-            :class="{ 'cape-card--active': !profileStore.activeCape }"
-            :disabled="profileStore.capeSaving"
-            @click="handleEquipCape(null)"
-          >
-            <span class="cape-card__art cape-card__art--empty">No cape</span>
-            <span class="cape-card__name">Hidden</span>
-          </button>
-          <button
-            v-for="cape in profileStore.capes"
-            :key="cape.id"
-            type="button"
-            class="cape-card"
-            :class="{ 'cape-card--active': cape.active }"
-            :disabled="profileStore.capeSaving"
-            @click="handleEquipCape(cape.id)"
-          >
-            <span
-              class="cape-card__art"
-              :style="cape.data_url ? { backgroundImage: `url(${cape.data_url})` } : undefined"
-            ></span>
-            <span class="cape-card__name">{{ cape.alias }}</span>
-          </button>
-          <p v-if="profileStore.capes.length === 0" class="cape-grid__empty">
-            This account has no Minecraft capes yet.
-          </p>
-        </div>
-      </section>
     </template>
 
     <SkinImportModal
@@ -172,6 +170,16 @@
       @import-url="handleImportUrl"
       @import-username="handleImportUsername"
     />
+
+    <ConfirmDialog
+      v-if="pendingDelete"
+      title="Remove skin"
+      :message="`Remove “${pendingDeleteName}” from your wardrobe? You can add it again later.`"
+      confirm-label="Remove"
+      danger
+      @cancel="pendingDelete = null"
+      @confirm="handleDelete"
+    />
   </div>
 </template>
 
@@ -180,18 +188,31 @@ import { computed, onMounted, ref } from 'vue'
 import SkinPreview3D from '@/components/SkinPreview3D.vue'
 import SkinSlotCard from '@/components/SkinSlotCard.vue'
 import SkinImportModal from '@/components/SkinImportModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AppIcon from '@/components/AppIcon.vue'
+import PixelScenery from '@ui/PixelScenery.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProfileStore } from '@/stores/profile'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useSettingsStore } from '@/stores/settings'
 import type { SkinModelType } from '@/types/profile'
+
+const MAX_SLOTS = 5
 
 const authStore = useAuthStore()
 const profileStore = useProfileStore()
 const notifications = useNotificationsStore()
+const settingsStore = useSettingsStore()
 const importModalOpen = ref(false)
 const draggedSlotId = ref<string | null>(null)
+const pendingDelete = ref<string | null>(null)
+const copied = ref(false)
 
 const activeSlot = computed(() => profileStore.activeSlot)
+
+const pendingDeleteName = computed(
+  () => profileStore.skinSlots.find((slot) => slot.id === pendingDelete.value)?.name ?? 'this skin'
+)
 
 const mcHeadsSkinUrl = computed(() =>
   authStore.profile?.id
@@ -211,21 +232,25 @@ async function loadProfileData() {
   }
 }
 
-function copyUuid() {
-  if (authStore.profile?.id) {
-    navigator.clipboard.writeText(authStore.profile.id)
+async function copyUuid() {
+  if (!authStore.profile?.id) return
+  try {
+    await navigator.clipboard.writeText(authStore.profile.id)
+    copied.value = true
+    window.setTimeout(() => (copied.value = false), 1500)
+  } catch {
+    notifications.notifyError('Copy failed', 'The clipboard is not available right now.')
   }
 }
 
 async function refreshProfile() {
-  await authStore.check()
   await loadProfileData()
 }
 
 function finishImport() {
   if (!profileStore.error) {
     importModalOpen.value = false
-    notifications.notifySuccess('Skin added', 'It is now in your skin library.')
+    notifications.notifySuccess('Skin added', 'It is now in your wardrobe.')
   }
 }
 
@@ -276,10 +301,10 @@ async function handleExportActive() {
   }
 }
 
-function confirmDelete(slotId: string) {
-  if (window.confirm('Remove this skin slot?')) {
-    profileStore.removeSlot(slotId)
-  }
+async function handleDelete() {
+  const slotId = pendingDelete.value
+  pendingDelete.value = null
+  if (slotId) await profileStore.removeSlot(slotId)
 }
 
 async function handleSelectSlot(slotId: string) {
@@ -310,16 +335,17 @@ onMounted(loadProfileData)
 .profile-view {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-}
-
-.profile-view__header {
-  margin-bottom: 1rem;
+  gap: 1.25rem;
 }
 
 .profile-view__title {
   font-size: 2rem;
   margin: 0;
+}
+
+.profile-view__subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
 }
 
 .profile-view__auth {
@@ -333,105 +359,159 @@ onMounted(loadProfileData)
   border-radius: var(--edge-radius);
 }
 
-.profile-view__error {
-  padding: 1rem;
-  background-color: var(--danger);
-  color: white;
-  border: 1px solid var(--danger);
+.profile-view__notice {
+  padding: 0.75rem 1rem;
+  border: 1px solid;
   border-radius: var(--edge-radius);
+
+  &--danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    background-color: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+
+  &--success {
+    color: var(--success);
+    border-color: var(--success);
+    background-color: color-mix(in srgb, var(--success) 10%, transparent);
+  }
 }
 
-.profile-view__success {
-  padding: 1rem;
-  background-color: var(--success);
-  color: white;
-  border: 1px solid var(--success);
-  border-radius: var(--edge-radius);
+.profile-view__grid {
+  display: grid;
+  grid-template-columns: 362px minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
 }
 
-.profile-card {
+.profile-stage {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 1rem;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 1.5rem;
+
+  :deep(.skin-preview__stage) {
+    background-color: #0b1020;
+    border: 2px solid var(--border-strong);
+  }
 }
 
-.profile-card__body {
+.profile-stage__scenery {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.profile-stage__ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 86px;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, #6aa84f 0 8px, #4f8a37 8px 14px, transparent 14px),
+    repeating-linear-gradient(90deg, #7a5638 0 16px, #6a4a30 16px 32px);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18);
+}
+
+.profile-stage__nametag {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  padding: 0.2rem 0.55rem;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  color: #ffffff;
+  white-space: nowrap;
+  background-color: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.profile-stage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.profile-view__side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.profile-card {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--edge-radius);
 }
 
 .profile-card__avatar {
-  width: 72px;
-  height: 72px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
-  border-radius: var(--edge-radius);
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-strong);
   image-rendering: pixelated;
 }
 
 .profile-card__info {
   flex: 1;
-  min-width: 240px;
-}
-
-.profile-card__label,
-.profile-card__name,
-.profile-card__uuid {
-  display: block;
-}
-
-.profile-card__label {
-  font-family: var(--font-pixel);
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.35rem;
-}
-
-.profile-card__uuid-label {
-  margin-top: 1rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .profile-card__name {
-  font-size: 1.5rem;
+  font-family: var(--font-pixel);
+  font-size: 1.15rem;
   color: var(--text-primary);
 }
 
 .profile-card__uuid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0;
   font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  word-break: break-all;
-}
+  background: none;
+  border: none;
+  cursor: pointer;
 
-.profile-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-.profile-view__grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.4fr);
-  gap: 1.5rem;
-  align-items: start;
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 .profile-view__panel {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--edge-radius);
-  padding: 1.5rem;
-}
-
-.profile-view__panel-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.25rem;
 }
 
 .profile-view__panel-header {
@@ -443,12 +523,8 @@ onMounted(loadProfileData)
 }
 
 .profile-view__panel h3 {
-  font-size: 1.2rem;
-  margin: 0;
-}
-
-.profile-view__panel-heading h3 {
-  margin: 0;
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem;
 }
 
 .profile-view__panel-hint {
@@ -456,50 +532,43 @@ onMounted(loadProfileData)
   color: var(--text-secondary);
 }
 
-.profile-view__preview {
+.wardrobe {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.wardrobe__add {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-}
-
-.profile-view__preview-name {
-  font-family: var(--font-pixel);
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  background-color: var(--bg-tertiary);
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--edge-radius);
-}
-
-.profile-view__empty {
-  padding: 2rem;
-  text-align: center;
-  color: var(--text-secondary);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--edge-radius);
-}
-
-.profile-view__panel-actions {
-  display: flex;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.profile-view__cape-error {
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  color: var(--danger);
-  border: 1px solid var(--danger);
+  gap: 0.5rem;
+  min-height: 188px;
+  font-family: var(--font-pixel);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background-color: transparent;
+  border: 2px dashed var(--border-strong);
   border-radius: var(--edge-radius);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    color: var(--accent);
+    border-color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: progress;
+  }
 }
 
 .cape-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 0.75rem;
 }
 
@@ -524,7 +593,7 @@ onMounted(loadProfileData)
 
   &:hover:not(:disabled) {
     border-color: var(--accent);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
   }
 
   &:disabled {
@@ -534,14 +603,14 @@ onMounted(loadProfileData)
 
   &--active {
     border-color: var(--accent);
-    box-shadow: inset 0 0 0 1px var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 }
 
 .cape-card__art {
   width: 60px;
   height: 96px;
-  background-color: var(--bg-secondary);
+  background-color: var(--well-bg);
   background-repeat: no-repeat;
   background-size: 384px 192px;
   background-position: -6px -6px;
@@ -552,8 +621,7 @@ onMounted(loadProfileData)
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    color: var(--text-dim);
   }
 }
 
@@ -563,19 +631,13 @@ onMounted(loadProfileData)
   line-height: 1.2;
 }
 
-.profile-view__slot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
 @media (max-width: 1000px) {
   .profile-view__grid {
     grid-template-columns: 1fr;
   }
 
-  .profile-card__actions {
-    justify-content: flex-start;
+  .profile-stage {
+    position: static;
   }
 }
 </style>
