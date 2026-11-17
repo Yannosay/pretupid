@@ -8,6 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.hud.HudLayer;
 import net.pretupid.client.hud.HudModule;
 import net.pretupid.client.module.Module;
@@ -78,10 +79,6 @@ public final class HudEditorScreen extends PretupidScreen {
 			}
 		}
 		drawToolbar(ui);
-		Component hint = Component.translatable("pretupid.hud_editor.hint");
-		int hintWidth = font.width(hint) + 12;
-		Draw.chamfer(g, (width - hintWidth) / 2, height - 20, hintWidth, 14, 0x90000000);
-		Draw.centered(g, font, hint, width / 2, height - 17, Theme.TEXT_MUTED);
 	}
 
 	private void drawGrid(UiContext ui) {
@@ -324,11 +321,13 @@ public final class HudEditorScreen extends PretupidScreen {
 		int count = 4;
 		int toolbarWidth = buttonWidth * count + 4 * (count - 1) + 8;
 		int x = (width - toolbarWidth) / 2;
-		int y = 6;
+		boolean bottom = PretupidClient.get().settings().hudEditorToolbar.get() == ClientSettings.HudToolbarPosition.BOTTOM;
+		int y = bottom ? height - 32 : 6;
 		Draw.shadow(g, x, y, toolbarWidth, 26, 3, 0.8f);
 		Draw.glass(g, x, y, toolbarWidth, 26, Theme.WINDOW, Theme.WINDOW_BORDER);
 		int widgetsX = x + 4;
-		Widgets.button(ui, "editor.widgets", widgetsX, y + 4, buttonWidth, 18, Component.translatable("pretupid.hud_editor.widgets"), Widgets.ButtonStyle.SECONDARY, () -> openPopup(new WidgetsPopup(widgetsX, y + 30)));
+		Widgets.button(ui, "editor.widgets", widgetsX, y + 4, buttonWidth, 18, Component.translatable("pretupid.hud_editor.widgets"), Widgets.ButtonStyle.SECONDARY,
+			() -> openPopup(new WidgetsPopup(widgetsX, bottom ? y - 4 : y + 30, bottom)));
 		int bx = widgetsX + buttonWidth + 4;
 		Widgets.button(ui, "editor.snap", bx, y + 4, buttonWidth, 18,
 			Component.translatable(snapping ? "pretupid.hud_editor.snap_on" : "pretupid.hud_editor.snap_off"), Widgets.ButtonStyle.SECONDARY, () -> snapping = !snapping);
@@ -341,6 +340,10 @@ public final class HudEditorScreen extends PretupidScreen {
 
 	@Override
 	protected boolean handleKey(KeyEvent event) {
+		if (PretupidClient.get().settings().hudEditorKey.matches(event.key()) && !hasPopup()) {
+			onClose();
+			return true;
+		}
 		if (selected == null) {
 			return false;
 		}
@@ -376,10 +379,12 @@ public final class HudEditorScreen extends PretupidScreen {
 	private final class WidgetsPopup implements Popup {
 		private final int anchorX;
 		private final int anchorY;
+		private final boolean above;
 
-		private WidgetsPopup(int anchorX, int anchorY) {
+		private WidgetsPopup(int anchorX, int anchorY, boolean above) {
 			this.anchorX = anchorX;
 			this.anchorY = anchorY;
+			this.above = above;
 		}
 
 		@Override
@@ -398,7 +403,7 @@ public final class HudEditorScreen extends PretupidScreen {
 			int w = columns * columnWidth + 12;
 			int h = rows * rowHeight + 12;
 			int x = Math.clamp(anchorX, 4, Math.max(4, screenWidth - w - 4));
-			int y = Math.clamp(anchorY, 4, Math.max(4, screenHeight - h - 4));
+			int y = Math.clamp(above ? anchorY - h : anchorY, 4, Math.max(4, screenHeight - h - 4));
 			Draw.shadow(g, x, y, w, h, 4, 1f);
 			Draw.glass(g, x, y, w, h, Theme.POPUP, Theme.WINDOW_BORDER);
 			ui.hit(x, y, w, h, new UiContext.Handler() {

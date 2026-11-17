@@ -14,13 +14,18 @@ import net.pretupid.client.util.SmoothClock;
 
 public final class EmotePlayer {
 	private static final float BLEND_SECONDS = 0.18f;
+	private static final long PENDING_MS = 10_000L;
 
 	private final Map<UUID, Active> active = new ConcurrentHashMap<>();
 	private final Map<UUID, Long> lastRemoteStart = new ConcurrentHashMap<>();
+	private final Map<UUID, Pending> pending = new ConcurrentHashMap<>();
 	private CameraType restoreCamera;
 	private Vec3 startPosition;
 
 	private record Active(String id, EmoteAnimation animation, long startedAt) {
+	}
+
+	private record Pending(String id, long startedAt) {
 	}
 
 	public boolean playing(UUID uuid) {
@@ -49,17 +54,45 @@ public final class EmotePlayer {
 	}
 
 	public void onRealtimeEmote(UUID uuid, String id) {
+		pending.remove(uuid);
 		if (id == null) {
 			active.remove(uuid);
 			return;
 		}
-		Optional<Catalog.EmoteEntry> entry = PretupidClient.get().cosmetics().catalog().emote(id);
-		if (entry.isEmpty() || !PretupidClient.get().settings().showCosmetics.enabled()) {
+		if (!PretupidClient.get().settings().showCosmetics.enabled()) {
 			return;
 		}
 		long now = SmoothClock.millisLong();
 		lastRemoteStart.put(uuid, now);
+		Optional<Catalog.EmoteEntry> entry = PretupidClient.get().cosmetics().catalog().emote(id);
+		if (entry.isEmpty()) {
+			pending.put(uuid, new Pending(id, now));
+			PretupidClient.get().cosmetics().requestCatalogRefresh();
+			return;
+		}
 		active.put(uuid, new Active(id, entry.get().animation(), now));
+	}
+
+	private void resolvePending(long now) {
+		if (pending.isEmpty()) {
+			return;
+		}
+		Catalog catalog = PretupidClient.get().cosmetics().catalog();
+		pending.entrySet().removeIf(entry -> {
+			Pending value = entry.getValue();
+			if (now - value.startedAt() > PENDING_MS) {
+				return true;
+			}
+			Optional<Catalog.EmoteEntry> emote = catalog.emote(value.id());
+			if (emote.isEmpty()) {
+				return false;
+			}
+			EmoteAnimation animation = emote.get().animation();
+			if (animation.loop() || now - value.startedAt() < animation.durationSeconds() * 1000L) {
+				active.put(entry.getKey(), new Active(value.id(), animation, value.startedAt()));
+			}
+			return true;
+		});
 	}
 
 	public void stopLocal() {
@@ -83,8 +116,13 @@ public final class EmotePlayer {
 			return;
 		}
 		lastRemoteStart.put(uuid, emote.startedAtMillis());
+		if (!PretupidClient.get().settings().showCosmetics.enabled()) {
+			return;
+		}
 		Optional<Catalog.EmoteEntry> entry = PretupidClient.get().cosmetics().catalog().emote(emote.id());
-		if (entry.isEmpty() || !PretupidClient.get().settings().showCosmetics.enabled()) {
+		if (entry.isEmpty()) {
+			pending.put(uuid, new Pending(emote.id(), emote.startedAtMillis()));
+			PretupidClient.get().cosmetics().requestCatalogRefresh();
 			return;
 		}
 		EmoteAnimation animation = entry.get().animation();
@@ -97,6 +135,7 @@ public final class EmotePlayer {
 
 	public void tick(Minecraft minecraft) {
 		long now = SmoothClock.millisLong();
+		resolvePending(now);
 		active.entrySet().removeIf(entry -> {
 			Active value = entry.getValue();
 			return !value.animation().loop() && now - value.startedAt() > value.animation().durationSeconds() * 1000L + 50L;
@@ -112,8 +151,11 @@ public final class EmotePlayer {
 			restoreCamera();
 			return;
 		}
-		boolean moved = startPosition != null && player.position().distanceToSqr(startPosition) > 0.04;
-		if (moved || player.isShiftKeyDown() || player.isSwinging()) {
+		var settings = PretupidClient.get().settings();
+		boolean moved = settings.emoteStopOnMove.enabled() && startPosition != null && player.position().distanceToSqr(startPosition) > 0.04;
+		boolean sneaked = settings.emoteStopOnSneak.enabled() && player.isShiftKeyDown();
+		boolean attacked = settings.emoteStopOnAttack.enabled() && player.isSwinging();
+		if (moved || sneaked || attacked) {
 			active.remove(player.getUUID());
 			broadcast(null);
 			restoreCamera();
@@ -156,6 +198,7 @@ public final class EmotePlayer {
 
 	public void clear() {
 		active.clear();
+		pending.clear();
 		lastRemoteStart.clear();
 		restoreCamera();
 	}

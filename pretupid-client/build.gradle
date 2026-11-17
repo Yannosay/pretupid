@@ -56,7 +56,11 @@ abstract class GenerateBranding extends DefaultTask {
 		BufferedImage mark = trim(source)
 		write(mark, 128, new File(root, "assets/pretupid/icon.png"))
 		write(mark, 64, new File(root, "assets/pretupid/textures/gui/logo.png"))
-		write(mark, 16, new File(root, "assets/pretupid/textures/gui/sprites/icon/pretupid.png"))
+		for (int size : [16, 24, 32, 48, 64, 96, 128, 192, 256]) {
+			File target = new File(root, "assets/pretupid/textures/gui/logo/${size}.png")
+			write(mark, size, target)
+			new File(target.parentFile, "${size}.png.mcmeta").text = '{"texture":{"blur":true,"clamp":true}}'
+		}
 		write(mark, 32, new File(root, "assets/pretupid/textures/font/badge.png"))
 	}
 

@@ -24,6 +24,7 @@ import net.pretupid.client.network.RemoteProfile;
 
 public final class CosmeticsService {
 	private static final long CATALOG_REFRESH_MS = 10 * 60_000L;
+	private static final long ON_DEMAND_REFRESH_MS = 15_000L;
 
 	private final ApiClient api;
 	private final AuthSession session;
@@ -36,6 +37,8 @@ public final class CosmeticsService {
 	private volatile boolean ownCapeLoaded;
 	private volatile boolean busy;
 	private long nextCatalogRefresh;
+	private long lastOnDemandRefresh;
+	private String serverCatalogVersion;
 	private boolean ownCapeRequested;
 
 	public record OwnCape(RemoteProfile.CapeRef texture, String removalReason, boolean uploadsAllowed) {
@@ -81,6 +84,27 @@ public final class CosmeticsService {
 		}
 		if (!session.online() && session.status() != AuthSession.Status.CONNECTING) {
 			ownCapeRequested = false;
+		}
+	}
+
+	public void requestCatalogRefresh() {
+		long now = System.currentTimeMillis();
+		if (now - lastOnDemandRefresh < ON_DEMAND_REFRESH_MS) {
+			return;
+		}
+		lastOnDemandRefresh = now;
+		refreshCatalog();
+	}
+
+	public void onServerCatalogVersion(String version) {
+		if (version == null || version.equals(serverCatalogVersion)) {
+			return;
+		}
+		boolean first = serverCatalogVersion == null;
+		serverCatalogVersion = version;
+		if (!first || catalog.capes().isEmpty() && catalog.trails().isEmpty() && catalog.emotes().isEmpty()) {
+			lastOnDemandRefresh = System.currentTimeMillis();
+			refreshCatalog();
 		}
 	}
 

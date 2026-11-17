@@ -3,7 +3,7 @@
 	"id": "pretupid",
 	"version": "${version}",
 	"name": "Pretupid Client",
-	"description": "A fast, polished all-in-one client: glass mod menu, draggable HUD, FPS boosters, zoom, quality-of-life tools, profiles, a mod manager and animated nametags with the Pretupid badge.",
+	"description": "The free all in one client",
 	"authors": [
 		"Yannosay Productions"
 	],

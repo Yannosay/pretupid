@@ -188,7 +188,7 @@ public final class CosmeticModels {
 
 	private static Shape ghost() {
 		Shape shape = Shape.on(Shape.Anchor.ROOT);
-		shape.node("pet", -10f, -6f, 1f)
+		shape.node("pet", 0f, 0f, 0f)
 			.box(-3f, -3.5f, -3f, 6, 6, 6, GHOST, GHOST_SHADE, Pattern.SOLID)
 			.box(-3f, 2.5f, -3f, 2, 2, 6, GHOST, GHOST_SHADE, Pattern.TIPPED)
 			.box(-1f, 2.5f, -3f, 2, 1, 6, GHOST, GHOST_SHADE, Pattern.TIPPED)
@@ -201,7 +201,7 @@ public final class CosmeticModels {
 
 	private static Shape penguin() {
 		Shape shape = Shape.on(Shape.Anchor.ROOT);
-		Shape.Node body = shape.node("pet", -10f, -6f, 1f)
+		Shape.Node body = shape.node("pet", 0f, 0f, 0f)
 			.box(-2.5f, -3.5f, -2f, 5, 7, 4, PENGUIN)
 			.box(-1.5f, -1.5f, -2.4f, 3, 4, 1, WHITE)
 			.box(-1.5f, -3f, -2.4f, 1, 1, 1, WHITE, WHITE, Pattern.GLOW)
@@ -216,7 +216,7 @@ public final class CosmeticModels {
 
 	private static Shape owl() {
 		Shape shape = Shape.on(Shape.Anchor.ROOT);
-		Shape.Node body = shape.node("pet", -10f, -6f, 1f)
+		Shape.Node body = shape.node("pet", 0f, 0f, 0f)
 			.box(-2.5f, -3f, -2.5f, 5, 6, 5, OWL, OWL_LIGHT, Pattern.SPOTTED)
 			.box(-2f, -2.5f, -2.9f, 4, 3, 1, OWL_LIGHT)
 			.box(-2f, -2f, -3.3f, 2, 2, 1, EYE_YELLOW, INK, Pattern.RIM)
@@ -233,7 +233,7 @@ public final class CosmeticModels {
 
 	private static Shape drone() {
 		Shape shape = Shape.on(Shape.Anchor.ROOT);
-		Shape.Node body = shape.node("pet", -10f, -6f, 1f)
+		Shape.Node body = shape.node("pet", 0f, 0f, 0f)
 			.box(-2.5f, -2f, -2.5f, 5, 3, 5, STEEL, GRAPHITE, Pattern.RIM)
 			.box(-1f, -1.5f, -2.9f, 2, 1, 1, DRONE_EYE, DRONE_EYE, Pattern.GLOW)
 			.box(-1.5f, 1f, -1.5f, 3, 1, 3, GRAPHITE)
@@ -298,9 +298,6 @@ public final class CosmeticModels {
 	private static ModelPart hover(CosmeticModel model, AvatarRenderState state, float height, float speed) {
 		ModelPart pet = model.part("pet");
 		pet.y += Mth.sin(time(state) * speed) * height;
-		if (state.isCrouching) {
-			pet.y += 3f;
-		}
 		return pet;
 	}
 

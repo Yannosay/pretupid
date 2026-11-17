@@ -3,6 +3,7 @@ package net.pretupid.client.mixin;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.pretupid.client.cosmetic.CosmeticStateHolder;
 import net.pretupid.client.cosmetic.EmotePoseHolder;
+import net.pretupid.client.cosmetic.PetFollower;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -16,6 +17,12 @@ public abstract class AvatarRenderStateMixin implements EmotePoseHolder, Cosmeti
 
 	@Unique
 	private String pretupid$pet;
+
+	@Unique
+	private float[] pretupid$capeAngles;
+
+	@Unique
+	private PetFollower.Placement pretupid$petPlacement;
 
 	@Override
 	public float[][] pretupid$emotePose() {
@@ -41,5 +48,25 @@ public abstract class AvatarRenderStateMixin implements EmotePoseHolder, Cosmeti
 	public void pretupid$setCosmetics(String back, String pet) {
 		this.pretupid$back = back;
 		this.pretupid$pet = pet;
+	}
+
+	@Override
+	public float[] pretupid$capeAngles() {
+		return pretupid$capeAngles;
+	}
+
+	@Override
+	public void pretupid$setCapeAngles(float[] angles) {
+		this.pretupid$capeAngles = angles;
+	}
+
+	@Override
+	public PetFollower.Placement pretupid$petPlacement() {
+		return pretupid$petPlacement;
+	}
+
+	@Override
+	public void pretupid$setPetPlacement(PetFollower.Placement placement) {
+		this.pretupid$petPlacement = placement;
 	}
 }

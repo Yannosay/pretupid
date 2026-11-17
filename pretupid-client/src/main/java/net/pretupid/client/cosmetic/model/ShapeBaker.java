@@ -49,7 +49,7 @@ public final class ShapeBaker {
 		return new Baked(LayerDefinition.create(mesh, size, size).bakeRoot(), texture);
 	}
 
-	private static MeshDefinition humanoidSkeleton() {
+	static MeshDefinition humanoidSkeleton() {
 		MeshDefinition mesh = new MeshDefinition();
 		PartDefinition root = mesh.getRoot();
 		PartDefinition head = root.addOrReplaceChild("head", CubeListBuilder.create(), PartPose.ZERO);

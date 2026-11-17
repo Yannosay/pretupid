@@ -10,11 +10,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.entity.player.PlayerSkin;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.cosmetic.CapePhysics;
 import net.pretupid.client.cosmetic.CosmeticStateHolder;
 import net.pretupid.client.cosmetic.EmotePoseHolder;
+import net.pretupid.client.cosmetic.PetFollower;
 import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.module.visual.OwnNametagModule;
 import net.pretupid.client.network.RemoteProfile;
+import net.pretupid.client.skins.MojangCapes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -46,6 +49,12 @@ public abstract class AvatarRendererMixin {
 			client.presence().profileOf(player.getUUID()).ifPresent(profile -> Wearables.apply(player, state, profile.wearables()));
 		}
 		pretupid$applyCape(client, player, state);
+		if (state instanceof CosmeticStateHolder holder) {
+			boolean simulate = client.settings().capePhysics.enabled() && state.showCape && !state.isInvisible && state.skin != null && state.skin.cape() != null;
+			holder.pretupid$setCapeAngles(simulate ? CapePhysics.update(state) : null);
+			boolean pet = holder.pretupid$pet() != null && !state.isInvisible && !state.isSpectator;
+			holder.pretupid$setPetPlacement(pet ? PetFollower.update(state) : null);
+		}
 	}
 
 	@Unique
@@ -53,6 +62,10 @@ public abstract class AvatarRendererMixin {
 		RemoteProfile.CapeRef cape;
 		if (client.nametags().isSelf(player.getUUID())) {
 			cape = client.cosmetics().ownCapeTexture();
+			if (cape == null && client.mojangCapes().overridesOwnCape() && state.skin != null) {
+				pretupid$applyMojangCape(client, player, state);
+				return;
+			}
 		} else if (client.settings().showCosmetics.enabled()) {
 			cape = client.presence().profileOf(player.getUUID()).map(RemoteProfile::cape).orElse(null);
 		} else {
@@ -68,6 +81,23 @@ public abstract class AvatarRendererMixin {
 		PlayerSkin skin = state.skin;
 		ClientAsset.Texture asset = new ClientAsset.ResourceTexture(texture, texture);
 		state.skin = new PlayerSkin(skin.body(), asset, skin.elytra() != null ? skin.elytra() : asset, skin.model(), skin.secure());
+		state.showCape = player.isModelPartShown(PlayerModelPart.CAPE);
+	}
+
+	@Unique
+	private static void pretupid$applyMojangCape(PretupidClient client, Player player, AvatarRenderState state) {
+		MojangCapes.Cape active = client.mojangCapes().active();
+		PlayerSkin skin = state.skin;
+		if (active == null) {
+			state.skin = new PlayerSkin(skin.body(), null, null, skin.model(), skin.secure());
+			return;
+		}
+		Identifier texture = client.mojangCapes().texture(active);
+		if (texture == null) {
+			return;
+		}
+		ClientAsset.Texture asset = new ClientAsset.ResourceTexture(texture, texture);
+		state.skin = new PlayerSkin(skin.body(), asset, asset, skin.model(), skin.secure());
 		state.showCape = player.isModelPartShown(PlayerModelPart.CAPE);
 	}
 

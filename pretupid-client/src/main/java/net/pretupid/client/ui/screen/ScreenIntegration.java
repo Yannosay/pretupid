@@ -9,16 +9,13 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.SpriteIconButton;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 
 public final class ScreenIntegration {
-	private static final Identifier SPRITE = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "icon/pretupid");
 	private static final int ICON_SIZE = 20;
 	private static final int DEFAULT_GAP = 4;
 	private static final int EDGE_MARGIN = 6;
@@ -39,12 +36,8 @@ public final class ScreenIntegration {
 
 	private static void attach(Screen screen) {
 		List<AbstractWidget> widgets = Screens.getWidgets(screen);
-		SpriteIconButton button = SpriteIconButton.builder(Component.translatable("pretupid.ui.open_menu"),
-				pressed -> Minecraft.getInstance().gui.setScreen(new ClientMenuScreen(screen)), true)
-			.sprite(SPRITE, 16, 16)
-			.size(ICON_SIZE, ICON_SIZE)
-			.withTootip()
-			.build();
+		LogoButton button = new LogoButton(ICON_SIZE, Component.translatable("pretupid.ui.open_menu"),
+			pressed -> Minecraft.getInstance().gui.setScreen(new ClientMenuScreen(screen)));
 		List<AbstractWidget> row = iconRow(widgets);
 		if (row.isEmpty()) {
 			button.setPosition(EDGE_MARGIN, EDGE_MARGIN);

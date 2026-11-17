@@ -20,6 +20,8 @@ import net.minecraft.world.entity.player.Player;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.PretupidInfo;
 import net.pretupid.client.config.ClientSettings;
+import net.pretupid.client.setting.Setting;
+import net.pretupid.client.setting.SettingChangeBus;
 
 public final class PresenceService {
 	private static final long ACTIVE_REFRESH_MS = 20_000L;
@@ -28,6 +30,8 @@ public final class PresenceService {
 	private static final long NEGATIVE_TTL_MS = 90_000L;
 	private static final long DEFAULT_HEARTBEAT_MS = 60_000L;
 	private static final int MAX_LOOKUP_BATCH = 90;
+	private static final long CHANGE_DEBOUNCE_MS = 1_200L;
+	private static final long MIN_HEARTBEAT_SPACING_MS = 5_000L;
 
 	private final ApiClient api;
 	private final AuthSession session;
@@ -38,6 +42,7 @@ public final class PresenceService {
 	private volatile boolean heartbeatInFlight;
 	private volatile boolean lookupInFlight;
 	private long nextHeartbeat;
+	private long lastHeartbeat;
 	private long nextLookup;
 	private String lastServer;
 	private boolean profileChanged;
@@ -45,6 +50,17 @@ public final class PresenceService {
 	public PresenceService(ApiClient api, AuthSession session) {
 		this.api = api;
 		this.session = session;
+	}
+
+	public void watchPublishedSettings(ClientSettings settings) {
+		Set<Setting<?>> published = Set.of(settings.nametagBadge, settings.nametagAnimation, settings.nametagEffect, settings.nametagPrimary,
+			settings.nametagSecondary, settings.nametagSpeed, settings.nametagBold, settings.cape, settings.trail, settings.hat, settings.back, settings.pet,
+			settings.allowFriendRequests, settings.shareServerWithFriends);
+		SettingChangeBus.subscribe(setting -> {
+			if (published.contains(setting)) {
+				requestHeartbeat();
+			}
+		});
 	}
 
 	public void onProfile(BiConsumer<UUID, RemoteProfile> listener) {
@@ -72,7 +88,8 @@ public final class PresenceService {
 	}
 
 	public void requestHeartbeat() {
-		nextHeartbeat = Math.min(nextHeartbeat, System.currentTimeMillis() + 1_200L);
+		long now = System.currentTimeMillis();
+		nextHeartbeat = Math.min(nextHeartbeat, Math.max(now + CHANGE_DEBOUNCE_MS, lastHeartbeat + MIN_HEARTBEAT_SPACING_MS));
 		profileChanged = true;
 	}
 
@@ -113,6 +130,9 @@ public final class PresenceService {
 
 	private void heartbeat(ClientSettings settings, String server) {
 		heartbeatInFlight = true;
+		lastHeartbeat = System.currentTimeMillis();
+		boolean announce = profileChanged;
+		profileChanged = false;
 		JsonObject body = new JsonObject();
 		body.add("style", settings.nametagStyle().toJson());
 		JsonObject equipped = new JsonObject();
@@ -145,12 +165,13 @@ public final class PresenceService {
 		session.withToken(token -> api.json("POST", "/presence", body, token)).whenComplete((response, error) -> minecraft.execute(() -> {
 			heartbeatInFlight = false;
 			if (error != null) {
-				nextHeartbeat = System.currentTimeMillis() + 15_000L;
+				profileChanged |= announce;
+				nextHeartbeat = System.currentTimeMillis() + (ApiClient.statusOf(error) == 429 ? 30_000L : 15_000L);
 				return;
 			}
 			onlineUsers = (int) Math.max(0, Json.number(response, "online", 0));
-			if (profileChanged) {
-				profileChanged = false;
+			PretupidClient.get().cosmetics().onServerCatalogVersion(Json.string(response, "catalogVersion", 64));
+			if (announce) {
 				PretupidClient.get().realtime().sendProfileChanged();
 			}
 			long interval = Json.number(response, "nextHeartbeatSeconds", DEFAULT_HEARTBEAT_MS / 1000L) * 1000L;

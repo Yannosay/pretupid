@@ -1,6 +1,7 @@
 package net.pretupid.client.cosmetic;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
@@ -24,10 +25,23 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		if (back != null && !state.chestEquipment.has(DataComponents.GLIDER)) {
 			draw(CosmeticModels.back(back), poseStack, collector, light, state);
 		}
-		String pet = holder.pretupid$pet();
-		if (pet != null) {
-			draw(CosmeticModels.pet(pet), poseStack, collector, light, state);
+	}
+
+	public static void submitPet(PoseStack poseStack, SubmitNodeCollector collector, AvatarRenderState state) {
+		if (state.isInvisible || !(state instanceof CosmeticStateHolder holder) || holder.pretupid$pet() == null) {
+			return;
 		}
+		PetFollower.Placement placement = holder.pretupid$petPlacement();
+		CosmeticModels.Entry entry = placement == null ? null : CosmeticModels.pet(holder.pretupid$pet());
+		if (entry == null) {
+			return;
+		}
+		poseStack.pushPose();
+		poseStack.translate(placement.x(), placement.y(), placement.z());
+		poseStack.rotateDegrees(Axis.YP, 180f - placement.yaw());
+		poseStack.scale(-state.scale, -state.scale, state.scale);
+		draw(entry, poseStack, collector, state.lightCoords, state);
+		poseStack.popPose();
 	}
 
 	private static void draw(CosmeticModels.Entry entry, PoseStack poseStack, SubmitNodeCollector collector, int light, AvatarRenderState state) {

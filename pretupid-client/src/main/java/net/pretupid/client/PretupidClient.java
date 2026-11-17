@@ -83,6 +83,7 @@ import net.pretupid.client.mods.ModIcons;
 import net.pretupid.client.nametag.Nametags;
 import net.pretupid.client.skins.AccountSkin;
 import net.pretupid.client.skins.LocalSkinOverride;
+import net.pretupid.client.skins.MojangCapes;
 import net.pretupid.client.skins.SkinLibrary;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.AuthSession;
@@ -129,6 +130,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
 	private final AccountSkin accountSkin = new AccountSkin();
 	private final LocalSkinOverride localSkin = new LocalSkinOverride();
+	private final MojangCapes mojangCapes = new MojangCapes();
 	private final FpsBenchmark benchmark = new FpsBenchmark();
 	private ConfigStore config;
 	private Keybinds keybinds;
@@ -230,6 +232,7 @@ public final class PretupidClient implements ClientModInitializer {
 			api.shutdown();
 		});
 		presence.onProfile(emotes::onRemoteProfile);
+		presence.watchPublishedSettings(settings);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, minecraft) -> minecraft.execute(() -> {
 			modules.get(SessionHud.class).onWorldJoined();
 			ServerData server = minecraft.getCurrentServer();
@@ -482,6 +485,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public LocalSkinOverride localSkin() {
 		return localSkin;
+	}
+
+	public MojangCapes mojangCapes() {
+		return mojangCapes;
 	}
 
 	public SkinLibrary skins() {

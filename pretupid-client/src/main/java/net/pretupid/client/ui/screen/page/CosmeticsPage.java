@@ -20,6 +20,7 @@ import net.pretupid.client.nametag.NametagFormatter;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.RemoteProfile;
 import net.pretupid.client.setting.Setting;
+import net.pretupid.client.skins.MojangCapes;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.ScrollState;
 import net.pretupid.client.ui.StatusText;
@@ -65,6 +66,7 @@ public final class CosmeticsPage implements MenuPage {
 	public void onOpen() {
 		scanLocalCapes();
 		PretupidClient.get().cosmetics().refreshCatalog();
+		PretupidClient.get().mojangCapes().refresh();
 	}
 
 	private void scanLocalCapes() {
@@ -157,7 +159,7 @@ public final class CosmeticsPage implements MenuPage {
 		int listH = h - PREVIEW_HEIGHT - 6;
 		List<Setting<?>> rows = new ArrayList<>();
 		for (Setting<?> setting : List.of(settings.nametagBadge, settings.nametagAnimation, settings.nametagPrimary, settings.nametagSecondary,
-			settings.nametagEffect, settings.nametagSpeed, settings.nametagBold, settings.showOtherBadges, settings.tabListBadges)) {
+			settings.nametagEffect, settings.nametagSpeed, settings.nametagMovingBackground, settings.nametagBold, settings.showOtherBadges, settings.tabListBadges)) {
 			if (setting.isVisible()) {
 				rows.add(setting);
 			}
@@ -210,20 +212,27 @@ public final class CosmeticsPage implements MenuPage {
 		}
 		int columns = Math.max(1, (areaW - 6) / (CARD_WIDTH + 4));
 		int gridRows = (options.size() + columns - 1) / columns;
+		MojangCapes mojang = client.mojangCapes();
+		int mojangRows = mojang.state() == MojangCapes.State.READY ? (mojang.capes().size() + 1 + columns - 1) / columns : 0;
+		int mojangHeight = 14 + (mojangRows > 0 ? mojangRows * (CARD_HEIGHT + 4) : 14);
 		int toolsHeight = 14 + 22 + (localCapes.isEmpty() ? 0 : 12 + localCapes.size() * 20) + 26;
-		scroll.begin(ui, "cosmetics.capes", x, y, areaW, h, gridRows * (CARD_HEIGHT + 4) + toolsHeight);
+		scroll.begin(ui, "cosmetics.capes", x, y, areaW, h, 14 + gridRows * (CARD_HEIGHT + 4) + mojangHeight + toolsHeight);
 		int top = y - scroll.offset();
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.cape.pretupid"), x, top + 2, areaW - 6);
+		top += 14;
 		for (int i = 0; i < options.size(); i++) {
 			CapeOption option = options.get(i);
 			int cx = x + (i % columns) * (CARD_WIDTH + 4);
 			int cy = top + (i / columns) * (CARD_HEIGHT + 4);
 			boolean selected = settings.cape.get().equals(option.value());
-			drawCapeCard(ui, "cape." + i, cx, cy, option, selected, () -> {
+			Identifier texture = option.texture() == null ? null : cosmetics.capes().get(option.texture());
+			drawCapeCard(ui, "cape." + i, cx, cy, option.label(), texture, option.texture() != null, selected, () -> {
 				settings.cape.set(option.value());
 				client.presence().requestHeartbeat();
 			});
 		}
 		int rowY = top + gridRows * (CARD_HEIGHT + 4) + 4;
+		rowY = drawMojangCapes(ui, mojang, x, rowY, areaW, columns);
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.cape.custom"), x, rowY, areaW - 6);
 		rowY += 14;
 		int buttonWidth = (areaW - 14) / 2;
@@ -269,7 +278,51 @@ public final class CosmeticsPage implements MenuPage {
 		scroll.end(ui, x, y, areaW, h);
 	}
 
-	private void drawCapeCard(UiContext ui, String id, int x, int y, CapeOption option, boolean selected, Runnable action) {
+	private int drawMojangCapes(UiContext ui, MojangCapes mojang, int x, int y, int areaW, int columns) {
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.cape.minecraft"), x, y + 2, areaW - 6);
+		int top = y + 14;
+		if (mojang.state() != MojangCapes.State.READY) {
+			String key = switch (mojang.state()) {
+				case NOT_SIGNED_IN -> "pretupid.cosmetics.cape.minecraft.signed_out";
+				case FAILED -> "pretupid.cosmetics.cape.minecraft.failed";
+				default -> "pretupid.cosmetics.cape.minecraft.loading";
+			};
+			Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.translatable(key), areaW - 8), x, top + 2, Theme.TEXT_DIM);
+			return top + 18;
+		}
+		List<MojangCapes.Cape> capes = mojang.capes();
+		MojangCapes.Cape active = mojang.active();
+		for (int i = 0; i <= capes.size(); i++) {
+			MojangCapes.Cape cape = i == 0 ? null : capes.get(i - 1);
+			int cx = x + (i % columns) * (CARD_WIDTH + 4);
+			int cy = top + (i / columns) * (CARD_HEIGHT + 4);
+			boolean selected = cape == null ? active == null : cape.active();
+			Component label = cape == null ? Component.translatable("pretupid.cosmetics.cape.minecraft.hidden") : Component.literal(cape.alias());
+			drawCapeCard(ui, "mojang." + i, cx, cy, label, mojang.texture(cape), cape != null, selected, () -> equipMojang(mojang, cape));
+		}
+		int rows = (capes.size() + 1 + columns - 1) / columns;
+		return top + rows * (CARD_HEIGHT + 4) + 4;
+	}
+
+	private void equipMojang(MojangCapes mojang, MojangCapes.Cape cape) {
+		if (mojang.busy()) {
+			return;
+		}
+		PretupidClient client = PretupidClient.get();
+		if (!client.settings().cape.get().isEmpty()) {
+			client.settings().cape.set("");
+			client.presence().requestHeartbeat();
+		}
+		boolean alreadyActive = cape == null ? mojang.active() == null : cape.active();
+		if (alreadyActive) {
+			return;
+		}
+		show(Component.translatable("pretupid.cosmetics.cape.minecraft.saving"), false);
+		(cape == null ? mojang.hide() : mojang.equip(cape)).whenComplete((ignored, error) -> Minecraft.getInstance().execute(() ->
+			show(error == null ? Component.translatable("pretupid.cosmetics.cape.minecraft.saved") : Component.literal(ApiClient.describe(error)), error != null)));
+	}
+
+	private void drawCapeCard(UiContext ui, String id, int x, int y, Component optionLabel, Identifier texture, boolean hasTexture, boolean selected, Runnable action) {
 		var g = ui.g();
 		boolean hover = ui.interactive(x, y, CARD_WIDTH, CARD_HEIGHT, UiContext.Handler.onClick(action));
 		float t = ui.animate("cosmetics.card." + id, hover ? 1f : 0f, 16f);
@@ -280,8 +333,7 @@ public final class CosmeticsPage implements MenuPage {
 		int artX = x + (CARD_WIDTH - artW) / 2;
 		int artY = y + 6;
 		Draw.rect(g, artX - 1, artY - 1, artW + 2, artH + 2, 0x40000000);
-		if (option.texture() != null) {
-			Identifier texture = PretupidClient.get().cosmetics().capes().get(option.texture());
+		if (hasTexture) {
 			if (texture != null) {
 				g.blit(texture, artX, artY, artX + artW, artY + artH, 1f / 64f, 11f / 64f, 1f / 32f, 17f / 32f);
 			} else {
@@ -290,7 +342,7 @@ public final class CosmeticsPage implements MenuPage {
 		} else {
 			Draw.centered(g, ui.font(), Component.literal("—"), artX + artW / 2, artY + artH / 2 - 4, Theme.TEXT_DIM);
 		}
-		Component label = Draw.ellipsize(ui.font(), option.label(), CARD_WIDTH - 6);
+		Component label = Draw.ellipsize(ui.font(), optionLabel, CARD_WIDTH - 6);
 		Draw.centered(g, ui.font(), label, x + CARD_WIDTH / 2, y + CARD_HEIGHT - 22, selected ? Theme.accentText() : Theme.TEXT);
 		if (selected) {
 			Draw.centered(g, ui.font(), Component.translatable("pretupid.cosmetics.equipped"), x + CARD_WIDTH / 2, y + CARD_HEIGHT - 11, Theme.TEXT_DIM);
@@ -375,7 +427,7 @@ public final class CosmeticsPage implements MenuPage {
 		ClientSettings settings = client.settings();
 		List<Catalog.EmoteEntry> emotes = client.cosmetics().catalog().emotes();
 		boolean inWorld = Minecraft.getInstance().player != null;
-		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + emotes.size() * 24 + Widgets.ROW_HEIGHT * 2 + 8);
+		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + emotes.size() * 24 + Widgets.ROW_HEIGHT * 5 + 8);
 		int rowY = y - scroll.offset();
 		Component key = client.keybinds().emoteWheel().getTranslatedKeyMessage();
 		Component hint = inWorld
@@ -404,6 +456,10 @@ public final class CosmeticsPage implements MenuPage {
 		Widgets.settingRow(ui, screen, settings.emoteThirdPerson, x, rowY, w - 6);
 		rowY += Widgets.ROW_HEIGHT;
 		Widgets.settingRow(ui, screen, settings.emoteWheelHold, x, rowY, w - 6);
+		for (Setting<?> setting : List.of(settings.emoteStopOnSneak, settings.emoteStopOnMove, settings.emoteStopOnAttack)) {
+			rowY += Widgets.ROW_HEIGHT;
+			Widgets.settingRow(ui, screen, setting, x, rowY, w - 6);
+		}
 		scroll.end(ui, x, y, w, h);
 	}
 

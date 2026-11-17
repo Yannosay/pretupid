@@ -1,5 +1,6 @@
 package net.pretupid.client.gametest;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -11,11 +12,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
+import net.pretupid.client.cosmetic.Catalog;
 import net.pretupid.client.cosmetic.Wearables;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.module.hud.BiomeHud;
@@ -29,6 +33,7 @@ import net.pretupid.client.module.visual.OwnNametagModule;
 import net.pretupid.client.nametag.NameAnimation;
 import net.pretupid.client.nametag.NameEffect;
 import net.pretupid.client.social.LocalHosting;
+import net.pretupid.client.ui.screen.HudEditorScreen;
 
 public final class PretupidClientGameTest implements FabricClientGameTest {
 	@Override
@@ -45,8 +50,17 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testChatModules(context);
 			testWaypoints(context, world, feet);
 			testCosmetics(context);
+			testEmotes(context);
+			testHudEditor(context);
 			testHosting(context);
+			context.setScreen(() -> new PauseScreen(true));
+			context.waitTicks(5);
+			context.takeScreenshot("pretupid-pause-screen");
+			context.setScreen(() -> null);
 		}
+		context.waitForScreen(TitleScreen.class);
+		context.waitTicks(20);
+		context.takeScreenshot("pretupid-title-screen");
 	}
 
 	private static void enable(Minecraft minecraft, Class<? extends Module> type) {
@@ -128,23 +142,74 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			settings.nametagAnimation.set(NameAnimation.RAINBOW);
 			settings.nametagEffect.set(NameEffect.WAVE);
 			settings.hat.set("crown");
+			settings.cape.set("catalog:pretupid");
 			minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 		});
 		context.getInput().lookAt(180f, 10f);
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> PretupidClient.get().cosmetics().ownCapeTexture() != null
+			&& PretupidClient.get().cosmetics().capes().get(PretupidClient.get().cosmetics().ownCapeTexture()) != null); i++) {
+			context.waitTick();
+		}
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-cape-still");
+		context.getInput().holdKey(options -> options.keyUp);
+		context.waitTicks(14);
+		context.takeScreenshot("pretupid-cape-running");
+		context.getInput().releaseKey(options -> options.keyUp);
+		context.waitTicks(4);
+		context.takeScreenshot("pretupid-cape-stopping");
+		context.waitTicks(30);
 		for (String back : Wearables.BACK) {
 			context.runOnClient(minecraft -> PretupidClient.get().settings().back.set(back));
 			context.waitTicks(15);
 			context.takeScreenshot("pretupid-back-" + back);
 		}
-		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().settings().back.set("");
+			minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+		});
 		for (String pet : Wearables.PETS) {
 			context.runOnClient(minecraft -> PretupidClient.get().settings().pet.set(pet));
 			context.waitTicks(15);
 			context.takeScreenshot("pretupid-pet-" + pet);
 		}
-		context.waitTicks(3);
+		context.getInput().holdKey(options -> options.keyLeft);
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-pet-following");
+		context.getInput().releaseKey(options -> options.keyLeft);
+		context.waitTicks(20);
 		context.takeScreenshot("pretupid-nametag-wave");
 		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+	}
+
+	private static void testEmotes(ClientGameTestContext context) {
+		Catalog.EmoteEntry emote = context.computeOnClient(minecraft -> PretupidClient.get().cosmetics().catalog().emotes().stream().findFirst().orElse(null));
+		if (emote == null) {
+			return;
+		}
+		context.runOnClient(minecraft -> PretupidClient.get().emotes().playLocal(emote));
+		context.getInput().holdKey(options -> options.keyUp);
+		context.waitTicks(10);
+		context.getInput().releaseKey(options -> options.keyUp);
+		boolean walking = context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID()));
+		check(walking, "Walking stopped the emote");
+		context.getInput().holdShift();
+		context.getInput().holdKey(options -> options.keyShift);
+		context.waitTicks(3);
+		context.getInput().releaseKey(options -> options.keyShift);
+		context.getInput().releaseShift();
+		boolean sneaking = context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID()));
+		check(!sneaking, "Sneaking did not stop the emote");
+		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+	}
+
+	private static void testHudEditor(ClientGameTestContext context) {
+		context.getInput().pressKey(InputConstants.KEY_H);
+		context.waitForScreen(HudEditorScreen.class);
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-hud-editor");
+		context.getInput().pressKey(InputConstants.KEY_H);
+		context.waitForScreen(null);
 	}
 
 	private static void testHosting(ClientGameTestContext context) {

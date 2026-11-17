@@ -2,6 +2,7 @@ package net.pretupid.client.config;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,11 +12,17 @@ import net.pretupid.client.nametag.NametagStyle;
 import net.pretupid.client.setting.BooleanSetting;
 import net.pretupid.client.setting.ColorSetting;
 import net.pretupid.client.setting.EnumSetting;
+import net.pretupid.client.setting.KeySetting;
 import net.pretupid.client.setting.NumberSetting;
 import net.pretupid.client.setting.Setting;
 import net.pretupid.client.setting.TextSetting;
 
 public final class ClientSettings {
+	public enum HudToolbarPosition {
+		BOTTOM,
+		TOP
+	}
+
 	private final List<Setting<?>> settings = new ArrayList<>();
 	private final List<Setting<?>> view = Collections.unmodifiableList(settings);
 
@@ -39,6 +46,9 @@ public final class ClientSettings {
 	public final BooleanSetting showCosmetics = add(new BooleanSetting("show_cosmetics", true));
 	public final BooleanSetting showTrails = add(new BooleanSetting("show_trails", true));
 	public final BooleanSetting emoteThirdPerson = add(new BooleanSetting("emote_third_person", true));
+	public final BooleanSetting emoteStopOnSneak = add(new BooleanSetting("emote_stop_on_sneak", true));
+	public final BooleanSetting emoteStopOnMove = add(new BooleanSetting("emote_stop_on_move", false));
+	public final BooleanSetting emoteStopOnAttack = add(new BooleanSetting("emote_stop_on_attack", false));
 	public final BooleanSetting allowFriendRequests = add(new BooleanSetting("allow_friend_requests", true));
 	public final BooleanSetting shareServerWithFriends = add(new BooleanSetting("share_server_with_friends", false));
 	public final BooleanSetting friendNotifications = add(new BooleanSetting("friend_notifications", true));
@@ -49,6 +59,10 @@ public final class ClientSettings {
 	public final ColorSetting nametagSecondary = add(new ColorSetting("nametag_secondary", 0xFFC4A8FF));
 	public final NumberSetting nametagSpeed = add(new NumberSetting("nametag_speed", 1.0, 0.1, 3.0, 0.1, "x"));
 	public final BooleanSetting nametagBold = add(new BooleanSetting("nametag_bold", false));
+	public final BooleanSetting nametagMovingBackground = add(new BooleanSetting("nametag_moving_background", false));
+	public final BooleanSetting capePhysics = add(new BooleanSetting("cape_physics", true));
+	public final KeySetting hudEditorKey = add(new KeySetting("hud_editor_key", InputConstants.KEY_H));
+	public final EnumSetting<HudToolbarPosition> hudEditorToolbar = add(new EnumSetting<>("hud_editor_toolbar", HudToolbarPosition.BOTTOM));
 	public final TextSetting cape = add(new TextSetting("cape", "", 48));
 	public final TextSetting trail = add(new TextSetting("trail", "", 32));
 	public final TextSetting hat = add(new TextSetting("hat", "", 32));
@@ -75,6 +89,7 @@ public final class ClientSettings {
 		nametagSecondary.visibleWhen(() -> nametagAnimation.get().usesSecondary());
 		nametagPrimary.visibleWhen(() -> nametagAnimation.get().usesPrimary());
 		nametagSpeed.visibleWhen(() -> nametagAnimation.get().animates() || nametagEffect.get().moves());
+		nametagMovingBackground.visibleWhen(() -> nametagEffect.get().moves());
 	}
 
 	public NametagStyle nametagStyle() {

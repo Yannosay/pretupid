@@ -21,8 +21,9 @@ public final class EmotePoses {
 		blend(model.body, pose[EmoteAnimation.Part.BODY.ordinal()], weight);
 		blend(model.rightArm, pose[EmoteAnimation.Part.RIGHT_ARM.ordinal()], weight);
 		blend(model.leftArm, pose[EmoteAnimation.Part.LEFT_ARM.ordinal()], weight);
-		blend(model.rightLeg, pose[EmoteAnimation.Part.RIGHT_LEG.ordinal()], weight);
-		blend(model.leftLeg, pose[EmoteAnimation.Part.LEFT_LEG.ordinal()], weight);
+		float legWeight = weight * (1f - Math.clamp(state.walkAnimationSpeed * 2.5f, 0f, 1f));
+		blend(model.rightLeg, pose[EmoteAnimation.Part.RIGHT_LEG.ordinal()], legWeight);
+		blend(model.leftLeg, pose[EmoteAnimation.Part.LEFT_LEG.ordinal()], legWeight);
 	}
 
 	private static void blend(ModelPart part, float[] rotation, float weight) {

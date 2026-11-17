@@ -57,6 +57,7 @@ public final class TrailRenderer {
 			}
 			Optional<Catalog.TrailEntry> trail = catalog.trail(trailId);
 			if (trail.isEmpty()) {
+				client.cosmetics().requestCatalogRefresh();
 				continue;
 			}
 			Vec3 position = player.position();
