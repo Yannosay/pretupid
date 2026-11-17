@@ -151,7 +151,7 @@ async function registerListeners() {
   )
 
   unlisteners.push(
-    await listen<{ instance_id: string; name: string }>(
+    await listen<{ instance_id: string; name: string; missing?: number }>(
       'modpack://complete',
       (event) => {
         const payload = event.payload
@@ -159,20 +159,25 @@ async function registerListeners() {
 
         installs.complete(payload.instance_id)
 
+        const missing = typeof payload.missing === 'number' ? payload.missing : 0
+        const kind = missing > 0 ? 'warning' : 'success'
+        const message =
+          missing > 0
+            ? `${payload.name} is installed, but ${missing} file${missing === 1 ? '' : 's'} could not be downloaded yet. Press Play to try again.`
+            : `${payload.name} is ready to launch.`
         const existing = notifications.getInstallNotification(payload.instance_id)
         if (existing) {
           notifications.update(existing, {
-            kind: 'success',
+            kind,
             title: 'Modpack installed',
-            message: `${payload.name} is ready to launch.`,
-            autoDismissMs: 6000
+            message,
+            autoDismissMs: missing > 0 ? null : 6000
           })
           notifications.untrackInstall(payload.instance_id)
+        } else if (missing > 0) {
+          notifications.notifyWarning('Modpack installed', message)
         } else {
-          notifications.notifySuccess(
-            'Modpack installed',
-            `${payload.name} is ready to launch.`
-          )
+          notifications.notifySuccess('Modpack installed', message)
         }
         instanceStore.load().catch(() => void 0)
       }

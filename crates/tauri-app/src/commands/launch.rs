@@ -172,6 +172,12 @@ pub async fn launch_instance(
     instance_id: String,
     verify_files: Option<bool>,
 ) -> Result<(), String> {
+    if super::modpack::is_installing(&instance_id) {
+        return Err(
+            "This modpack is still installing. Wait until it is finished, then try again."
+                .to_string(),
+        );
+    }
     let instance = load_instance(&state, &instance_id).await?;
 
     let oauth = OAuthClient::new(state.pool.clone());
@@ -335,6 +341,12 @@ pub async fn prepare_instance(
     instance_id: String,
     verify_files: Option<bool>,
 ) -> Result<(), String> {
+    if super::modpack::is_installing(&instance_id) {
+        return Err(
+            "This modpack is still installing. Wait until it is finished, then try again."
+                .to_string(),
+        );
+    }
     let instance = load_instance(&state, &instance_id).await?;
     let settings = build_settings(&state, &instance, verify_files.unwrap_or(false)).await?;
     let cancel_rx = register_run(&state, &instance_id)?;

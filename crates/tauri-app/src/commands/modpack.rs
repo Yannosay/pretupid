@@ -19,6 +19,51 @@ use super::util::{self, ExpectedHash};
 use crate::state::AppState;
 
 const MODPACK_DOWNLOAD_CONCURRENCY: usize = 8;
+const DISABLED_SUFFIX: &str = ".disabled";
+
+static INSTALLING: std::sync::Mutex<Vec<Uuid>> = std::sync::Mutex::new(Vec::new());
+
+pub fn is_installing(instance_id: &str) -> bool {
+    Uuid::parse_str(instance_id).is_ok_and(|id| {
+        INSTALLING
+            .lock()
+            .map(|list| list.contains(&id))
+            .unwrap_or(false)
+    })
+}
+
+struct InstallGuard(Uuid);
+
+impl InstallGuard {
+    fn new(id: Uuid) -> Self {
+        if let Ok(mut list) = INSTALLING.lock() {
+            list.push(id);
+        }
+        Self(id)
+    }
+}
+
+impl Drop for InstallGuard {
+    fn drop(&mut self) {
+        if let Ok(mut list) = INSTALLING.lock() {
+            if let Some(index) = list.iter().position(|id| *id == self.0) {
+                list.swap_remove(index);
+            }
+        }
+    }
+}
+
+struct InstallFailure {
+    message: String,
+    keep_instance: bool,
+}
+
+fn split_disabled(name: &str) -> (String, bool) {
+    match name.strip_suffix(DISABLED_SUFFIX) {
+        Some(stem) if !stem.is_empty() => (stem.to_string(), false),
+        _ => (name.to_string(), true),
+    }
+}
 
 #[derive(Clone)]
 struct PlannedFile {
@@ -115,17 +160,22 @@ async fn run_install(
     caches_dir: PathBuf,
     instance: Instance,
     source: PackSource,
-) -> Result<(), String> {
+) -> Result<Vec<String>, InstallFailure> {
     let instance_id = instance.id.to_string();
     let repo = InstanceRepository::new(pool);
     let profile_dir = profiles_dir.join(&instance.folder_name);
     let temp_dir = caches_dir.join("tmp").join(Uuid::new_v4().to_string());
+    let early = |message: String| InstallFailure {
+        message,
+        keep_instance: false,
+    };
     tokio::fs::create_dir_all(&temp_dir)
         .await
-        .map_err(|e| e.to_string())?;
-    let client = util::http_client()?;
+        .map_err(|e| early(e.to_string()))?;
+    let client = util::http_client().map_err(early)?;
+    let wrote_files = std::sync::atomic::AtomicBool::new(false);
 
-    let result: Result<(), String> = async {
+    let result: Result<Vec<String>, String> = async {
         let zip_path = match &source {
             PackSource::Remote(url) => {
                 emit_progress(&app, &instance_id, "downloading_archive", "Downloading modpack");
@@ -158,6 +208,7 @@ async fn run_install(
             );
         }
 
+        wrote_files.store(true, std::sync::atomic::Ordering::Relaxed);
         emit_progress(&app, &instance_id, "extracting", "Unpacking modpack");
         let extract_dir = temp_dir.join("extract");
         let zip_for_blocking = zip_path.clone();
@@ -248,9 +299,7 @@ async fn run_install(
         .buffer_unordered(MODPACK_DOWNLOAD_CONCURRENCY)
         .collect()
         .await;
-        if let Some(error) = results.into_iter().find_map(Result::err) {
-            return Err(error);
-        }
+        let failed: Vec<String> = results.into_iter().filter_map(Result::err).collect();
 
         for file in planned {
             let normalized = file.path.replace('\\', "/");
@@ -267,6 +316,10 @@ async fn run_install(
             if !is_safe_file_name(&name) || content_folder(project_type).is_none() {
                 continue;
             }
+            let (file_name, enabled) = split_disabled(&name);
+            if !is_safe_file_name(&file_name) {
+                continue;
+            }
             let version = file.sha1.as_deref().and_then(|h| versions.get(h));
             let project = version.and_then(|v| projects.get(&v.project_id));
             let record = NewInstanceMod {
@@ -275,14 +328,14 @@ async fn run_install(
                 project_type: project_type.to_string(),
                 title: project
                     .map(|p| p.title.clone())
-                    .unwrap_or_else(|| name.trim_end_matches(".jar").trim_end_matches(".zip").to_string()),
+                    .unwrap_or_else(|| file_name.trim_end_matches(".jar").trim_end_matches(".zip").to_string()),
                 icon_url: project.and_then(|p| p.icon_url.clone()),
                 version_id: version.map(|v| v.id.clone()),
                 version_name: version.map(|v| v.version_number.clone()),
                 file_url: Some(file.url),
-                file_name: Some(name),
+                file_name: Some(file_name),
                 sha1: file.sha1,
-                enabled: true,
+                enabled,
             };
             let _ = repo.add_mod(&record).await;
         }
@@ -301,29 +354,37 @@ async fn run_install(
         if !skipped.is_empty() {
             tracing::warn!("modpack {} skipped {} file(s): {}", instance.name, skipped.len(), skipped.join(", "));
         }
-        Ok(())
+        if !failed.is_empty() {
+            tracing::warn!("modpack {} could not download {} file(s): {}", instance.name, failed.len(), failed.join("; "));
+        }
+        Ok(failed)
     }
     .await;
 
     let _ = tokio::fs::remove_dir_all(&temp_dir).await;
-    result?;
+    let failed = result.map_err(|message| InstallFailure {
+        message,
+        keep_instance: wrote_files.load(std::sync::atomic::Ordering::Relaxed),
+    })?;
 
     let _ = app.emit_to(
         "main",
         "modpack://complete",
-        serde_json::json!({ "instance_id": instance_id, "name": instance.name }),
+        serde_json::json!({ "instance_id": instance_id, "name": instance.name, "missing": failed.len() }),
     );
-    Ok(())
+    Ok(failed)
 }
 
 fn spawn_install(app: AppHandle, state: &AppState, instance: Instance, source: PackSource) {
     let pool = state.pool.clone();
     let profiles_dir = state.profiles_dir.clone();
     let caches_dir = state.caches_dir.clone();
+    let guard = InstallGuard::new(instance.id);
     tauri::async_runtime::spawn(async move {
+        let _guard = guard;
         let instance_id = instance.id;
         let folder = profiles_dir.join(&instance.folder_name);
-        if let Err(err) = run_install(
+        if let Err(failure) = run_install(
             app.clone(),
             pool.clone(),
             profiles_dir,
@@ -333,14 +394,28 @@ fn spawn_install(app: AppHandle, state: &AppState, instance: Instance, source: P
         )
         .await
         {
-            tracing::error!("modpack install failed: {err}");
+            tracing::error!("modpack install failed: {}", failure.message);
+            let message = if failure.keep_instance {
+                format!(
+                    "{} The instance was kept; press Play to download what is missing or delete it from the library.",
+                    failure.message
+                )
+            } else {
+                failure.message
+            };
             let _ = app.emit_to(
                 "main",
                 "modpack://error",
-                serde_json::json!({ "instance_id": instance_id.to_string(), "message": err }),
+                serde_json::json!({
+                    "instance_id": instance_id.to_string(),
+                    "message": message,
+                    "kept": failure.keep_instance
+                }),
             );
-            let _ = InstanceRepository::new(pool).delete(instance_id).await;
-            let _ = std::fs::remove_dir_all(folder);
+            if !failure.keep_instance {
+                let _ = InstanceRepository::new(pool).delete(instance_id).await;
+                let _ = std::fs::remove_dir_all(folder);
+            }
         }
     });
 }
@@ -628,4 +703,22 @@ fn add_dir_to_zip(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_disabled;
+
+    #[test]
+    fn disabled_pack_files_become_disabled_entries() {
+        assert_eq!(
+            split_disabled("automodpack-5.0.0-rc.1.jar.disabled"),
+            ("automodpack-5.0.0-rc.1.jar".to_string(), false)
+        );
+        assert_eq!(
+            split_disabled("sodium.jar"),
+            ("sodium.jar".to_string(), true)
+        );
+        assert_eq!(split_disabled(".disabled"), (".disabled".to_string(), true));
+    }
 }

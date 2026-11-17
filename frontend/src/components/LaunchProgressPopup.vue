@@ -11,9 +11,10 @@
         <div class="progress-bar__fill" :style="indeterminate ? undefined : { width: progressPercent + '%' }" />
       </div>
       <p class="launch-popup__message">
-        <span>{{ activeState.progress?.message }}</span>
+        <span>{{ overall?.stage ?? activeState.progress?.message }}</span>
         <span v-if="!indeterminate" class="launch-popup__percent">{{ progressPercent }}%</span>
       </p>
+      <p v-if="overall?.detail" class="launch-popup__detail">{{ overall.detail }}</p>
     </div>
   </Transition>
 </template>
@@ -33,12 +34,9 @@ const instanceName = computed(() => {
   if (!launchStore.activeInstanceId) return ''
   return instanceStore.byId(launchStore.activeInstanceId)?.name ?? 'Instance'
 })
-const indeterminate = computed(() => !activeState.value?.progress || activeState.value.progress.total === 0)
-const progressPercent = computed(() => {
-  const p = activeState.value?.progress
-  if (!p || p.total === 0) return 0
-  return Math.min(100, Math.round((p.current / p.total) * 100))
-})
+const overall = computed(() => activeState.value?.overall ?? null)
+const progressPercent = computed(() => overall.value?.percent ?? 0)
+const indeterminate = computed(() => !activeState.value?.progress || progressPercent.value === 0)
 
 function cancel() {
   if (launchStore.activeInstanceId) launchStore.stop(launchStore.activeInstanceId).catch(() => void 0)
@@ -86,6 +84,12 @@ function cancel() {
   font-size: 0.95rem;
   color: var(--text-secondary);
   word-break: break-word;
+}
+
+.launch-popup__detail {
+  margin: -0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
 }
 
 .launch-popup__percent {

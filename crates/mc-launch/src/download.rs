@@ -12,7 +12,9 @@ use crate::error::{LaunchError, LaunchResult};
 use crate::launcher::LaunchEvent;
 
 pub const USER_AGENT: &str = concat!("pretupid-launcher/", env!("CARGO_PKG_VERSION"));
-const MAX_ATTEMPTS: u32 = 4;
+const MAX_ATTEMPTS: u32 = 6;
+const MAX_BACKOFF_MS: u64 = 8_000;
+const RETRY_PASS_CONCURRENCY: usize = 2;
 const STALL_TIMEOUT: Duration = Duration::from_secs(25);
 const VALIDATION_CONCURRENCY: usize = 64;
 
@@ -123,10 +125,17 @@ async fn download_attempt(
             .map_err(|e| LaunchError::Io(e.to_string()))?;
     }
 
+    let temp = part_path(&task.path);
+    let resume_from = resumable_bytes(&temp, task.size).await;
+
     let mut cancel = cancel_rx.clone();
+    let mut request = client.get(&task.url);
+    if resume_from > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={resume_from}-"));
+    }
     let response = tokio::select! {
-        response = client.get(&task.url).send() => {
-            response.map_err(|e| LaunchError::Network(format!("{}: {}", task.url, e)))?
+        response = request.send() => {
+            response.map_err(|e| LaunchError::Network(format!("{}: {}", task.url, describe_request_error(&e))))?
         }
         _ = wait_cancelled(&mut cancel) => return Err(LaunchError::Cancelled),
     };
@@ -138,20 +147,29 @@ async fn download_attempt(
         )));
     }
 
-    let temp = part_path(&task.path);
-    let mut file = tokio::fs::File::create(&temp)
-        .await
-        .map_err(|e| LaunchError::Io(e.to_string()))?;
-    let mut hasher = Sha1::new();
-    let mut written: u64 = 0;
+    let resumed = resume_from > 0 && response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
+    let (mut file, mut hasher, mut written) = if resumed {
+        let hasher = hash_prefix(&temp).await?;
+        let file = tokio::fs::OpenOptions::new()
+            .append(true)
+            .open(&temp)
+            .await
+            .map_err(|e| LaunchError::Io(e.to_string()))?;
+        counter.fetch_add(resume_from, Ordering::Relaxed);
+        (file, hasher, resume_from)
+    } else {
+        let file = tokio::fs::File::create(&temp)
+            .await
+            .map_err(|e| LaunchError::Io(e.to_string()))?;
+        (file, Sha1::new(), 0)
+    };
     let mut stream = response.bytes_stream();
 
     loop {
         let next = tokio::select! {
             next = tokio::time::timeout(STALL_TIMEOUT, stream.next()) => next,
             _ = wait_cancelled(&mut cancel) => {
-                drop(file);
-                let _ = tokio::fs::remove_file(&temp).await;
+                let _ = file.flush().await;
                 return Err(LaunchError::Cancelled);
             }
         };
@@ -159,8 +177,7 @@ async fn download_attempt(
             Ok(Some(chunk)) => chunk,
             Ok(None) => break,
             Err(_) => {
-                drop(file);
-                let _ = tokio::fs::remove_file(&temp).await;
+                let _ = file.flush().await;
                 return Err(LaunchError::Network(format!(
                     "download stalled for {}",
                     task.url
@@ -170,9 +187,12 @@ async fn download_attempt(
         let bytes = match chunk {
             Ok(b) => b,
             Err(e) => {
-                drop(file);
-                let _ = tokio::fs::remove_file(&temp).await;
-                return Err(LaunchError::Network(e.to_string()));
+                let _ = file.flush().await;
+                return Err(LaunchError::Network(format!(
+                    "{}: {}",
+                    task.url,
+                    describe_request_error(&e)
+                )));
             }
         };
         hasher.update(&bytes);
@@ -213,6 +233,53 @@ async fn download_attempt(
     Ok(written)
 }
 
+async fn resumable_bytes(temp: &Path, expected_size: u64) -> u64 {
+    let existing = match tokio::fs::metadata(temp).await {
+        Ok(metadata) if metadata.is_file() => metadata.len(),
+        _ => return 0,
+    };
+    if existing > 0 && expected_size > 0 && existing < expected_size {
+        return existing;
+    }
+    if existing > 0 {
+        let _ = tokio::fs::remove_file(temp).await;
+    }
+    0
+}
+
+async fn hash_prefix(path: &Path) -> LaunchResult<Sha1> {
+    let path = path.to_path_buf();
+    tokio::task::spawn_blocking(move || {
+        let mut file = std::fs::File::open(&path)?;
+        let mut hasher = Sha1::new();
+        std::io::copy(&mut file, &mut hasher)?;
+        Ok::<Sha1, std::io::Error>(hasher)
+    })
+    .await
+    .map_err(|e| LaunchError::Io(e.to_string()))?
+    .map_err(|e| LaunchError::Io(e.to_string()))
+}
+
+fn describe_request_error(error: &reqwest::Error) -> String {
+    let mut message = error.to_string();
+    let mut source = std::error::Error::source(error);
+    while let Some(cause) = source {
+        let text = cause.to_string();
+        if !message.contains(&text) {
+            message.push_str(": ");
+            message.push_str(&text);
+        }
+        source = cause.source();
+    }
+    message
+}
+
+fn backoff(attempt: u32, salt: usize) -> Duration {
+    let base = (500u64 << attempt.min(5)).min(MAX_BACKOFF_MS);
+    let jitter = (salt as u64).wrapping_mul(2_654_435_761) % (base / 2 + 1);
+    Duration::from_millis(base / 2 + jitter)
+}
+
 pub async fn download(
     client: &reqwest::Client,
     task: &DownloadTask,
@@ -228,11 +295,15 @@ pub async fn download(
             Err(err) => {
                 let after = counter.load(Ordering::Relaxed);
                 counter.fetch_sub(after.saturating_sub(before), Ordering::Relaxed);
+                let fatal = matches!(err, LaunchError::Io(_));
                 last_error = Some(err);
+                if fatal {
+                    break;
+                }
                 if attempt + 1 < MAX_ATTEMPTS {
                     let mut cancel = cancel_rx.clone();
                     tokio::select! {
-                        _ = tokio::time::sleep(Duration::from_millis(400 << attempt)) => {}
+                        _ = tokio::time::sleep(backoff(attempt, task.url.len())) => {}
                         _ = wait_cancelled(&mut cancel) => return Err(LaunchError::Cancelled),
                     }
                 }
@@ -323,20 +394,52 @@ pub async fn download_all(
         })
     };
 
-    let results = stream::iter(tasks.into_iter().map(|task| {
+    let first_pass = stream::iter(tasks.into_iter().map(|task| {
         let downloaded = downloaded.clone();
         let finished = finished.clone();
         let cancel_rx = cancel_rx.clone();
         let client = client.clone();
         async move {
             let result = download(&client, &task, &downloaded, &cancel_rx).await;
-            finished.fetch_add(1, Ordering::Relaxed);
-            result
+            if result.is_ok() {
+                finished.fetch_add(1, Ordering::Relaxed);
+            }
+            (task, result)
         }
     }))
     .buffer_unordered(concurrency.max(1))
     .collect::<Vec<_>>()
     .await;
+
+    let mut results = Vec::with_capacity(first_pass.len());
+    let mut retry = Vec::new();
+    for (task, result) in first_pass {
+        match result {
+            Err(LaunchError::Network(_)) | Err(LaunchError::Integrity(_))
+                if !*cancel_rx.borrow() =>
+            {
+                retry.push(task)
+            }
+            other => results.push(other),
+        }
+    }
+    if !retry.is_empty() {
+        let second_pass = stream::iter(retry.into_iter().map(|task| {
+            let downloaded = downloaded.clone();
+            let finished = finished.clone();
+            let cancel_rx = cancel_rx.clone();
+            let client = client.clone();
+            async move {
+                let result = download(&client, &task, &downloaded, &cancel_rx).await;
+                finished.fetch_add(1, Ordering::Relaxed);
+                result
+            }
+        }))
+        .buffer_unordered(RETRY_PASS_CONCURRENCY)
+        .collect::<Vec<_>>()
+        .await;
+        results.extend(second_pass);
+    }
 
     let _ = done_tx.send(true);
     let _ = reporter.await;
@@ -357,8 +460,9 @@ pub async fn download_all(
     if !failures.is_empty() {
         let shown: Vec<String> = failures.iter().take(3).cloned().collect();
         return Err(LaunchError::Network(format!(
-            "{} file(s) failed to download: {}",
+            "{} of {} file(s) could not be downloaded. Check your internet connection and press Play again; finished files are kept and the download continues where it stopped. Details: {}",
             failures.len(),
+            total_files,
             shown.join("; ")
         )));
     }

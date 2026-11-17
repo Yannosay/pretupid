@@ -63,11 +63,7 @@ const sizeClass = computed(() => ({
 const iconSize = computed(() => (props.size === 'small' ? 12 : props.size === 'large' ? 20 : 16))
 const busyLabel = computed(() => (state.value.phase === 'installing' ? 'Installing' : 'Starting'))
 
-const percent = computed(() => {
-  const p = state.value.progress
-  if (!p || p.total === 0) return 0
-  return Math.min(100, Math.round((p.current / p.total) * 100))
-})
+const percent = computed(() => state.value.overall?.percent ?? 0)
 
 async function signIn() {
   try {

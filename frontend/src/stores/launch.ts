@@ -4,11 +4,13 @@ import { listen } from '@tauri-apps/api/event'
 import type { LaunchProgress, LaunchLog, LaunchStarted, LaunchExited, CrashInfo } from '@/types'
 import { cancelLaunch, launchInstance, listRunningInstances, prepareInstance } from '@/api'
 import { hasBlockTextures, loadBlockTextures } from '@/utils/instanceIcon'
+import { overallProgress, type OverallProgress } from '@/utils/launchProgress'
 
 export type LaunchPhase = 'idle' | 'preparing' | 'running' | 'installing'
 
 export interface LaunchState {
   progress: LaunchProgress | null
+  overall: OverallProgress | null
   logs: string[]
   running: boolean
   busy: boolean
@@ -25,6 +27,7 @@ const MAX_LOG_LINES = 2000
 function createEmptyState(): LaunchState {
   return {
     progress: null,
+    overall: null,
     logs: [],
     running: false,
     busy: false,
@@ -62,6 +65,7 @@ export const useLaunchStore = defineStore('launch', () => {
         if (!payload?.instance_id) return
         const current = ensureState(payload.instance_id)
         current.progress = { ...payload }
+        current.overall = overallProgress(payload.message, payload.current, payload.total, current.overall?.percent ?? 0)
         current.busy = true
         if (current.phase === 'idle') current.phase = 'preparing'
         activeInstanceId.value = payload.instance_id
@@ -87,6 +91,7 @@ export const useLaunchStore = defineStore('launch', () => {
         current.pid = payload.pid
         current.exitCode = null
         current.progress = null
+        current.overall = null
         current.startedAt = Date.now()
         activeInstanceId.value = payload.instance_id
         if (!hasBlockTextures()) loadBlockTextures(true).catch(() => void 0)
@@ -114,6 +119,7 @@ export const useLaunchStore = defineStore('launch', () => {
         current.pid = null
         current.exitCode = payload.code
         current.progress = null
+        current.overall = null
         current.startedAt = null
         if (activeInstanceId.value === payload.instance_id) activeInstanceId.value = null
       })
@@ -125,6 +131,7 @@ export const useLaunchStore = defineStore('launch', () => {
         current.busy = false
         current.phase = 'idle'
         current.progress = null
+        current.overall = null
         if (!payload.ok && payload.message) current.lastError = payload.message
         if (activeInstanceId.value === payload.instance_id) activeInstanceId.value = null
       })
@@ -159,6 +166,7 @@ export const useLaunchStore = defineStore('launch', () => {
     fresh.busy = true
     fresh.phase = 'preparing'
     fresh.progress = { instance_id: instanceId, current: 0, total: 0, message: 'Getting ready' }
+    fresh.overall = overallProgress('Getting ready', 0, 0, 0)
     activeInstanceId.value = instanceId
     try {
       await launchInstance(instanceId, verifyFiles)
@@ -170,6 +178,7 @@ export const useLaunchStore = defineStore('launch', () => {
       fresh.running = false
       fresh.phase = 'idle'
       fresh.progress = null
+      fresh.overall = null
     }
   }
 
@@ -181,6 +190,7 @@ export const useLaunchStore = defineStore('launch', () => {
     current.phase = 'installing'
     current.lastError = null
     current.progress = { instance_id: instanceId, current: 0, total: 0, message: verifyFiles ? 'Verifying files' : 'Downloading game files' }
+    current.overall = overallProgress('Getting ready', 0, 0, 0)
     try {
       await prepareInstance(instanceId, verifyFiles)
     } catch (e) {
@@ -190,6 +200,7 @@ export const useLaunchStore = defineStore('launch', () => {
       current.busy = false
       current.phase = 'idle'
       current.progress = null
+      current.overall = null
     }
   }
 

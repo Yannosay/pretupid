@@ -130,38 +130,92 @@ impl ExpectedHash<'_> {
     };
 }
 
+const DOWNLOAD_ATTEMPTS: u32 = 4;
+
+pub fn describe_request_error(error: &reqwest::Error) -> String {
+    let mut message = error.to_string();
+    let mut source = std::error::Error::source(error);
+    while let Some(cause) = source {
+        let text = cause.to_string();
+        if !message.contains(&text) {
+            message.push_str(": ");
+            message.push_str(&text);
+        }
+        source = cause.source();
+    }
+    message
+}
+
 pub async fn download_verified(
     client: &reqwest::Client,
     url: &str,
     dest: &Path,
     expected: &ExpectedHash<'_>,
 ) -> Result<String, String> {
+    let mut last_error = String::new();
+    for attempt in 0..DOWNLOAD_ATTEMPTS {
+        match download_verified_once(client, url, dest, expected).await {
+            Ok(hash) => return Ok(hash),
+            Err(DownloadFailure::Fatal(error)) => return Err(error),
+            Err(DownloadFailure::Retryable(error)) => {
+                last_error = error;
+                if attempt + 1 < DOWNLOAD_ATTEMPTS {
+                    tokio::time::sleep(std::time::Duration::from_millis(600 << attempt)).await;
+                }
+            }
+        }
+    }
+    Err(last_error)
+}
+
+enum DownloadFailure {
+    Retryable(String),
+    Fatal(String),
+}
+
+async fn download_verified_once(
+    client: &reqwest::Client,
+    url: &str,
+    dest: &Path,
+    expected: &ExpectedHash<'_>,
+) -> Result<String, DownloadFailure> {
+    use DownloadFailure::{Fatal, Retryable};
     if !is_allowed_download_url(url) {
-        return Err(format!(
+        return Err(Fatal(format!(
             "refusing to download from '{}' (only https is allowed)",
             url
-        ));
+        )));
     }
     if let Some(parent) = dest.parent() {
         tokio::fs::create_dir_all(parent)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| Fatal(e.to_string()))?;
     }
 
-    let response = client.get(url).send().await.map_err(|e| e.to_string())?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "download failed with status {} for {}",
-            response.status(),
-            url
-        ));
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| Retryable(describe_request_error(&e)))?;
+    let status = response.status();
+    if !status.is_success() {
+        let message = format!("download failed with status {} for {}", status, url);
+        return Err(
+            if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                Retryable(message)
+            } else {
+                Fatal(message)
+            },
+        );
     }
     if response
         .content_length()
         .map(|l| l > MAX_DOWNLOAD_BYTES)
         .unwrap_or(false)
     {
-        return Err("file is larger than the 1 GB safety limit".to_string());
+        return Err(Fatal(
+            "file is larger than the 1 GB safety limit".to_string(),
+        ));
     }
 
     let mut temp_name = dest
@@ -173,23 +227,27 @@ pub async fn download_verified(
 
     let mut file = tokio::fs::File::create(&temp)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| Fatal(e.to_string()))?;
     let mut sha1 = Sha1::new();
     let mut sha512 = Sha512::new();
     let mut written = 0u64;
     let mut stream = response.bytes_stream();
-    let result: Result<(), String> = async {
+    let result: Result<(), DownloadFailure> = async {
         while let Some(chunk) = stream.next().await {
-            let bytes = chunk.map_err(|e| e.to_string())?;
+            let bytes = chunk.map_err(|e| Retryable(describe_request_error(&e)))?;
             written += bytes.len() as u64;
             if written > MAX_DOWNLOAD_BYTES {
-                return Err("file is larger than the 1 GB safety limit".to_string());
+                return Err(Fatal(
+                    "file is larger than the 1 GB safety limit".to_string(),
+                ));
             }
             sha1.update(&bytes);
             sha512.update(&bytes);
-            file.write_all(&bytes).await.map_err(|e| e.to_string())?;
+            file.write_all(&bytes)
+                .await
+                .map_err(|e| Fatal(e.to_string()))?;
         }
-        file.flush().await.map_err(|e| e.to_string())?;
+        file.flush().await.map_err(|e| Fatal(e.to_string()))?;
         Ok(())
     }
     .await;
@@ -212,15 +270,15 @@ pub async fn download_verified(
         .unwrap_or(true);
     if !sha1_ok || !sha512_ok {
         let _ = tokio::fs::remove_file(&temp).await;
-        return Err(format!(
+        return Err(Retryable(format!(
             "checksum mismatch for {}; the file was discarded",
             url
-        ));
+        )));
     }
 
     tokio::fs::rename(&temp, dest)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| Fatal(e.to_string()))?;
     Ok(sha1_hex)
 }
 
