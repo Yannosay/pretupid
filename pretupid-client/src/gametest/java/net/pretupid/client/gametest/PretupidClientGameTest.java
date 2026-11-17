@@ -33,6 +33,7 @@ import net.pretupid.client.module.visual.OwnNametagModule;
 import net.pretupid.client.nametag.NameAnimation;
 import net.pretupid.client.nametag.NameEffect;
 import net.pretupid.client.social.LocalHosting;
+import net.pretupid.client.ui.screen.ClientMenuScreen;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 
 public final class PretupidClientGameTest implements FabricClientGameTest {
@@ -180,6 +181,29 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(20);
 		context.takeScreenshot("pretupid-nametag-wave");
 		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+		context.setScreen(() -> {
+			ClientMenuScreen menu = new ClientMenuScreen(null);
+			menu.select(ClientMenuScreen.Tab.COSMETICS);
+			showCapeSection(menu);
+			return menu;
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-cosmetics-capes");
+		context.setScreen(() -> null);
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static void showCapeSection(ClientMenuScreen menu) {
+		try {
+			Field pages = ClientMenuScreen.class.getDeclaredField("pages");
+			pages.setAccessible(true);
+			Object page = ((java.util.Map<?, ?>) pages.get(menu)).get(ClientMenuScreen.Tab.COSMETICS);
+			Field section = page.getClass().getDeclaredField("section");
+			section.setAccessible(true);
+			section.set(page, Enum.valueOf((Class) section.getType(), "CAPE"));
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError("Cosmetics page is not reachable", exception);
+		}
 	}
 
 	private static void testEmotes(ClientGameTestContext context) {

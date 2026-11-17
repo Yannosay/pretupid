@@ -215,7 +215,7 @@ public final class CosmeticsPage implements MenuPage {
 		MojangCapes mojang = client.mojangCapes();
 		int mojangRows = mojang.state() == MojangCapes.State.READY ? (mojang.capes().size() + 1 + columns - 1) / columns : 0;
 		int mojangHeight = 14 + (mojangRows > 0 ? mojangRows * (CARD_HEIGHT + 4) : 14);
-		int toolsHeight = 14 + 22 + (localCapes.isEmpty() ? 0 : 12 + localCapes.size() * 20) + 26;
+		int toolsHeight = Widgets.ROW_HEIGHT + 4 + 14 + 22 + (localCapes.isEmpty() ? 0 : 12 + localCapes.size() * 20) + 26;
 		scroll.begin(ui, "cosmetics.capes", x, y, areaW, h, 14 + gridRows * (CARD_HEIGHT + 4) + mojangHeight + toolsHeight);
 		int top = y - scroll.offset();
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.cape.pretupid"), x, top + 2, areaW - 6);
@@ -233,6 +233,8 @@ public final class CosmeticsPage implements MenuPage {
 		}
 		int rowY = top + gridRows * (CARD_HEIGHT + 4) + 4;
 		rowY = drawMojangCapes(ui, mojang, x, rowY, areaW, columns);
+		Widgets.settingRow(ui, screen, settings.capePhysics, x, rowY, areaW - 6);
+		rowY += Widgets.ROW_HEIGHT + 4;
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.cape.custom"), x, rowY, areaW - 6);
 		rowY += 14;
 		int buttonWidth = (areaW - 14) / 2;
