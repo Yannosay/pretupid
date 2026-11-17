@@ -225,7 +225,7 @@ public final class Widgets {
 		} else {
 			Draw.rect(ui.g(), sx, sy, sw, sh, setting.displayArgb());
 		}
-		String hex = setting.followsAccent() ? I18n.get("pretupid.ui.interface_color")
+		String hex = setting.followsAccent() ? I18n.get(setting.followLabelKey())
 			: setting.chroma() ? I18n.get("pretupid.ui.chroma") : (setting.allowsAlpha() ? Colors.toHex(setting.argb()) : Colors.toRgbHex(setting.argb()));
 		Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), hex, w - sw - 10), sx + sw + 4, y + 3, Theme.TEXT_MUTED);
 	}

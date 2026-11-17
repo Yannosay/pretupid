@@ -22,13 +22,23 @@ public final class Notifications {
 	private static final int MAX_VISIBLE = 4;
 	private static final long ENTER_MS = 260L;
 	private static final long EXIT_MS = 320L;
+	private static final long STACK_LINGER_MS = 1600L;
 
 	private final List<Entry> entries = new ArrayList<>();
 
 	public void push(Component title, Component body, Icon icon, ItemStack stack, int color, long durationMs) {
 		Minecraft.getInstance().execute(() -> {
+			long now = System.currentTimeMillis();
 			entries.removeIf(entry -> entry.title.getString().equals(title.getString()) && entry.body.getString().equals(body.getString()));
-			entries.add(new Entry(title, body, icon, stack, color, System.currentTimeMillis(), durationMs));
+			int newest = entries.size() - 1;
+			for (int i = Math.max(0, entries.size() - (MAX_VISIBLE - 1)); i <= newest; i++) {
+				Entry entry = entries.get(i);
+				long age = now - entry.createdAt;
+				if (age < entry.duration) {
+					entries.set(i, entry.lingering(age + STACK_LINGER_MS));
+				}
+			}
+			entries.add(new Entry(title, body, icon, stack, color, now, durationMs));
 			while (entries.size() > 8) {
 				entries.removeFirst();
 			}
@@ -53,7 +63,7 @@ public final class Notifications {
 			module.icon(),
 			null,
 			enabled ? Theme.SUCCESS : Theme.DANGER,
-			1800L);
+			2400L);
 	}
 
 	public void profileSwitched(String profile) {
@@ -113,5 +123,8 @@ public final class Notifications {
 	}
 
 	private record Entry(Component title, Component body, Icon icon, ItemStack stack, int color, long createdAt, long duration) {
+		Entry lingering(long minimumDuration) {
+			return minimumDuration <= duration ? this : new Entry(title, body, icon, stack, color, createdAt, minimumDuration);
+		}
 	}
 }

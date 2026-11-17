@@ -29,10 +29,11 @@ import net.pretupid.client.module.utility.NickHiderModule;
 import net.pretupid.client.module.utility.WaypointsModule;
 import net.pretupid.client.module.visual.BlockOutlineModule;
 import net.pretupid.client.module.visual.OwnNametagModule;
-import net.pretupid.client.nametag.NameAnimation;
-import net.pretupid.client.nametag.NameEffect;
 import net.pretupid.client.social.LocalHosting;
+import net.pretupid.client.cosmetic.EmoteWheel;
+import net.pretupid.client.ui.Icon;
 import net.pretupid.client.ui.screen.ClientMenuScreen;
+import net.pretupid.client.ui.screen.EmoteWheelScreen;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 
 public final class PretupidClientGameTest implements FabricClientGameTest {
@@ -53,6 +54,9 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testTexturedWearable(context);
 			testCosmetics(context);
 			testEmotes(context);
+			testEmoteWheel(context);
+			testNotifications(context);
+			testMenuPages(context);
 			testHudEditor(context);
 			testHosting(context);
 			context.setScreen(() -> new PauseScreen(true));
@@ -92,6 +96,10 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				field.setAccessible(true);
 				net.pretupid.client.setting.ColorSetting label = (net.pretupid.client.setting.ColorSetting) field.get(PretupidClient.get().modules().get(BiomeHud.class));
 				check(label.resolve() == 0xFFFF5577, "HUD labels did not follow the interface color");
+				settings.moduleText.setArgb(0xFF22CCAA);
+				check(label.resolve() == 0xFF22CCAA, "HUD labels did not follow the module text color");
+				settings.moduleText.reset();
+				check(label.resolve() == 0xFFFF5577, "The module text color did not return to the interface color");
 				label.setArgb(0xFF00FF00);
 				check(label.resolve() == 0xFF00FF00, "A custom label color was overridden by the interface color");
 				label.reset();
@@ -162,8 +170,9 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> {
 			ClientSettings settings = PretupidClient.get().settings();
 			enable(minecraft, OwnNametagModule.class);
-			settings.nametagAnimation.set(NameAnimation.RAINBOW);
-			settings.nametagEffect.set(NameEffect.WAVE);
+			check(PretupidClient.get().cosmetics().catalog().nametag("rainbow").isPresent(), "The rainbow nametag style is missing from the catalog");
+			settings.nametagStyleId.set("rainbow");
+			check(settings.nametagStyle().effect().moves(), "Choosing a catalog nametag style did not apply it");
 			settings.hat.set("crown");
 			settings.cape.set("catalog:pretupid");
 			minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
@@ -214,15 +223,19 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.setScreen(() -> null);
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static void showCapeSection(ClientMenuScreen menu) {
+		showSection(menu, "CAPE");
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static void showSection(ClientMenuScreen menu, String name) {
 		try {
 			Field pages = ClientMenuScreen.class.getDeclaredField("pages");
 			pages.setAccessible(true);
 			Object page = ((java.util.Map<?, ?>) pages.get(menu)).get(ClientMenuScreen.Tab.COSMETICS);
 			Field section = page.getClass().getDeclaredField("section");
 			section.setAccessible(true);
-			section.set(page, Enum.valueOf((Class) section.getType(), "CAPE"));
+			section.set(page, Enum.valueOf((Class) section.getType(), name));
 		} catch (ReflectiveOperationException exception) {
 			throw new AssertionError("Cosmetics page is not reachable", exception);
 		}
@@ -272,6 +285,90 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		boolean sneaking = context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID()));
 		check(!sneaking, "Sneaking did not stop the emote");
 		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+	}
+
+	private static void testEmoteWheel(ClientGameTestContext context) {
+		int available = context.computeOnClient(minecraft -> PretupidClient.get().cosmetics().catalog().emotes().size());
+		if (available == 0) {
+			return;
+		}
+		context.runOnClient(minecraft -> {
+			PretupidClient client = PretupidClient.get();
+			client.settings().emoteWheel.set("");
+			EmoteWheel wheel = client.emoteWheel();
+			Catalog catalog = client.cosmetics().catalog();
+			java.util.List<Catalog.EmoteEntry> filled = wheel.filled(catalog);
+			check(filled.size() == Math.min(EmoteWheel.SIZE, catalog.emotes().size()), "The wheel did not start with the first emotes, it has " + filled.size());
+			check(filled.getFirst().id().equals(catalog.emotes().getFirst().id()), "The first wheel slot is not the first emote");
+			String first = wheel.slotIds()[0];
+			String second = wheel.slotIds()[1];
+			wheel.swap(0, 1);
+			check(wheel.slotIds()[0].equals(second) && wheel.slotIds()[1].equals(first), "Swapping wheel slots did not work");
+			wheel.swap(0, 1);
+			wheel.clear(5);
+			check(wheel.slotIds()[5].isEmpty(), "Clearing a wheel slot did not work");
+			if (catalog.emotes().size() > EmoteWheel.SIZE) {
+				wheel.assign(5, catalog.emotes().get(EmoteWheel.SIZE).id());
+				check(wheel.slotOf(catalog.emotes().get(EmoteWheel.SIZE).id()) == 5, "Assigning a wheel slot did not work");
+			}
+			wheel.assign(2, first);
+			check(wheel.slotIds()[2].equals(first) && wheel.slotOf(first) == 2, "Assigning an emote that is already in the wheel did not move it");
+			client.settings().emoteWheel.set("");
+			wheel.ensureDefaults(catalog);
+		});
+		context.setScreen(EmoteWheelScreen::new);
+		context.waitTicks(20);
+		context.takeScreenshot("pretupid-emote-wheel");
+		double[] target = context.computeOnClient(minecraft -> {
+			double scale = minecraft.getWindow().getGuiScale();
+			double angle = -Math.PI / 2 + Math.PI * 2 / 6;
+			return new double[] {
+				minecraft.getWindow().getScreenWidth() / 2.0 + 72 * Math.cos(angle) * scale,
+				minecraft.getWindow().getScreenHeight() / 2.0 + 72 * Math.sin(angle) * 0.82 * scale
+			};
+		});
+		context.getInput().setCursorPos(target[0], target[1]);
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-emote-wheel-hover");
+		context.setScreen(() -> null);
+	}
+
+	private static void testNotifications(ClientGameTestContext context) {
+		for (int i = 1; i <= 4; i++) {
+			int index = i;
+			context.runOnClient(minecraft -> PretupidClient.get().notifications().push(Component.literal("Alert " + index),
+				Component.literal("Quick alert number " + index), Icon.item("bell"), null, 0xFF4ADE80, 1800L));
+			context.waitTicks(20);
+		}
+		context.takeScreenshot("pretupid-quick-alerts");
+	}
+
+	private static void testMenuPages(ClientGameTestContext context) {
+		for (String section : List.of("EMOTES", "NAMETAG")) {
+			context.setScreen(() -> {
+				ClientMenuScreen menu = new ClientMenuScreen(null);
+				menu.select(ClientMenuScreen.Tab.COSMETICS);
+				showSection(menu, section);
+				return menu;
+			});
+			context.waitTicks(30);
+			context.takeScreenshot("pretupid-cosmetics-" + section.toLowerCase());
+		}
+		context.setScreen(() -> {
+			ClientMenuScreen menu = new ClientMenuScreen(null);
+			menu.select(ClientMenuScreen.Tab.MODULES);
+			return menu;
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-modules");
+		context.setScreen(() -> {
+			ClientMenuScreen menu = new ClientMenuScreen(null);
+			menu.select(ClientMenuScreen.Tab.SETTINGS);
+			return menu;
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-client-settings");
+		context.setScreen(() -> null);
 	}
 
 	private static void testHudEditor(ClientGameTestContext context) {

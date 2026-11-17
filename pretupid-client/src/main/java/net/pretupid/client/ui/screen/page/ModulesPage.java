@@ -205,14 +205,12 @@ public final class ModulesPage implements MenuPage {
 			int starColor = favorite ? 0xFFFACC15 : (starHover ? 0xFFFDE68A : Theme.TEXT_DIM);
 			UiIcon.STAR.draw(g, x + w - 43, y + 7, Colors.multiplyAlpha(starColor, starAlpha));
 		}
-		if (!module.settings().isEmpty() || module instanceof HudModule) {
-			int gearX = x + w - 25;
-			int gearY = y + CARD_HEIGHT - 17;
-			boolean gearHover = ui.interactive(gearX, gearY, 15, 13, UiContext.Handler.onClick(() -> openSettings(module)));
-			float gear = ui.animate(id + ".gear", gearHover ? 1f : 0f, 16f);
-			Draw.chamfer(g, gearX, gearY, 15, 13, Colors.withAlpha(0xFFFFFF, Math.round(14 + 30 * gear)));
-			UiIcon.GEAR.draw(g, gearX + 3, gearY + 2, Colors.lerp(Theme.TEXT_MUTED, Theme.accentText(), Math.max(gear, t * 0.4f)));
-		}
+		int gearX = x + w - 25;
+		int gearY = y + CARD_HEIGHT - 17;
+		boolean gearHover = ui.interactive(gearX, gearY, 15, 13, UiContext.Handler.onClick(() -> openSettings(module)));
+		float gear = ui.animate(id + ".gear", gearHover ? 1f : 0f, 16f);
+		Draw.chamfer(g, gearX, gearY, 15, 13, Colors.withAlpha(0xFFFFFF, Math.round(14 + 30 * gear)));
+		UiIcon.GEAR.draw(g, gearX + 3, gearY + 2, Colors.lerp(Theme.TEXT_MUTED, Theme.accentText(), Math.max(gear, t * 0.4f)));
 	}
 
 	private void drawSettings(UiContext ui, int x, int y, int w, int h) {
@@ -236,7 +234,7 @@ public final class ModulesPage implements MenuPage {
 		boolean hud = module instanceof HudModule;
 		boolean crosshair = module instanceof net.pretupid.client.module.visual.CrosshairModule;
 		int extra = Widgets.ROW_HEIGHT + 14 + (hud && screen.inWorld() ? Widgets.ROW_HEIGHT + 4 : 0) + (crosshair ? 24 : 0);
-		int contentHeight = visible.size() * Widgets.ROW_HEIGHT + extra;
+		int contentHeight = Math.max(1, visible.size()) * Widgets.ROW_HEIGHT + extra;
 		int listH = h - 28;
 		settingsScroll.begin(ui, "settings." + module.id(), x, listY, w, listH, contentHeight);
 		int rowY = listY - settingsScroll.offset();
@@ -253,6 +251,10 @@ public final class ModulesPage implements MenuPage {
 			Widgets.settingRow(ui, screen, setting, x, rowY + offset, rowWidth);
 			rowY += Widgets.ROW_HEIGHT;
 			index++;
+		}
+		if (visible.isEmpty()) {
+			Draw.text(g, font, Draw.ellipsize(font, Component.translatable("pretupid.ui.no_options"), rowWidth - 8), x + 4, rowY + 6, Theme.TEXT_DIM);
+			rowY += Widgets.ROW_HEIGHT;
 		}
 		rowY += 8;
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.ui.controls"), x, rowY, rowWidth);

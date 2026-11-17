@@ -18,7 +18,7 @@ public final class DirectionHud extends HudModule {
 	private final NumberSetting stripWidth = add(new NumberSetting("strip_width", 140, 60, 260, 2, "px"));
 	private final NumberSetting fieldOfView = add(new NumberSetting("field_of_view", 120, 60, 240, 5, "°"));
 	private final BooleanSetting showDegrees = add(new BooleanSetting("show_degrees", true));
-	private final ColorSetting markerColor = shared(new ColorSetting("label_color", 0xFF4A9EFF).followingAccent());
+	private final ColorSetting markerColor = shared(new ColorSetting("label_color", 0xFF4A9EFF).followingModuleText());
 	private final ColorSetting textColor = shared(new ColorSetting("value_color", 0xFFFFFFFF));
 
 	public DirectionHud() {

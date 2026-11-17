@@ -15,8 +15,10 @@ import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
+import net.pretupid.client.cosmetic.EmoteWheel;
 import net.pretupid.client.cosmetic.CosmeticsService;
 import net.pretupid.client.nametag.NametagFormatter;
+import net.pretupid.client.nametag.NametagStyle;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.RemoteProfile;
 import net.pretupid.client.setting.Setting;
@@ -47,6 +49,11 @@ public final class CosmeticsPage implements MenuPage {
 
 	private final ClientMenuScreen screen;
 	private final ScrollState scroll = new ScrollState();
+	private static final int WHEEL_SLOT_HEIGHT = 26;
+	private static final int EMOTE_WHEEL_WIDTH = 28;
+	private static final int EMOTE_KEY_WIDTH = 46;
+	private static final int EMOTE_PLAY_WIDTH = 34;
+	private int selectedWheelSlot = -1;
 	private Section section = Section.NAMETAG;
 	private Component message;
 	private boolean messageError;
@@ -152,24 +159,59 @@ public final class CosmeticsPage implements MenuPage {
 	}
 
 	private void drawNametag(UiContext ui, int x, int y, int w, int h) {
-		ClientSettings settings = PretupidClient.get().settings();
+		PretupidClient client = PretupidClient.get();
+		ClientSettings settings = client.settings();
+		List<Catalog.NametagEntry> styles = client.cosmetics().catalog().nametags();
+		boolean previous = settings.hasPreviousNametagStyle() && settings.nametagStyleId.get().equals(ClientSettings.PREVIOUS_NAMETAG_STYLE);
 		drawNametagPreview(ui, x, y, w - 6);
 		int listY = y + PREVIEW_HEIGHT + 6;
 		int listH = h - PREVIEW_HEIGHT - 6;
 		List<Setting<?>> rows = new ArrayList<>();
-		for (Setting<?> setting : List.of(settings.nametagBadge, settings.nametagAnimation, settings.nametagPrimary, settings.nametagSecondary,
-			settings.nametagEffect, settings.nametagSpeed, settings.nametagMovingBackground, settings.nametagBold, settings.showOtherBadges, settings.tabListBadges)) {
+		for (Setting<?> setting : List.of(settings.nametagBadge, settings.nametagMovingBackground, settings.showOtherBadges, settings.tabListBadges)) {
 			if (setting.isVisible()) {
 				rows.add(setting);
 			}
 		}
-		scroll.begin(ui, "cosmetics.nametag", x, listY, w, listH, rows.size() * Widgets.ROW_HEIGHT);
+		int choices = 1 + styles.size() + (previous ? 1 : 0);
+		scroll.begin(ui, "cosmetics.nametag", x, listY, w, listH, 16 + choices * 24 + 8 + rows.size() * Widgets.ROW_HEIGHT);
 		int rowY = listY - scroll.offset();
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.styles"), x, rowY + 2, w - 6);
+		rowY += 16;
+		String current = settings.nametagStyleId.get();
+		boolean known = current.isEmpty() || (previous && current.equals(ClientSettings.PREVIOUS_NAMETAG_STYLE)) || styles.stream().anyMatch(entry -> entry.id().equals(current));
+		rowY = drawChoice(ui, "nametag.none", x, rowY, w - 6, Component.translatable("pretupid.cosmetics.none"), Component.empty(), !known || current.isEmpty(),
+			() -> chooseNametag(""));
+		if (previous) {
+			rowY = drawNametagChoice(ui, "nametag.previous", x, rowY, w - 6, Component.translatable("pretupid.cosmetics.nametag.previous"),
+				Component.translatable("pretupid.cosmetics.nametag.previous_hint"), settings.previousNametagStyle(), true, () -> chooseNametag(ClientSettings.PREVIOUS_NAMETAG_STYLE));
+		}
+		for (Catalog.NametagEntry entry : styles) {
+			rowY = drawNametagChoice(ui, "nametag." + entry.id(), x, rowY, w - 6, Component.literal(entry.name()), Component.literal(entry.description()), entry.style(),
+				current.equals(entry.id()), () -> chooseNametag(entry.id()));
+		}
+		rowY += 8;
 		for (Setting<?> setting : rows) {
 			Widgets.settingRow(ui, screen, setting, x, rowY, w - 6);
 			rowY += Widgets.ROW_HEIGHT;
 		}
 		scroll.end(ui, x, listY, w, listH);
+	}
+
+	private void chooseNametag(String id) {
+		PretupidClient client = PretupidClient.get();
+		client.settings().nametagStyleId.set(id);
+		client.presence().requestHeartbeat();
+	}
+
+	private int drawNametagChoice(UiContext ui, String id, int x, int y, int w, Component title, Component subtitle, NametagStyle style, boolean selected, Runnable action) {
+		int next = drawChoice(ui, id, x, y, w, title, subtitle, selected, action);
+		String name = Minecraft.getInstance().getUser().getName();
+		Component sample = NametagFormatter.format(Component.literal(name), name, style.withBadge(false), false, true);
+		int sampleWidth = ui.font().width(sample);
+		int sampleX = x + w - sampleWidth - 8;
+		Draw.rect(ui.g(), sampleX - 3, y + 5, sampleWidth + 6, 12, 0x50000000);
+		Draw.text(ui.g(), ui.font(), sample, sampleX, y + 7, 0xFFFFFFFF);
+		return next;
 	}
 
 	private void drawNametagPreview(UiContext ui, int x, int y, int w) {
@@ -427,12 +469,69 @@ public final class CosmeticsPage implements MenuPage {
 		return rowY;
 	}
 
+	private void drawWheelEditor(UiContext ui, int x, int y, int w) {
+		PretupidClient client = PretupidClient.get();
+		EmoteWheel wheel = client.emoteWheel();
+		List<java.util.Optional<Catalog.EmoteEntry>> slots = wheel.slots(client.cosmetics().catalog());
+		var g = ui.g();
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.emotes.wheel"), x, y, w);
+		Component hint = Component.translatable(selectedWheelSlot >= 0 ? "pretupid.cosmetics.emotes.wheel_pick" : "pretupid.cosmetics.emotes.wheel_hint");
+		Draw.text(g, ui.font(), Draw.ellipsize(ui.font(), hint, w - 4), x, y + 13, selectedWheelSlot >= 0 ? Theme.accentText() : Theme.TEXT_DIM);
+		int gap = 4;
+		int slotWidth = (w - gap * (EmoteWheel.SIZE - 1)) / EmoteWheel.SIZE;
+		int slotY = y + 26;
+		for (int i = 0; i < EmoteWheel.SIZE; i++) {
+			int index = i;
+			int slotX = x + i * (slotWidth + gap);
+			java.util.Optional<Catalog.EmoteEntry> entry = slots.get(i);
+			boolean picked = selectedWheelSlot == i;
+			boolean hover = ui.interactive(slotX, slotY, slotWidth, WHEEL_SLOT_HEIGHT, new UiContext.Handler() {
+				@Override
+				public boolean click(double mouseX, double mouseY, int button) {
+					if (button == 1) {
+						wheel.clear(index);
+						if (selectedWheelSlot == index) {
+							selectedWheelSlot = -1;
+						}
+						return true;
+					}
+					if (button != 0) {
+						return false;
+					}
+					if (selectedWheelSlot == index) {
+						selectedWheelSlot = -1;
+					} else if (selectedWheelSlot >= 0) {
+						wheel.swap(selectedWheelSlot, index);
+						selectedWheelSlot = -1;
+					} else {
+						selectedWheelSlot = index;
+					}
+					return true;
+				}
+			});
+			float t = ui.animate("emote.wheel.slot." + i, hover ? 1f : 0f, 16f);
+			float p = ui.animate("emote.wheel.pick." + i, picked ? 1f : 0f, 16f);
+			int lift = Math.round(p * 2f);
+			int fill = Colors.lerp(Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, t), Theme.accent(80), p);
+			Draw.chamfer(g, slotX, slotY - lift, slotWidth, WHEEL_SLOT_HEIGHT, fill);
+			Draw.border(g, slotX, slotY - lift, slotWidth, WHEEL_SLOT_HEIGHT, picked ? Theme.accent() : Colors.lerp(Theme.SURFACE_BORDER, 0x60FFFFFF, t));
+			Draw.text(g, ui.font(), Component.literal(String.valueOf(i + 1)), slotX + 4, slotY - lift + 3, picked ? Theme.accentText() : Theme.TEXT_DIM);
+			Component label = entry.<Component>map(e -> Component.literal(e.name())).orElse(Component.translatable("pretupid.emotes.empty_slot"));
+			Draw.centered(g, ui.font(), Draw.ellipsize(ui.font(), label, slotWidth - 6), slotX + slotWidth / 2, slotY - lift + 14, entry.isPresent() ? Theme.TEXT : Theme.TEXT_DIM);
+			if (hover && entry.isPresent()) {
+				ui.tooltip(Component.translatable("pretupid.cosmetics.emotes.slot_tooltip"));
+			}
+		}
+	}
+
 	private void drawEmotes(UiContext ui, int x, int y, int w, int h) {
 		PretupidClient client = PretupidClient.get();
 		ClientSettings settings = client.settings();
+		EmoteWheel wheel = client.emoteWheel();
 		List<Catalog.EmoteEntry> emotes = client.cosmetics().catalog().emotes();
 		boolean inWorld = Minecraft.getInstance().player != null;
-		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + emotes.size() * 24 + Widgets.ROW_HEIGHT * 5 + 8);
+		int wheelHeight = 26 + WHEEL_SLOT_HEIGHT + 10;
+		scroll.begin(ui, "cosmetics.emotes", x, y, w, h, 24 + wheelHeight + emotes.size() * 24 + Widgets.ROW_HEIGHT * 5 + 8);
 		int rowY = y - scroll.offset();
 		Component key = client.keybinds().emoteWheel().getTranslatedKeyMessage();
 		Component hint = inWorld
@@ -440,14 +539,23 @@ public final class CosmeticsPage implements MenuPage {
 			: Component.translatable("pretupid.cosmetics.emotes.join_world");
 		Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), hint, w - 8), x, rowY + 4, Theme.TEXT_MUTED);
 		rowY += 20;
+		drawWheelEditor(ui, x, rowY, w - 6);
+		rowY += wheelHeight;
 		for (Catalog.EmoteEntry emote : emotes) {
+			int slot = wheel.slotOf(emote.id());
 			Draw.chamfer(ui.g(), x, rowY, w - 6, 22, Theme.SURFACE);
+			if (slot >= 0) {
+				Draw.rect(ui.g(), x + 1, rowY + 3, 2, 16, Theme.accent());
+			}
 			Draw.text(ui.g(), ui.font(), Component.literal(emote.name()), x + 6, rowY + 3, Theme.TEXT);
-			int keyX = inWorld ? x + w - 130 : x + w - 70;
-			Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.literal(emote.description()), keyX - x - 12), x + 6, rowY + 12, Theme.TEXT_DIM);
-			Widgets.keyButton(ui, screen, "emote.key." + emote.id(), keyX, rowY + 4, 60, client.emoteKeys().binding(emote.id()));
+			int playX = x + w - 6 - 4 - EMOTE_PLAY_WIDTH;
+			int keyX = (inWorld ? playX - 4 : x + w - 10) - EMOTE_KEY_WIDTH;
+			int wheelX = keyX - 4 - EMOTE_WHEEL_WIDTH;
+			Draw.text(ui.g(), ui.font(), Draw.ellipsize(ui.font(), Component.literal(emote.description()), wheelX - x - 12), x + 6, rowY + 12, Theme.TEXT_DIM);
+			drawWheelButton(ui, wheel, emote, slot, wheelX, rowY + 3);
+			Widgets.keyButton(ui, screen, "emote.key." + emote.id(), keyX, rowY + 4, EMOTE_KEY_WIDTH, client.emoteKeys().binding(emote.id()));
 			if (inWorld) {
-				Widgets.button(ui, "emote.play." + emote.id(), x + w - 66, rowY + 3, 56, 16, Component.translatable("pretupid.cosmetics.emotes.play"),
+				Widgets.button(ui, "emote.play." + emote.id(), playX, rowY + 3, EMOTE_PLAY_WIDTH, 16, Component.translatable("pretupid.cosmetics.emotes.play"),
 					Widgets.ButtonStyle.PRIMARY, () -> {
 						if (Minecraft.getInstance().player != null) {
 							screen.onClose();
@@ -466,6 +574,36 @@ public final class CosmeticsPage implements MenuPage {
 			Widgets.settingRow(ui, screen, setting, x, rowY, w - 6);
 		}
 		scroll.end(ui, x, y, w, h);
+	}
+
+	private void drawWheelButton(UiContext ui, EmoteWheel wheel, Catalog.EmoteEntry emote, int slot, int x, int y) {
+		String id = "emote.wheel." + emote.id();
+		boolean hover;
+		Component tooltip;
+		if (selectedWheelSlot >= 0) {
+			int target = selectedWheelSlot;
+			hover = Widgets.button(ui, id, x, y, EMOTE_WHEEL_WIDTH, 16, Component.translatable("pretupid.cosmetics.emotes.put", target + 1), Widgets.ButtonStyle.PRIMARY, () -> {
+				wheel.assign(target, emote.id());
+				selectedWheelSlot = -1;
+			});
+			tooltip = Component.translatable("pretupid.cosmetics.emotes.put_tooltip", target + 1);
+		} else if (slot >= 0) {
+			hover = Widgets.button(ui, id, x, y, EMOTE_WHEEL_WIDTH, 16, Component.translatable("pretupid.cosmetics.emotes.in_slot", slot + 1), Widgets.ButtonStyle.SECONDARY, () -> wheel.clear(slot));
+			tooltip = Component.translatable("pretupid.cosmetics.emotes.in_slot_tooltip", slot + 1);
+		} else {
+			int free = wheel.firstFreeSlot();
+			if (free >= 0) {
+				hover = Widgets.button(ui, id, x, y, EMOTE_WHEEL_WIDTH, 16, Component.translatable("pretupid.cosmetics.emotes.add"), Widgets.ButtonStyle.GHOST, () -> wheel.assign(free, emote.id()));
+				tooltip = Component.translatable("pretupid.cosmetics.emotes.add_tooltip");
+			} else {
+				hover = ui.interactive(x, y, EMOTE_WHEEL_WIDTH, 16, UiContext.Handler.onClick(() -> { }));
+				Draw.centered(ui.g(), ui.font(), Component.translatable("pretupid.cosmetics.emotes.full"), x + EMOTE_WHEEL_WIDTH / 2, y + 4, Theme.TEXT_DIM);
+				tooltip = Component.translatable("pretupid.cosmetics.emotes.full_tooltip");
+			}
+		}
+		if (hover) {
+			ui.tooltip(tooltip);
+		}
 	}
 
 	private int drawChoice(UiContext ui, String id, int x, int y, int w, Component title, Component subtitle, boolean selected, Runnable action) {

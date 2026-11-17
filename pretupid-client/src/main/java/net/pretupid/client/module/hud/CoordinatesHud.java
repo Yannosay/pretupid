@@ -29,7 +29,7 @@ public final class CoordinatesHud extends HudModule {
 	private final BooleanSetting showDirection = add(new BooleanSetting("show_direction", true));
 	private final BooleanSetting showBiome = add(new BooleanSetting("show_biome", true));
 	private final BooleanSetting showOtherDimension = add(new BooleanSetting("show_other_dimension", true));
-	private final ColorSetting labelColor = shared(new ColorSetting("label_color", 0xFF8FC4FF).followingAccent());
+	private final ColorSetting labelColor = shared(new ColorSetting("label_color", 0xFF8FC4FF).followingModuleText());
 	private final ColorSetting valueColor = shared(new ColorSetting("value_color", 0xFFFFFFFF));
 
 	public CoordinatesHud() {

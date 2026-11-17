@@ -127,7 +127,7 @@ public final class ColorPickerPopup implements Popup {
 		}
 		if (setting.canFollowAccent()) {
 			int followY = presetY + size + 8;
-			Draw.text(g, ui.font(), Component.translatable("pretupid.ui.interface_color"), sx, followY + 3, Theme.TEXT_MUTED);
+			Draw.text(g, ui.font(), Component.translatable(setting.followLabelKey()), sx, followY + 3, Theme.TEXT_MUTED);
 			Widgets.toggle(ui, "color.follow", x + WIDTH - 28, followY + 2, setting.followsAccent(), () -> {
 				if (setting.followsAccent()) {
 					setting.setArgb(setting.displayArgb());

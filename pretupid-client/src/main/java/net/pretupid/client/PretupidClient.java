@@ -91,6 +91,7 @@ import net.pretupid.client.network.PresenceService;
 import net.pretupid.client.network.RealtimeClient;
 import net.pretupid.client.cosmetic.CosmeticsService;
 import net.pretupid.client.cosmetic.EmoteKeys;
+import net.pretupid.client.cosmetic.EmoteWheel;
 import net.pretupid.client.cosmetic.EmotePlayer;
 import net.pretupid.client.cosmetic.TrailRenderer;
 import net.pretupid.client.news.NewsService;
@@ -120,6 +121,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private final CosmeticsService cosmetics = new CosmeticsService(api, session, FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
 	private final EmotePlayer emotes = new EmotePlayer();
 	private EmoteKeys emoteKeys;
+	private EmoteWheel emoteWheel;
 	private final TrailRenderer trails = new TrailRenderer();
 	private final NewsService news = new NewsService(api);
 	private ServerCompatibility compatibility;
@@ -157,6 +159,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modCatalog = new ModCatalog();
 		keybinds = new Keybinds(this);
 		emoteKeys = new EmoteKeys(settings.emoteKeys);
+		emoteWheel = new EmoteWheel(settings.emoteWheel);
 		compatibility = new ServerCompatibility(api, settings.restrictedServers);
 		instance = this;
 		config.load();
@@ -445,6 +448,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public EmoteKeys emoteKeys() {
 		return emoteKeys;
+	}
+
+	public EmoteWheel emoteWheel() {
+		return emoteWheel;
 	}
 
 	public EmotePlayer emotes() {

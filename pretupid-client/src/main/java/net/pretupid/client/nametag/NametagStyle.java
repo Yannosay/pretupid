@@ -21,6 +21,10 @@ public record NametagStyle(
 		return animation.recolors() || effect.moves() || bold;
 	}
 
+	public NametagStyle withBadge(boolean value) {
+		return value == badge ? this : new NametagStyle(value, animation, effect, primary, secondary, speed, bold);
+	}
+
 	public JsonObject toJson() {
 		JsonObject object = new JsonObject();
 		object.addProperty("badge", badge);

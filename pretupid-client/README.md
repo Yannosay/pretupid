@@ -4,7 +4,7 @@ A Fabric client mod for Minecraft 26.3.
 
 ## Install
 
-- **Pretupid Launcher:** choose *Install Pretupid Client* on a Fabric or Quilt instance. The launcher keeps it up to date.
+- **Pretupid Launcher:** choose *Install Pretupid Client* on a Fabric or Quilt instance for Minecraft 26.3. The launcher keeps it up to date.
 - **Any other launcher:** put the jar from the [releases](https://github.com/Yannosay/pretupid/releases) together with [Fabric API](https://modrinth.com/mod/fabric-api) into your `mods` folder. The client tells you in game when an update is available and installs it in one click.
 
 ## Features
@@ -12,11 +12,11 @@ A Fabric client mod for Minecraft 26.3.
 - **Mod menu** (Right Shift or `/pretupid`): modules with search, favorites and per-module settings, profiles that switch per server, and a mod manager.
 - **Quick menu** (hold G): toggle your starred modules, jump to the HUD editor, emotes or the benchmark. Release over a tile to toggle it, or tap G to keep the menu open.
 - **HUD editor:** open it with H (rebindable in *Settings → HUD Editor*), then drag, resize, snap, nudge with the arrow keys, and remove widgets with the trash button or the Delete key. Its toolbar sits at the bottom by default and can move to the top.
-- **Modules:** HUD widgets, performance tools, zoom, Freelook (hold Left Alt), a custom crosshair designer with live preview, a block outline editor, waypoints (`/pretupid waypoint add|remove|list`), toggle sprint, Compact Chat, Nick Hider and more. Zoom is on by default; everything else starts off. HUD labels and waypoint names use your interface color until you pick your own.
+- **Modules:** HUD widgets, performance tools, zoom, Freelook (hold Left Alt), a custom crosshair designer with live preview, a block outline editor, waypoints (`/pretupid waypoint add|remove|list`), toggle sprint, Compact Chat, Nick Hider and more. Zoom is on by default; everything else starts off. Every module has a settings page with a key to switch it on and off. HUD labels and waypoint names use the module text color from *Settings → Interface*, which follows your interface color until you change it, and each module can still pick its own.
 - **Performance:** Entity Culling skips entities and block entities that are far away or fully hidden behind solid blocks (checked on the render thread within a fixed time budget; players and named entities are always drawn). Particle Limiter, FPS Boost and Dynamic FPS add lighter settings and a lower frame rate in the background.
 - **Benchmark:** `/pretupid benchmark` measures average FPS and 1% lows for 10 seconds with the performance modules off, then 10 seconds with them on, with the FPS limit and VSync off during the test. Your settings are restored afterwards.
-- **Cosmetics:** the Pretupid badge, animated name colors, name motion (wave, bounce, float, hop, shake), capes (upload your own, pick an official one, or equip a Minecraft cape from your account) with optional cape physics, hats, animated wings, a knight shield and a jetpack for your back, floating pets, trails and emotes. Other Pretupid players see them; new official capes, hats, back items, pets, trails and emotes arrive without a client update.
-- **Emotes:** hold the emote wheel key, point at an emote and release, or give any emote its own hotkey in *Cosmetics → Emotes*. Emotes keep playing while you walk and stop when you sneak; both can be changed in the same tab.
+- **Cosmetics:** the Pretupid badge, nametag styles with animated name colors and name motion (wave, bounce, float, hop, shake), capes (upload your own, pick an official one, or equip a Minecraft cape from your account) with optional cape physics, hats, animated wings, a knight shield and a jetpack for your back, floating pets, trails and emotes. Other Pretupid players see them; new official nametag styles, capes, hats, back items, pets, trails and emotes arrive without a client update.
+- **Emotes:** the emote wheel holds six emotes. The first six are picked for you, and you can swap, replace or empty slots in *Cosmetics → Emotes*. Hold the emote wheel key, point at an emote and release (or press 1–6), or give any emote its own hotkey in the same tab. Emotes keep playing while you walk and stop when you sneak; both can be changed in the same tab.
 - **Skins:** a skin library with Classic/Slim detection, your current account skin, and one-click apply that also updates your own model right away.
 - **Friends:** friend requests, chat, see which server friends play on, and invite friends to your server or open your world to friends only.
 - **News:** announcements from the Pretupid team on the main menu.

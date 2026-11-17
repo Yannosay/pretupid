@@ -34,7 +34,7 @@ public final class ClientSettingsPage implements MenuPage {
 
 	private List<Section> sections(ClientSettings settings) {
 		return List.of(
-			new Section("interface", List.of(settings.accent, settings.animations, settings.animationSpeed, settings.uiSounds, settings.menuBlur, settings.toggleToasts)),
+			new Section("interface", List.of(settings.accent, settings.moduleText, settings.animations, settings.animationSpeed, settings.uiSounds, settings.menuBlur, settings.toggleToasts)),
 			new Section("hud_editor", List.of(settings.hudEditorKey, settings.hudEditorToolbar)),
 			new Section("integration", List.of(settings.enhancedTitleScreen, settings.titleScreenPanels, settings.serverCompatibility, settings.newsButton, settings.titleScreenButton, settings.pauseScreenButton, settings.hideHudInDebug)),
 			new Section("social", List.of(settings.sharePresence, settings.showOtherBadges, settings.tabListBadges, settings.showCosmetics, settings.allowFriendRequests,

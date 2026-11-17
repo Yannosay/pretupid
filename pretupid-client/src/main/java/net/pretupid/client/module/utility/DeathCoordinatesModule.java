@@ -8,6 +8,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.setting.BooleanSetting;
@@ -48,7 +49,7 @@ public final class DeathCoordinatesModule extends Module {
 		if (copyButton.enabled()) {
 			message.append(Component.literal(" "));
 			message.append(Component.translatable("pretupid.death.copy").withStyle(style -> style
-				.withColor(0x4A9EFF)
+				.withColor(PretupidClient.get().settings().moduleText.resolve() & 0xFFFFFF)
 				.withClickEvent(new ClickEvent.CopyToClipboard(coordinates))
 				.withHoverEvent(new HoverEvent.ShowText(Component.translatable("pretupid.death.copy_hover")))));
 		}
