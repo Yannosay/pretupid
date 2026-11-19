@@ -9,7 +9,6 @@
 		"BlockEntityRenderDispatcherMixin",
 		"CameraMixin",
 		"ChatComponentMixin",
-		"ChatScreenMixin",
 		"ClientPacketListenerMixin",
 		"FontPreparedTextBuilderMixin",
 		"FramerateLimitTrackerMixin",
@@ -22,8 +21,7 @@
 		"MouseHandlerMixin",
 		"ParticleEngineMixin",
 		"PlayerListMixin",
-		"PlayerModelMixin",
-		"PlayerTabOverlayMixin"
+		"PlayerModelMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

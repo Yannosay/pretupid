@@ -14,7 +14,6 @@ import net.minecraft.network.chat.Style;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.news.MarkdownText;
 import net.pretupid.client.news.NewsImages;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.pretupid.client.news.NewsService;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.ScrollState;
@@ -177,7 +176,7 @@ public final class NewsPage implements MenuPage {
 			float scale = Math.min(1f, Math.min(width / (float) image.width(), MAX_IMAGE_HEIGHT / (float) image.height()));
 			int drawWidth = Math.max(1, Math.round(image.width() * scale));
 			int drawHeight = Math.max(1, Math.round(image.height() * scale));
-			g.blit(RenderPipelines.GUI_TEXTURED, image.texture(), x, y, 0f, 0f, drawWidth, drawHeight, image.width(), image.height(), image.width(), image.height());
+			g.blit(image.texture(), x, y, 0f, 0f, drawWidth, drawHeight, image.width(), image.height(), image.width(), image.height());
 			if (!line.label().isEmpty() && ui.hovered(x, y, drawWidth, drawHeight)) {
 				ui.tooltip(Component.literal(line.label()));
 			}

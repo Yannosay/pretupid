@@ -1,11 +1,11 @@
 package net.pretupid.client.cinematic;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import java.util.List;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.phys.Vec3;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.Theme;
@@ -24,7 +24,7 @@ public final class CinematicOverlay {
 	private record Projected(float x, float y, double depth) {
 	}
 
-	public static void drawPath(GuiGraphicsExtractor g, Font font, Shot shot, int selected, double playhead, int width, int height) {
+	public static void drawPath(Gfx g, Font font, Shot shot, int selected, double playhead, int width, int height) {
 		if (shot == null || shot.keyframes().isEmpty()) {
 			return;
 		}
@@ -97,7 +97,7 @@ public final class CinematicOverlay {
 		return new Projected((nx * 0.5f + 0.5f) * width, (1f - (ny * 0.5f + 0.5f)) * height, clip.w);
 	}
 
-	private static void line(GuiGraphicsExtractor g, Projected from, Projected to, int color) {
+	private static void line(Gfx g, Projected from, Projected to, int color) {
 		float dx = to.x() - from.x();
 		float dy = to.y() - from.y();
 		int steps = (int) Math.min(400, Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)))));
@@ -110,7 +110,7 @@ public final class CinematicOverlay {
 		}
 	}
 
-	public static void drawLetterbox(GuiGraphicsExtractor g, int width, int height) {
+	public static void drawLetterbox(Gfx g, int width, int height) {
 		int target = Math.round(width / 2.39f);
 		int bar = Math.max(0, (height - target) / 2);
 		if (bar > 0) {

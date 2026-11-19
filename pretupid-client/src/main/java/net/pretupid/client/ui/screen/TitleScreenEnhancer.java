@@ -1,5 +1,7 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Gfx;
+import net.pretupid.client.platform.PlatformHud;
 import net.pretupid.client.platform.Platform;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -8,7 +10,6 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -63,9 +64,9 @@ public final class TitleScreenEnhancer {
 				}
 				lastInit = now;
 			}
-			ScreenEvents.beforeExtract(screen).register((current, graphics, mouseX, mouseY, partialTick) -> animate());
-			ScreenEvents.afterBackground(screen).register((current, graphics, mouseX, mouseY, partialTick) -> drawBackdrop(graphics, current));
-			ScreenEvents.afterExtract(screen).register((current, graphics, mouseX, mouseY, partialTick) -> drawOverlay(graphics, current));
+			PlatformHud.beforeScreen(screen, this::animate);
+			PlatformHud.afterScreenBackground(screen, this::drawBackdrop);
+			PlatformHud.afterScreen(screen, this::drawOverlay);
 			ScreenEvents.remove(screen).register(current -> {
 				for (Entry entry : entries) {
 					entry.widget().setY(entry.baseY());
@@ -129,7 +130,7 @@ public final class TitleScreenEnhancer {
 		}
 	}
 
-	private void drawBackdrop(GuiGraphicsExtractor graphics, Screen screen) {
+	private void drawBackdrop(Gfx graphics, Screen screen) {
 		if (panels.visible()) {
 			boolean animated = PretupidClient.get().settings().animations.enabled();
 			float fade = animated ? Easing.outCubic(Math.clamp((System.currentTimeMillis() - animationStart) / 600f, 0f, 1f)) : 1f;
@@ -147,7 +148,7 @@ public final class TitleScreenEnhancer {
 		Draw.verticalGradient(graphics, 0, height - 60, width, 60, 0x00000000, glow);
 	}
 
-	private void drawOverlay(GuiGraphicsExtractor graphics, Screen screen) {
+	private void drawOverlay(Gfx graphics, Screen screen) {
 		PretupidClient client = PretupidClient.get();
 		if (!client.settings().enhancedTitleScreen.enabled()) {
 			return;

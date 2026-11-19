@@ -1,8 +1,8 @@
 package net.pretupid.client.module.visual;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.pretupid.client.module.Category;
@@ -124,12 +124,12 @@ public final class CrosshairModule extends Module {
 		spread += (target - spread) * 0.35f;
 	}
 
-	public void render(GuiGraphicsExtractor graphics, Minecraft minecraft) {
+	public void render(Gfx graphics, Minecraft minecraft) {
 		int argb = targetColor.enabled() && minecraft.hitResult instanceof EntityHitResult ? targetColorValue.resolve() : color.resolve();
 		draw(graphics, graphics.guiWidth() / 2, graphics.guiHeight() / 2, argb, Math.round(spread));
 	}
 
-	public void draw(GuiGraphicsExtractor graphics, int cx, int cy, int argb, int extraGap) {
+	public void draw(Gfx graphics, int cx, int cy, int argb, int extraGap) {
 		int length = size.intValue();
 		int spacing = gap.intValue() + extraGap;
 		int stroke = thickness.intValue();
@@ -163,7 +163,7 @@ public final class CrosshairModule extends Module {
 		}
 	}
 
-	private void custom(GuiGraphicsExtractor graphics, int cx, int cy, int argb, int extraGap) {
+	private void custom(Gfx graphics, int cx, int cy, int argb, int extraGap) {
 		boolean[] cells = decode(pattern.get());
 		int scale = pixelScale.intValue();
 		int center = GRID / 2;
@@ -196,14 +196,14 @@ public final class CrosshairModule extends Module {
 		return new int[] {cx + dx * scale - scale / 2 + pushX, cy + dy * scale - scale / 2 + pushY};
 	}
 
-	private void bar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int argb) {
+	private void bar(Gfx graphics, int x, int y, int w, int h, int argb) {
 		if (outline.enabled()) {
 			Draw.rect(graphics, x - 1, y - 1, w + 2, h + 2, outlineColor.resolve());
 		}
 		Draw.rect(graphics, x, y, w, h, argb);
 	}
 
-	private void circle(GuiGraphicsExtractor graphics, int cx, int cy, int radius, int stroke, int argb) {
+	private void circle(Gfx graphics, int cx, int cy, int radius, int stroke, int argb) {
 		int inner = Math.max(0, radius - stroke);
 		int outlineArgb = outlineColor.resolve();
 		for (int dy = -radius - 1; dy <= radius + 1; dy++) {

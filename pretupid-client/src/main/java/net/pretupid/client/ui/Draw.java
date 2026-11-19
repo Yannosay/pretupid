@@ -1,7 +1,7 @@
 package net.pretupid.client.ui;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.pretupid.client.util.Colors;
@@ -23,14 +23,14 @@ public final class Draw {
 	private Draw() {
 	}
 
-	public static void rect(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+	public static void rect(Gfx g, int x, int y, int w, int h, int color) {
 		if (w <= 0 || h <= 0 || Colors.alpha(color) == 0) {
 			return;
 		}
 		g.fill(x, y, x + w, y + h, color);
 	}
 
-	public static void chamfer(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+	public static void chamfer(Gfx g, int x, int y, int w, int h, int color) {
 		if (w < 3 || h < 3) {
 			rect(g, x, y, w, h, color);
 			return;
@@ -40,7 +40,7 @@ public final class Draw {
 		rect(g, x + 1, y + h - 1, w - 2, 1, color);
 	}
 
-	public static void rounded(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int color) {
+	public static void rounded(Gfx g, int x, int y, int w, int h, int radius, int color) {
 		int r = Math.clamp(radius, 0, Math.min(Math.min(w, h) / 2, ROUND_INSETS.length - 1));
 		if (r <= 1) {
 			if (r == 1) {
@@ -59,61 +59,61 @@ public final class Draw {
 		rect(g, x, y + r, w, h - r * 2, color);
 	}
 
-	public static void border(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+	public static void border(Gfx g, int x, int y, int w, int h, int color) {
 		rect(g, x + 1, y, w - 2, 1, color);
 		rect(g, x + 1, y + h - 1, w - 2, 1, color);
 		rect(g, x, y + 1, 1, h - 2, color);
 		rect(g, x + w - 1, y + 1, 1, h - 2, color);
 	}
 
-	public static void glass(GuiGraphicsExtractor g, int x, int y, int w, int h, int fill, int border) {
+	public static void glass(Gfx g, int x, int y, int w, int h, int fill, int border) {
 		chamfer(g, x, y, w, h, fill);
 		border(g, x, y, w, h, border);
 		rect(g, x + 1, y + 1, w - 2, 1, Theme.WINDOW_HIGHLIGHT);
 	}
 
-	public static void shadow(GuiGraphicsExtractor g, int x, int y, int w, int h, int layers, float strength) {
+	public static void shadow(Gfx g, int x, int y, int w, int h, int layers, float strength) {
 		for (int i = layers; i >= 1; i--) {
 			int alpha = Math.round(strength * 40f / i);
 			chamfer(g, x - i, y - i + 1, w + i * 2, h + i * 2, Colors.withAlpha(0, alpha));
 		}
 	}
 
-	public static void verticalGradient(GuiGraphicsExtractor g, int x, int y, int w, int h, int top, int bottom) {
+	public static void verticalGradient(Gfx g, int x, int y, int w, int h, int top, int bottom) {
 		if (w > 0 && h > 0) {
 			g.fillGradient(x, y, x + w, y + h, top, bottom);
 		}
 	}
 
-	public static void text(GuiGraphicsExtractor g, Font font, String text, int x, int y, int color) {
+	public static void text(Gfx g, Font font, String text, int x, int y, int color) {
 		if (Colors.alpha(color) > 3) {
 			g.text(font, text, x, y, color, false);
 		}
 	}
 
-	public static void text(GuiGraphicsExtractor g, Font font, Component text, int x, int y, int color) {
+	public static void text(Gfx g, Font font, Component text, int x, int y, int color) {
 		if (Colors.alpha(color) > 3) {
 			g.text(font, text, x, y, color, false);
 		}
 	}
 
-	public static void textShadow(GuiGraphicsExtractor g, Font font, Component text, int x, int y, int color) {
+	public static void textShadow(Gfx g, Font font, Component text, int x, int y, int color) {
 		if (Colors.alpha(color) > 3) {
 			g.text(font, text, x, y, color, true);
 		}
 	}
 
-	public static void text(GuiGraphicsExtractor g, Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
+	public static void text(Gfx g, Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
 		if (Colors.alpha(color) > 3) {
 			g.text(font, text, x, y, color, shadow);
 		}
 	}
 
-	public static void centered(GuiGraphicsExtractor g, Font font, Component text, int centerX, int y, int color) {
+	public static void centered(Gfx g, Font font, Component text, int centerX, int y, int color) {
 		text(g, font, text, centerX - font.width(text) / 2, y, color);
 	}
 
-	public static void scaled(GuiGraphicsExtractor g, Font font, Component text, float x, float y, float scale, int color, boolean shadow) {
+	public static void scaled(Gfx g, Font font, Component text, float x, float y, float scale, int color, boolean shadow) {
 		if (Colors.alpha(color) <= 3) {
 			return;
 		}
@@ -143,7 +143,7 @@ public final class Draw {
 		return Component.literal(ellipsize(font, text.getString(), maxWidth)).withStyle(text.getStyle());
 	}
 
-	public static void trash(GuiGraphicsExtractor g, int x, int y, int color) {
+	public static void trash(Gfx g, int x, int y, int color) {
 		rect(g, x + 2, y, 3, 1, color);
 		rect(g, x, y + 1, 7, 1, color);
 		rect(g, x + 1, y + 3, 5, 1, color);

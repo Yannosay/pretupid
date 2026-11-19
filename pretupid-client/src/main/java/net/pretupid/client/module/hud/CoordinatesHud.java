@@ -1,11 +1,11 @@
 package net.pretupid.client.module.hud;
 
+import net.pretupid.client.platform.Gfx;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
@@ -100,7 +100,7 @@ public final class CoordinatesHud extends HudModule {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview) {
+	public void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview) {
 		List<String[]> lines = lines(minecraft);
 		int width = width(font, minecraft, preview);
 		int height = lines.size() * (font.lineHeight + 1) - 1 + padding() * 2;

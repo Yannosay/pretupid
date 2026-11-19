@@ -1,9 +1,9 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
@@ -79,7 +79,7 @@ public final class CinematicEditorScreen extends PretupidScreen {
 	}
 
 	@Override
-	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+	protected void renderScreenBackground(Gfx graphics, int mouseX, int mouseY, float partialTick) {
 	}
 
 	@Override
@@ -347,7 +347,7 @@ public final class CinematicEditorScreen extends PretupidScreen {
 		}
 	}
 
-	private static void diamond(GuiGraphicsExtractor g, int cx, int cy, int radius, int color) {
+	private static void diamond(Gfx g, int cx, int cy, int radius, int color) {
 		Draw.rect(g, cx - radius - 1, cy, 1, 1, 0xA0000000);
 		for (int dy = -radius; dy <= radius; dy++) {
 			int half = radius - Math.abs(dy);

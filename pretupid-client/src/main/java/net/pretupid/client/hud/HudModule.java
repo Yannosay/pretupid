@@ -1,9 +1,9 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Gfx;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.setting.BooleanSetting;
@@ -68,13 +68,13 @@ public abstract class HudModule extends Module {
 
 	public abstract int height(Font font, Minecraft minecraft, boolean preview);
 
-	public abstract void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview);
+	public abstract void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview);
 
 	public boolean visible(Minecraft minecraft) {
 		return minecraft.player != null;
 	}
 
-	protected final void drawBackground(GuiGraphicsExtractor graphics, int width, int height) {
+	protected final void drawBackground(Gfx graphics, int width, int height) {
 		if (background.enabled()) {
 			Draw.chamfer(graphics, 0, 0, width, height, backgroundColor.resolve());
 		}

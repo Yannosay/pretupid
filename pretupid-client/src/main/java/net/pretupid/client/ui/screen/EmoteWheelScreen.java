@@ -1,11 +1,11 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.List;
 import java.util.Optional;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -62,7 +62,7 @@ public final class EmoteWheelScreen extends PretupidScreen {
 	}
 
 	@Override
-	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+	protected void renderScreenBackground(Gfx graphics, int mouseX, int mouseY, float partialTick) {
 		float fade = Easing.outCubic(openProgress());
 		Draw.rect(graphics, 0, 0, width, height, Colors.withAlpha(0, Math.round(120 * fade)));
 	}

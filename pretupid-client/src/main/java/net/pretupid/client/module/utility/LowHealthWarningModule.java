@@ -1,8 +1,8 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
@@ -44,7 +44,7 @@ public final class LowHealthWarningModule extends Module implements OverlayRende
 	}
 
 	@Override
-	public void renderOverlay(GuiGraphicsExtractor graphics, Minecraft minecraft, DeltaTracker deltaTracker) {
+	public void renderOverlay(Gfx graphics, Minecraft minecraft, DeltaTracker deltaTracker) {
 		LocalPlayer player = minecraft.player;
 		if (!critical(player)) {
 			return;

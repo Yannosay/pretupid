@@ -1,8 +1,7 @@
 package net.pretupid.client.ui;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 
@@ -29,16 +28,16 @@ public enum UiIcon {
 		}
 	}
 
-	public void draw(GuiGraphicsExtractor graphics, int x, int y, int color) {
+	public void draw(Gfx graphics, int x, int y, int color) {
 		int atlasWidth = SIZE * values().length;
-		graphics.blit(RenderPipelines.GUI_TEXTURED, ATLAS, x, y, ordinal() * SIZE, 0f, SIZE, SIZE, atlasWidth, SIZE, color);
+		graphics.blit(ATLAS, x, y, ordinal() * SIZE, 0f, SIZE, SIZE, atlasWidth, SIZE, color);
 	}
 
-	public static void drawLogo(GuiGraphicsExtractor graphics, int x, int y, int size) {
+	public static void drawLogo(Gfx graphics, int x, int y, int size) {
 		drawLogo(graphics, x, y, size, -1);
 	}
 
-	public static void drawLogo(GuiGraphicsExtractor graphics, int x, int y, int size, int color) {
+	public static void drawLogo(Gfx graphics, int x, int y, int size, int color) {
 		int pixels = size * Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
 		int index = LOGO_SIZES.length - 1;
 		for (int i = 0; i < LOGO_SIZES.length; i++) {
@@ -48,6 +47,6 @@ public enum UiIcon {
 			}
 		}
 		int texture = LOGO_SIZES[index];
-		graphics.blit(RenderPipelines.GUI_TEXTURED, LOGOS[index], x, y, 0f, 0f, size, size, texture, texture, texture, texture, color);
+		graphics.blit(LOGOS[index], x, y, 0f, 0f, size, size, texture, texture, texture, texture, color);
 	}
 }

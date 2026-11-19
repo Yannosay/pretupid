@@ -1,10 +1,10 @@
 package net.pretupid.client.module.hud;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.hud.HudModule;
@@ -65,7 +65,7 @@ public final class KeystrokesHud extends HudModule {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview) {
+	public void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview) {
 		long now = System.nanoTime();
 		float delta = lastFrame == 0L ? 0f : Math.min(0.1f, (now - lastFrame) / 1_000_000_000f);
 		lastFrame = now;
@@ -102,7 +102,7 @@ public final class KeystrokesHud extends HudModule {
 		return press[index];
 	}
 
-	private void drawKey(GuiGraphicsExtractor graphics, Font font, int index, KeyMapping mapping, int x, int y, int w, int h, String subtitle, float delta) {
+	private void drawKey(Gfx graphics, Font font, int index, KeyMapping mapping, int x, int y, int w, int h, String subtitle, float delta) {
 		float t = animate(index, mapping.isDown(), delta);
 		Draw.chamfer(graphics, x, y, w, h, Colors.lerp(keyColor.resolve(index * 0.05f), pressedColor.resolve(index * 0.05f), t));
 		int color = Colors.lerp(textColor.resolve(index * 0.05f), pressedTextColor.resolve(index * 0.05f), t);

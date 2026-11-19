@@ -164,7 +164,8 @@ def main():
         properties = dict(
             line.split("=", 1) for line in (CLIENT / "targets" / version / "target.properties").read_text().splitlines() if "=" in line
         )
-        roots = [CLIENT / "src" / "main" / "java" / "net" / "pretupid" / "client" / "mixin", CLIENT / "bridges" / properties["bridge"] / "java"]
+        roots = [CLIENT / "src" / "main" / "java" / "net" / "pretupid" / "client" / "mixin"]
+        roots += [CLIENT / "bridges" / name.strip() / "java" for name in properties["bridge"].split(",")]
         problems = check(properties["minecraft_version"], roots)
         print(f"{version}: {'ok' if not problems else str(len(problems)) + ' problems'}")
         for problem in problems:

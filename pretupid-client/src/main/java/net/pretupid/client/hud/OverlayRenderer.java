@@ -1,9 +1,9 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public interface OverlayRenderer {
-	void renderOverlay(GuiGraphicsExtractor graphics, Minecraft minecraft, DeltaTracker deltaTracker);
+	void renderOverlay(Gfx graphics, Minecraft minecraft, DeltaTracker deltaTracker);
 }

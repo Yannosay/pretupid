@@ -195,7 +195,7 @@ public final class Widgets {
 		int knobX = x + filled;
 		Draw.chamfer(ui.g(), knobX, y + 1, 4, h - 2, Colors.lerp(0xFFE6E9EF, 0xFFFFFFFF, emphasis));
 		if (hover) {
-			ui.setCursor(com.mojang.blaze3d.platform.cursor.CursorTypes.RESIZE_EW);
+			ui.setCursor(net.pretupid.client.platform.Gfx.Cursor.RESIZE_EW);
 		}
 	}
 

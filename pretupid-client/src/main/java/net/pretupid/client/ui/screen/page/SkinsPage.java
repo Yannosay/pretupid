@@ -1,11 +1,10 @@
 package net.pretupid.client.ui.screen.page;
 
+import net.pretupid.client.platform.Gfx;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
@@ -203,7 +202,7 @@ public final class SkinsPage implements MenuPage {
 		Draw.text(g, font, label, x + 4, y + 2, hover ? Theme.TEXT : Theme.TEXT_MUTED);
 	}
 
-	private static void drawFigure(GuiGraphicsExtractor g, Identifier texture, int textureHeight, SkinLibrary.Variant variant, int x, int y) {
+	private static void drawFigure(Gfx g, Identifier texture, int textureHeight, SkinLibrary.Variant variant, int x, int y) {
 		int s = PREVIEW_SCALE;
 		boolean modern = textureHeight == 64;
 		int arm = variant == SkinLibrary.Variant.SLIM ? 3 : 4;
@@ -224,8 +223,8 @@ public final class SkinsPage implements MenuPage {
 		}
 	}
 
-	private static void part(GuiGraphicsExtractor g, Identifier texture, int textureHeight, int x, int y, int u, int v, int w, int h, int scale) {
-		g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, u, v, w * scale, h * scale, w, h, 64, textureHeight);
+	private static void part(Gfx g, Identifier texture, int textureHeight, int x, int y, int u, int v, int w, int h, int scale) {
+		g.blit(texture, x, y, u, v, w * scale, h * scale, w, h, 64, textureHeight);
 	}
 
 	private void saveCurrent(AccountSkin.Current current) {

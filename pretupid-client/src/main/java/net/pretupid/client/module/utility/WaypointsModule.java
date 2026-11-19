@@ -1,5 +1,6 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -17,7 +18,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.language.I18n;
@@ -304,7 +304,7 @@ public final class WaypointsModule extends HudModule {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview) {
+	public void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview) {
 		List<Shown> rows = shown(minecraft, preview);
 		drawBackground(graphics, width(font, minecraft, preview), height(font, minecraft, preview));
 		int y = padding();

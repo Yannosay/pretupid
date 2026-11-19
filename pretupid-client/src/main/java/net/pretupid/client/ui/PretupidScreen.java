@@ -1,8 +1,8 @@
 package net.pretupid.client.ui;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -11,9 +11,10 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.platform.PlatformScreen;
 import net.pretupid.client.setting.KeySetting;
 
-public abstract class PretupidScreen extends Screen {
+public abstract class PretupidScreen extends PlatformScreen {
 	protected final UiContext ui = new UiContext();
 	protected final Screen parent;
 	private long openedAt;
@@ -44,13 +45,13 @@ public abstract class PretupidScreen extends Screen {
 	}
 
 	@Override
-	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+	protected void renderScreenBackground(Gfx graphics, int mouseX, int mouseY, float partialTick) {
 		boolean inWorld = minecraft.level != null;
 		if (!inWorld) {
-			extractPanorama(graphics, partialTick);
+			drawPanorama(graphics, partialTick);
 		}
 		if (PretupidClient.get().settings().menuBlur.enabled()) {
-			extractBlurredBackground(graphics);
+			drawBlurredBackground(graphics);
 		}
 		float fade = Easing.outCubic(openProgress());
 		Draw.verticalGradient(graphics, 0, 0, width, height,
@@ -59,7 +60,7 @@ public abstract class PretupidScreen extends Screen {
 	}
 
 	@Override
-	public final void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+	protected final void renderScreen(Gfx graphics, int mouseX, int mouseY, float partialTick) {
 		long now = System.nanoTime();
 		float delta = (now - lastFrame) / 1_000_000_000f;
 		lastFrame = now;

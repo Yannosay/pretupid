@@ -224,7 +224,7 @@ public final class TextInput {
 		int border = Colors.lerp(hover ? Theme.SURFACE_HOVER : Theme.SURFACE_BORDER, Theme.accent(), focus);
 		Draw.border(g, x, y, w, h, border);
 		if (hover) {
-			ui.setCursor(com.mojang.blaze3d.platform.cursor.CursorTypes.IBEAM);
+			ui.setCursor(net.pretupid.client.platform.Gfx.Cursor.IBEAM);
 		}
 		int textX = x + 5;
 		int textY = y + (h - 8) / 2;

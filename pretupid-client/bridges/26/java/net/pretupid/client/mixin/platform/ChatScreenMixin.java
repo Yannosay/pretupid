@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -8,6 +8,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.emoji.EmojiPicker;
+import net.pretupid.client.platform.Gfx;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -41,7 +42,7 @@ public abstract class ChatScreenMixin extends Screen {
 	@Inject(method = "extractRenderState", at = @At("TAIL"))
 	private void pretupid$renderEmoji(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
 		if (pretupid$picker != null) {
-			pretupid$picker.render(graphics, font, mouseX, mouseY, width);
+			pretupid$picker.render(Gfx.of(graphics), font, mouseX, mouseY, width);
 		}
 	}
 

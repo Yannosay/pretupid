@@ -1,10 +1,10 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
@@ -53,9 +53,9 @@ public final class HudEditorScreen extends PretupidScreen {
 	}
 
 	@Override
-	public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+	protected void renderScreenBackground(Gfx graphics, int mouseX, int mouseY, float partialTick) {
 		if (minecraft.level == null) {
-			super.extractBackground(graphics, mouseX, mouseY, partialTick);
+			super.renderScreenBackground(graphics, mouseX, mouseY, partialTick);
 			return;
 		}
 		Draw.rect(graphics, 0, 0, width, height, 0x38000000);
@@ -134,7 +134,7 @@ public final class HudEditorScreen extends PretupidScreen {
 		});
 		if (hover) {
 			hovered = hud;
-			ui.setCursor(com.mojang.blaze3d.platform.cursor.CursorTypes.RESIZE_ALL);
+			ui.setCursor(net.pretupid.client.platform.Gfx.Cursor.RESIZE_ALL);
 		}
 		float t = ui.animate("hud.outline." + hud.id(), hover || hud == dragging || hud == selected ? 1f : 0f, 16f);
 		int border = Colors.lerp(0x30FFFFFF, Theme.accent(), t);
@@ -240,7 +240,7 @@ public final class HudEditorScreen extends PretupidScreen {
 				}
 			});
 			if (hover) {
-				ui.setCursor(com.mojang.blaze3d.platform.cursor.CursorTypes.RESIZE_ALL);
+				ui.setCursor(net.pretupid.client.platform.Gfx.Cursor.RESIZE_ALL);
 			}
 			int color = hover || resizing == hud ? 0xFFFFFFFF : Theme.accent();
 			Draw.rect(ui.g(), cornerX - 2, cornerY - 2, 4, 4, 0xFF000000);

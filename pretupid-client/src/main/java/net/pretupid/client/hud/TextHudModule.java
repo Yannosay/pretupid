@@ -1,8 +1,8 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.language.I18n;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.setting.BooleanSetting;
@@ -82,7 +82,7 @@ public abstract class TextHudModule extends HudModule {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview) {
+	public void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview) {
 		int width = width(font, minecraft, preview);
 		int height = height(font, minecraft, preview);
 		drawBackground(graphics, width, height);

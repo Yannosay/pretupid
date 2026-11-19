@@ -1,9 +1,9 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Gfx;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -99,7 +99,7 @@ final class TitleScreenPanels {
 		ConnectScreen.startConnecting(parent, minecraft, ServerAddress.parseString(address), data, false, null);
 	}
 
-	void render(GuiGraphicsExtractor graphics, int alpha) {
+	void render(Gfx graphics, int alpha) {
 		if (!visible || alpha < 8) {
 			return;
 		}
@@ -108,12 +108,12 @@ final class TitleScreenPanels {
 		renderNews(graphics, font, alpha);
 	}
 
-	private static void panel(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int alpha) {
+	private static void panel(Gfx graphics, int x, int y, int w, int h, int alpha) {
 		Draw.rect(graphics, x, y, w, h, Colors.multiplyAlpha(PANEL_FILL, alpha / 255f));
 		Draw.border(graphics, x, y, w, h, Colors.multiplyAlpha(PANEL_BORDER, alpha / 255f));
 	}
 
-	private void renderAccount(GuiGraphicsExtractor graphics, Font font, int alpha) {
+	private void renderAccount(Gfx graphics, Font font, int alpha) {
 		PretupidClient client = PretupidClient.get();
 		panel(graphics, leftX, top, panelWidth, leftHeight, alpha);
 		int x = leftX + PADDING;
@@ -143,7 +143,7 @@ final class TitleScreenPanels {
 		}
 	}
 
-	private void renderNews(GuiGraphicsExtractor graphics, Font font, int alpha) {
+	private void renderNews(Gfx graphics, Font font, int alpha) {
 		NewsService news = PretupidClient.get().news();
 		panel(graphics, rightX, top, panelWidth, rightHeight, alpha);
 		int x = rightX + PADDING;

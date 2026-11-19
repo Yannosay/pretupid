@@ -3,7 +3,6 @@ package net.pretupid.client.ui.screen.page;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.mods.ModCatalog;
@@ -126,7 +125,7 @@ public final class ModsPage implements MenuPage {
 		if (icon.isPresent()) {
 			ModIcons.Icon value = icon.get();
 			int tint = entry.enabledOnDisk() ? 0xFFFFFFFF : 0x80FFFFFF;
-			g.blit(RenderPipelines.GUI_TEXTURED, value.location(), x, y, 0f, 0f, 18, 18, value.width(), value.height(), value.width(), value.height(), tint);
+			g.blit(value.location(), x, y, 0f, 0f, 18, 18, value.width(), value.height(), value.width(), value.height(), tint);
 			return;
 		}
 		int hue = Math.floorMod(entry.id().hashCode(), 360);

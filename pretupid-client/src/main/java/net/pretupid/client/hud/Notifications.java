@@ -1,11 +1,11 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Gfx;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.pretupid.client.PretupidClient;
@@ -70,7 +70,7 @@ public final class Notifications {
 		info(Component.translatable("pretupid.notification.profile"), Component.literal(profile), Icon.item("writable_book"));
 	}
 
-	public void render(GuiGraphicsExtractor graphics, Minecraft minecraft) {
+	public void render(Gfx graphics, Minecraft minecraft) {
 		if (entries.isEmpty()) {
 			return;
 		}
@@ -105,7 +105,7 @@ public final class Notifications {
 		}
 	}
 
-	private void drawEntry(GuiGraphicsExtractor graphics, Font font, Entry entry, float alpha, float progress) {
+	private void drawEntry(Gfx graphics, Font font, Entry entry, float alpha, float progress) {
 		Draw.shadow(graphics, 0, 0, WIDTH, HEIGHT, 3, alpha);
 		Draw.glass(graphics, 0, 0, WIDTH, HEIGHT, Colors.multiplyAlpha(Theme.WINDOW, alpha), Colors.multiplyAlpha(Theme.WINDOW_BORDER, alpha));
 		Draw.rect(graphics, 1, 2, 2, HEIGHT - 4, Colors.multiplyAlpha(entry.color, alpha));

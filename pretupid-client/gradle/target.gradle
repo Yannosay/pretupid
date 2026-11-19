@@ -8,7 +8,7 @@ new File(targetDir, "target.properties").withInputStream { target.load(it) }
 project.ext.targetProperties = target
 
 def clientRoot = rootProject.projectDir
-def bridgeDir = new File(clientRoot, "bridges/${target.bridge}")
+def bridgeDirs = target.bridge.split(",").collect { new File(clientRoot, "bridges/${it.trim()}") }
 def javaVersion = Integer.parseInt(target.java_version)
 
 version = "${rootProject.property('mod_version')}+mc${target.minecraft_version}"
@@ -47,10 +47,10 @@ dependencies {
 sourceSets {
 	main {
 		java {
-			srcDirs = [new File(clientRoot, "src/main/java"), new File(bridgeDir, "java")]
+			srcDirs = [new File(clientRoot, "src/main/java")] + bridgeDirs.collect { new File(it, "java") }
 		}
 		resources {
-			srcDirs = [new File(clientRoot, "src/main/resources"), new File(bridgeDir, "resources")]
+			srcDirs = [new File(clientRoot, "src/main/resources")] + bridgeDirs.collect { new File(it, "resources") }
 		}
 	}
 }

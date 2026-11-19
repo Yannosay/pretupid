@@ -1,7 +1,7 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Gfx;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.module.Category;
@@ -17,7 +17,7 @@ public final class TabPingModule extends Module {
 		super("tab_ping", Category.UTILITY, "spectral_arrow", false);
 	}
 
-	public void render(GuiGraphicsExtractor graphics, int width, int x, int y, PlayerInfo info) {
+	public void render(Gfx graphics, int width, int x, int y, PlayerInfo info) {
 		int latency = info.getLatency();
 		String text = latency < 0 ? "?" : showUnit.enabled() ? latency + "ms" : Integer.toString(latency);
 		int color = latency < 0 ? Theme.TEXT_DIM : latency <= 80 ? Theme.SUCCESS : latency <= 180 ? Theme.WARNING : Theme.DANGER;

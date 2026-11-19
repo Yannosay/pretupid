@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Locale;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -437,7 +436,7 @@ public final class CosmeticsPage implements MenuPage {
 			return w;
 		}
 		int size = Math.min(w / 2, (h - 12) / 3);
-		InventoryScreen.extractEntityInInventoryFollowsMouse(g, x + 2, y + 2, x + w - 2, y + h - 2, size, 0.0625f, ui.mouseX(), ui.mouseY(), minecraft.player);
+		g.entity(minecraft.player, x + 2, y + 2, x + w - 2, y + h - 2, size, 0.0625f, ui.mouseX(), ui.mouseY());
 		return w;
 	}
 

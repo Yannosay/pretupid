@@ -5,10 +5,12 @@
 	"compatibilityLevel": "JAVA_${java_version}",
 	"client": [
 		"CapeLayerMixin",
+		"ChatScreenMixin",
 		"EntityRendererMixin",
 		"GameRendererPostEffectMixin",
 		"HudMixin",
 		"LevelRendererMixin",
+		"PlayerTabOverlayMixin",
 		"ScreenEffectRendererMixin"
 	],
 	"injectors": {

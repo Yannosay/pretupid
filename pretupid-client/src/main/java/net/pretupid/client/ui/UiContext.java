@@ -1,14 +1,12 @@
 package net.pretupid.client.ui;
 
-import com.mojang.blaze3d.platform.cursor.CursorType;
-import com.mojang.blaze3d.platform.cursor.CursorTypes;
+import net.pretupid.client.platform.Gfx;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 public final class UiContext {
@@ -18,7 +16,7 @@ public final class UiContext {
 	private List<Hit> active = new ArrayList<>();
 	private List<TextInput> inputsBuilding = new ArrayList<>();
 	private List<TextInput> inputs = new ArrayList<>();
-	private GuiGraphicsExtractor graphics;
+	private Gfx graphics;
 	private Font font;
 	private int mouseX;
 	private int mouseY;
@@ -28,9 +26,9 @@ public final class UiContext {
 	private int layer;
 	private int activeLayer;
 	private Component tooltip;
-	private CursorType cursor = CursorTypes.ARROW;
+	private Gfx.Cursor cursor = Gfx.Cursor.ARROW;
 
-	public void begin(GuiGraphicsExtractor graphics, Font font, int mouseX, int mouseY, float deltaSeconds, boolean animate, float speed) {
+	public void begin(Gfx graphics, Font font, int mouseX, int mouseY, float deltaSeconds, boolean animate, float speed) {
 		this.graphics = graphics;
 		this.font = font;
 		this.mouseX = mouseX;
@@ -40,7 +38,7 @@ public final class UiContext {
 		this.speed = speed;
 		this.layer = 0;
 		this.tooltip = null;
-		this.cursor = CursorTypes.ARROW;
+		this.cursor = Gfx.Cursor.ARROW;
 		this.clips.clear();
 		this.building = new ArrayList<>();
 		this.inputsBuilding = new ArrayList<>();
@@ -55,14 +53,14 @@ public final class UiContext {
 		}
 		inputs = inputsBuilding;
 		if (tooltip != null) {
-			graphics.setTooltipForNextFrame(font, tooltip, mouseX, mouseY);
+			graphics.tooltip(font, tooltip, mouseX, mouseY);
 		}
-		if (cursor != CursorTypes.ARROW) {
-			graphics.requestCursor(cursor);
+		if (cursor != Gfx.Cursor.ARROW) {
+			graphics.cursor(cursor);
 		}
 	}
 
-	public GuiGraphicsExtractor g() {
+	public Gfx g() {
 		return graphics;
 	}
 
@@ -145,7 +143,7 @@ public final class UiContext {
 		hit(x, y, w, h, handler);
 		boolean hover = hovered(x, y, w, h);
 		if (hover && handler.pointer()) {
-			cursor = CursorTypes.POINTING_HAND;
+			cursor = Gfx.Cursor.POINTING_HAND;
 		}
 		return hover;
 	}
@@ -169,7 +167,7 @@ public final class UiContext {
 		}
 	}
 
-	public void setCursor(CursorType type) {
+	public void setCursor(Gfx.Cursor type) {
 		this.cursor = type;
 	}
 

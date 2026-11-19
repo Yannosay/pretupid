@@ -1,13 +1,11 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Gfx;
+import net.pretupid.client.platform.PlatformHud;
 import net.pretupid.client.platform.Platform;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
@@ -20,7 +18,7 @@ import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 
-public final class HudLayer implements HudElement {
+public final class HudLayer {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "hud");
 	private static final Identifier NOTIFICATIONS_ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "notifications");
 	private static final Identifier CINEMATIC_ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "cinematic_path");
@@ -32,8 +30,8 @@ public final class HudLayer implements HudElement {
 	}
 
 	public void register() {
-		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, ID, this);
-		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (graphics, deltaTracker) -> {
+		PlatformHud.beforeChat(ID, this::extractRenderState);
+		PlatformHud.replaceCrosshair((graphics, deltaTracker, original) -> {
 			Minecraft minecraft = Minecraft.getInstance();
 			if (client.modules().get(FreecamModule.class).active()) {
 				return;
@@ -42,10 +40,10 @@ public final class HudLayer implements HudElement {
 			if (crosshair.replacesVanilla(minecraft)) {
 				crosshair.render(graphics, minecraft);
 			} else {
-				original.extractRenderState(graphics, deltaTracker);
+				original.run();
 			}
 		});
-		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, CINEMATIC_ID, (graphics, deltaTracker) -> {
+		PlatformHud.beforeChat(CINEMATIC_ID, (graphics, deltaTracker) -> {
 			CinematicModule cinematic = client.modules().get(CinematicModule.class);
 			if (cinematic.isEnabled() && cinematic.showsPath() && client.modules().get(FreecamModule.class).active()) {
 				Minecraft minecraft = Minecraft.getInstance();
@@ -53,11 +51,10 @@ public final class HudLayer implements HudElement {
 				CinematicOverlay.drawPath(graphics, minecraft.font, director.current(), -1, director.playhead(), graphics.guiWidth(), graphics.guiHeight());
 			}
 		});
-		HudElementRegistry.addLast(NOTIFICATIONS_ID, (graphics, deltaTracker) -> client.notifications().render(graphics, Minecraft.getInstance()));
+		PlatformHud.last(NOTIFICATIONS_ID, (graphics, deltaTracker) -> client.notifications().render(graphics, Minecraft.getInstance()));
 	}
 
-	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+	public void extractRenderState(Gfx graphics, DeltaTracker deltaTracker) {
 		Minecraft minecraft = Minecraft.getInstance();
 		if (Platform.hudHidden() || Platform.screen() instanceof HudEditorScreen) {
 			return;
@@ -92,7 +89,7 @@ public final class HudLayer implements HudElement {
 		return new Bounds(x, y, width, height);
 	}
 
-	public static Bounds draw(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, HudModule hud, int screenWidth, int screenHeight, boolean preview) {
+	public static Bounds draw(Gfx graphics, Font font, Minecraft minecraft, HudModule hud, int screenWidth, int screenHeight, boolean preview) {
 		Bounds bounds = bounds(hud, font, minecraft, screenWidth, screenHeight, preview);
 		float scale = hud.scale();
 		graphics.pose().pushMatrix();
@@ -123,7 +120,7 @@ public final class HudLayer implements HudElement {
 		}
 	}
 
-	private void drawBenchmark(GuiGraphicsExtractor graphics, Minecraft minecraft) {
+	private void drawBenchmark(Gfx graphics, Minecraft minecraft) {
 		FpsBenchmark benchmark = client.benchmark();
 		Font font = minecraft.font;
 		Component label = Component.translatable(benchmark.measuringOptimized() ? "pretupid.benchmark.phase.optimized" : "pretupid.benchmark.phase.vanilla");

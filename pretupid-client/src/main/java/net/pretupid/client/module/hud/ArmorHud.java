@@ -1,10 +1,10 @@
 package net.pretupid.client.module.hud;
 
+import net.pretupid.client.platform.Gfx;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -130,7 +130,7 @@ public final class ArmorHud extends HudModule {
 	}
 
 	@Override
-	public void render(GuiGraphicsExtractor graphics, Font font, Minecraft minecraft, boolean preview) {
+	public void render(Gfx graphics, Font font, Minecraft minecraft, boolean preview) {
 		List<ItemStack> items = items(minecraft, preview);
 		drawBackground(graphics, width(font, minecraft, preview), height(font, minecraft, preview));
 		int p = padding();

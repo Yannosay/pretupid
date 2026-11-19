@@ -1,12 +1,12 @@
 package net.pretupid.client.emoji;
 
+import net.pretupid.client.platform.Gfx;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
@@ -169,7 +169,7 @@ public final class EmojiPicker {
 		remember(emoji);
 	}
 
-	public void render(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int screenWidth) {
+	public void render(Gfx g, Font font, int mouseX, int mouseY, int screenWidth) {
 		updateSuggestions();
 		int bx = buttonX();
 		int by = buttonY();
@@ -186,7 +186,7 @@ public final class EmojiPicker {
 		}
 	}
 
-	private void renderSuggestions(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY) {
+	private void renderSuggestions(Gfx g, Font font, int mouseX, int mouseY) {
 		int width = 0;
 		for (EmojiIndex.Emoji emoji : suggestions) {
 			width = Math.max(width, font.width(emoji.shortcode()) + 20);
@@ -209,7 +209,7 @@ public final class EmojiPicker {
 		}
 	}
 
-	private void renderPanel(GuiGraphicsExtractor g, Font font, int mouseX, int mouseY, int screenWidth) {
+	private void renderPanel(Gfx g, Font font, int mouseX, int mouseY, int screenWidth) {
 		int px = panelX(screenWidth);
 		int py = panelY();
 		int pw = panelWidth();
@@ -276,13 +276,13 @@ public final class EmojiPicker {
 		return list.isEmpty() ? null : list.getFirst();
 	}
 
-	private static void drawGlyph(GuiGraphicsExtractor g, Font font, EmojiIndex.Emoji emoji, int x, int y, float scale) {
+	private static void drawGlyph(Gfx g, Font font, EmojiIndex.Emoji emoji, int x, int y, float scale) {
 		if (emoji != null) {
 			Draw.scaled(g, font, EmojiText.glyph(emoji), x, y, scale, 0xFFFFFFFF, false);
 		}
 	}
 
-	private static void drawTooltip(GuiGraphicsExtractor g, Font font, Component text, int x, int y, int screenWidth) {
+	private static void drawTooltip(Gfx g, Font font, Component text, int x, int y, int screenWidth) {
 		int width = font.width(text) + 6;
 		int left = Math.max(2, Math.min(screenWidth - width - 2, x - width / 2));
 		Draw.rect(g, left, y, width, 11, 0xF0101318);
