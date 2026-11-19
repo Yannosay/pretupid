@@ -2,7 +2,11 @@ package net.pretupid.client.mixin;
 
 import net.minecraft.client.Camera;
 import net.minecraft.world.phys.Vec3;
+import net.pretupid.client.cinematic.Shot;
+import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
+import org.joml.Quaternionf;
+import org.spongepowered.asm.mixin.Final;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
@@ -20,6 +24,10 @@ public abstract class CameraMixin {
 	private boolean detached;
 
 	@Shadow
+	@Final
+	private Quaternionf rotation;
+
+	@Shadow
 	protected abstract void setPosition(Vec3 position);
 
 	@Shadow
@@ -27,6 +35,16 @@ public abstract class CameraMixin {
 
 	@Inject(method = "alignWithEntity", at = @At("TAIL"))
 	private void pretupid$freecam(float partialTick, CallbackInfo ci) {
+		Shot.View shot = pretupid$shot();
+		if (shot != null) {
+			setRotation(shot.yaw(), shot.pitch());
+			if (shot.roll() != 0f) {
+				rotation.rotateZ((float) Math.toRadians(shot.roll()));
+			}
+			setPosition(shot.position());
+			detached = true;
+			return;
+		}
 		FreecamModule freecam = pretupid$freecam();
 		if (freecam == null) {
 			return;
@@ -38,9 +56,18 @@ public abstract class CameraMixin {
 
 	@Inject(method = "isDetached", at = @At("HEAD"), cancellable = true)
 	private void pretupid$freecamDetached(CallbackInfoReturnable<Boolean> cir) {
-		if (pretupid$freecam() != null) {
+		if (pretupid$freecam() != null || pretupid$cinematicActive()) {
 			cir.setReturnValue(true);
 		}
+	}
+
+	private static boolean pretupid$cinematicActive() {
+		PretupidClient client = PretupidClient.getOrNull();
+		return client != null && client.modules().get(CinematicModule.class).isEnabled() && client.cinematic().controlsCamera();
+	}
+
+	private static Shot.View pretupid$shot() {
+		return pretupid$cinematicActive() ? PretupidClient.get().cinematic().view() : null;
 	}
 
 	private static FreecamModule pretupid$freecam() {
@@ -77,6 +104,13 @@ public abstract class CameraMixin {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;
+		}
+		if (pretupid$cinematicActive()) {
+			Shot.View view = client.cinematic().view();
+			if (view != null) {
+				cir.setReturnValue(view.fov());
+				return;
+			}
 		}
 		ZoomModule zoom = client.modules().get(ZoomModule.class);
 		if (zoom.isEnabled()) {

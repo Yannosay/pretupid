@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.setting.KeySetting;
@@ -28,6 +29,8 @@ public final class Keybinds {
 	private KeyMapping emoteWheel;
 	private KeyMapping freelook;
 	private KeyMapping freecam;
+	private KeyMapping cinematicEditor;
+	private KeyMapping cinematicKeyframe;
 	private KeyMapping quickMenu;
 
 	public Keybinds(PretupidClient client) {
@@ -51,10 +54,20 @@ public final class Keybinds {
 		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, category));
 		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", InputConstants.Type.KEYBOARD, InputConstants.KEY_LALT, category));
 		freecam = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freecam", InputConstants.Type.KEYBOARD, InputConstants.KEY_F6, category));
+		cinematicEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_editor", InputConstants.Type.KEYBOARD, InputConstants.KEY_J, category));
+		cinematicKeyframe = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_keyframe", InputConstants.Type.KEYBOARD, InputConstants.KEY_K, category));
 	}
 
 	public KeyMapping emoteWheel() {
 		return emoteWheel;
+	}
+
+	public KeyMapping freecam() {
+		return freecam;
+	}
+
+	public KeyMapping cinematicKeyframe() {
+		return cinematicKeyframe;
 	}
 
 	public KeyMapping quickMenu() {
@@ -129,6 +142,17 @@ public final class Keybinds {
 						freecamModule.toggleActive(minecraft);
 					}
 				}
+			}
+		}
+		CinematicModule cinematicModule = client.modules().get(CinematicModule.class);
+		while (cinematicEditor.consumeClick()) {
+			if (minecraft.gui.screen() == null) {
+				cinematicModule.openEditor(minecraft);
+			}
+		}
+		while (cinematicKeyframe.consumeClick()) {
+			if (minecraft.gui.screen() == null) {
+				cinematicModule.addKeyframe(minecraft);
 			}
 		}
 		syncHudEditorKey();

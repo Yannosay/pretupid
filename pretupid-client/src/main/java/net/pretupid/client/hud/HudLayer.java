@@ -13,6 +13,8 @@ import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.module.performance.FpsBenchmark;
 import net.pretupid.client.module.visual.CrosshairModule;
+import net.pretupid.client.cinematic.CinematicOverlay;
+import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.screen.HudEditorScreen;
@@ -20,6 +22,7 @@ import net.pretupid.client.ui.screen.HudEditorScreen;
 public final class HudLayer implements HudElement {
 	private static final Identifier ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "hud");
 	private static final Identifier NOTIFICATIONS_ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "notifications");
+	private static final Identifier CINEMATIC_ID = Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "cinematic_path");
 
 	private final PretupidClient client;
 
@@ -39,6 +42,14 @@ public final class HudLayer implements HudElement {
 				crosshair.render(graphics, minecraft);
 			} else {
 				original.extractRenderState(graphics, deltaTracker);
+			}
+		});
+		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, CINEMATIC_ID, (graphics, deltaTracker) -> {
+			CinematicModule cinematic = client.modules().get(CinematicModule.class);
+			if (cinematic.isEnabled() && cinematic.showsPath() && client.modules().get(FreecamModule.class).active()) {
+				Minecraft minecraft = Minecraft.getInstance();
+				var director = client.cinematic();
+				CinematicOverlay.drawPath(graphics, minecraft.font, director.current(), -1, director.playhead(), graphics.guiWidth(), graphics.guiHeight());
 			}
 		});
 		HudElementRegistry.addLast(NOTIFICATIONS_ID, (graphics, deltaTracker) -> client.notifications().render(graphics, Minecraft.getInstance()));

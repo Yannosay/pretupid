@@ -76,7 +76,9 @@ import net.pretupid.client.module.visual.MotionBlurModule;
 import net.pretupid.client.module.visual.LowFireModule;
 import net.pretupid.client.module.visual.NoHurtCamModule;
 import net.pretupid.client.module.visual.OwnNametagModule;
+import net.pretupid.client.cinematic.CinematicDirector;
 import net.pretupid.client.emoji.ChatEmojis;
+import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
@@ -130,6 +132,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private final UpdateService updates = new UpdateService(api);
 	private final SocialService social = new SocialService(api, session);
 	private final ChatEmojis chatEmojis = new ChatEmojis();
+	private final CinematicDirector cinematic = new CinematicDirector();
 	private final LocalHosting hosting = new LocalHosting();
 	private final ModIcons modIcons = new ModIcons();
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
@@ -209,6 +212,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new ZoomModule());
 		modules.register(new FreelookModule());
 		modules.register(new FreecamModule());
+		modules.register(new CinematicModule());
 		modules.register(new NoHurtCamModule());
 		modules.register(new LowFireModule());
 		modules.register(new ClearWeatherModule());
@@ -374,6 +378,7 @@ public final class PretupidClient implements ClientModInitializer {
 		realtime.tick(minecraft);
 		cosmetics.tick(minecraft);
 		emotes.tick(minecraft);
+		cinematic.tick(minecraft);
 		trails.tick(minecraft);
 		social.tick(minecraft);
 		news.tick();
@@ -470,6 +475,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public UpdateService updates() {
 		return updates;
+	}
+
+	public CinematicDirector cinematic() {
+		return cinematic;
 	}
 
 	public ChatEmojis chatEmojis() {

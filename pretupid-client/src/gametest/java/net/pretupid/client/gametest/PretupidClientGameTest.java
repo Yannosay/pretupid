@@ -26,7 +26,9 @@ import net.pretupid.client.emoji.ChatEmojis;
 import net.pretupid.client.emoji.EmojiIndex;
 import net.pretupid.client.emoji.EmojiPicker;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
+import net.pretupid.client.ui.screen.CinematicEditorScreen;
 import net.pretupid.client.module.hud.BiomeHud;
 import net.pretupid.client.module.hud.DayHud;
 import net.pretupid.client.module.hud.LookAtHud;
@@ -61,6 +63,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testChatModules(context);
 			testChatEmojis(context);
 			testFreecam(context, world, feet);
+			testCinematic(context, world, feet);
 			testWaypoints(context, world, feet);
 			testTexturedWearable(context);
 			testCosmetics(context);
@@ -200,6 +203,46 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(3);
 		context.takeScreenshot("pretupid-chat-emoji");
 		context.setScreen(() -> null);
+	}
+
+	private static void testCinematic(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(CinematicModule.class).setEnabled(true));
+		int[][] spots = {{-6, 3, -6, -45, 20}, {6, 5, -6, 45, 30}, {8, 2, 6, 135, 10}, {-4, 6, 8, -140, 35}};
+		for (int[] spot : spots) {
+			world.getServer().runCommand("tp @a " + (feet.getX() + spot[0]) + " " + (feet.getY() + spot[1]) + " " + (feet.getZ() + spot[2]) + " " + spot[3] + " " + spot[4]);
+			context.waitTicks(4);
+			context.runOnClient(minecraft -> check(PretupidClient.get().cinematic().addKeyframeAtCamera(minecraft, 2.0) >= 0, "A keyframe could not be added"));
+		}
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + (feet.getY() + 12) + " " + (feet.getZ() - 14) + " 0 40");
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			var shot = PretupidClient.get().cinematic().current();
+			check(shot != null && shot.keyframes().size() == 4 && Math.abs(shot.duration() - 6.0) < 1e-6, "The shot does not hold four keyframes over six seconds");
+			var middle = shot.sample(3.0);
+			check(middle != null && middle.position().distanceTo(shot.keyframes().get(1).position()) > 0.5, "The camera path does not move between keyframes");
+		});
+		context.setScreen(CinematicEditorScreen::new);
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-cinematic-editor");
+		context.runOnClient(minecraft -> PretupidClient.get().cinematic().preview(3.0));
+		context.waitTicks(3);
+		context.takeScreenshot("pretupid-cinematic-preview");
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().cinematic().preview(0);
+			PretupidClient.get().cinematic().play();
+		});
+		context.waitTicks(30);
+		context.runOnClient(minecraft -> check(PretupidClient.get().cinematic().playing(), "The shot stopped playing early"));
+		context.takeScreenshot("pretupid-cinematic-playing");
+		context.waitTicks(120);
+		context.runOnClient(minecraft -> check(!PretupidClient.get().cinematic().playing(), "The shot did not finish"));
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().cinematic().deleteShot();
+			PretupidClient.get().modules().get(CinematicModule.class).setEnabled(false);
+		});
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		context.waitTicks(5);
 	}
 
 	private static void testFreecam(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {

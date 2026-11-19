@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 export const CLIENT_MODULE_IDS = [
   'fps', 'cps', 'ping', 'coordinates', 'keystrokes', 'armor', 'potions', 'clock', 'direction', 'speed', 'memory', 'server',
   'session', 'reach', 'combo', 'saturation', 'item_counter', 'light_level', 'dynamic_fps', 'entity_culling',
-  'particle_limiter', 'fps_boost', 'zoom', 'freelook', 'freecam', 'no_hurt_cam', 'low_fire', 'clear_weather', 'motion_blur', 'fullbright',
+  'particle_limiter', 'fps_boost', 'zoom', 'freelook', 'freecam', 'cinematic', 'no_hurt_cam', 'low_fire', 'clear_weather', 'motion_blur', 'fullbright',
   'crosshair', 'toggle_sprint', 'death_coordinates', 'durability_alert', 'chat_timestamps', 'chat_macros',
   'low_health_warning', 'tab_ping', 'own_nametag', 'biome', 'day', 'look_at', 'waypoints', 'compact_chat', 'nick_hider',
   'block_outline'

@@ -15,6 +15,7 @@
 		"EntityRendererMixin",
 		"FontPreparedTextBuilderMixin",
 		"FramerateLimitTrackerMixin",
+		"HudMixin",
 		"KeyboardInputMixin",
 		"GameRendererMixin",
 		"GameRendererPostEffectMixin",
