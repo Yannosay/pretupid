@@ -22,7 +22,7 @@ export const TRAIL_PARTICLES = [
 ] as const
 
 export const TRAIL_PATTERNS = ['stream', 'spiral', 'ring', 'helix'] as const
-export const EMOTE_PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'] as const
+export const EMOTE_PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg', 'root'] as const
 
 export interface TrailData {
   particle: (typeof TRAIL_PARTICLES)[number]
@@ -37,11 +37,16 @@ export interface EmoteKeyframe {
   x: number
   y: number
   z: number
+  px?: number
+  py?: number
+  pz?: number
 }
 
 export interface EmoteData {
   duration: number
   loop: boolean
+  hold?: boolean
+  stop?: 'sneak'
   ease: 'linear' | 'smooth'
   parts: Partial<Record<(typeof EMOTE_PARTS)[number], EmoteKeyframe[]>>
 }
@@ -86,7 +91,14 @@ export function parseEmoteData(input: unknown): EmoteData {
         t: Math.round(clamp(frame.t, 0, 1, 0) * 1000) / 1000,
         x: Math.round(clamp(frame.x, -360, 360, 0) * 10) / 10,
         y: Math.round(clamp(frame.y, -360, 360, 0) * 10) / 10,
-        z: Math.round(clamp(frame.z, -360, 360, 0) * 10) / 10
+        z: Math.round(clamp(frame.z, -360, 360, 0) * 10) / 10,
+        ...(part === 'root'
+          ? {
+              px: Math.round(clamp(frame.px, -32, 32, 0) * 10) / 10,
+              py: Math.round(clamp(frame.py, -32, 32, 0) * 10) / 10,
+              pz: Math.round(clamp(frame.pz, -32, 32, 0) * 10) / 10
+            }
+          : {})
       }))
       .sort((a, b) => a.t - b.t)
     if (keyframes.length > 0) {
@@ -97,9 +109,12 @@ export function parseEmoteData(input: unknown): EmoteData {
   if (frames === 0) {
     throw createError({ statusCode: 400, statusMessage: 'An emote needs keyframes for at least one body part' })
   }
+  const loop = raw.loop === true
   return {
     duration: Math.round(clamp(raw.duration, 0.25, 12, 2) * 100) / 100,
-    loop: raw.loop === true,
+    loop,
+    ...(!loop && raw.hold === true ? { hold: true } : {}),
+    ...(raw.stop === 'sneak' ? { stop: 'sneak' as const } : {}),
     ease: raw.ease === 'linear' ? 'linear' : 'smooth',
     parts
   }

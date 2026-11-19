@@ -109,6 +109,10 @@ public final class UiContext {
 		return next;
 	}
 
+	public boolean animationsEnabled() {
+		return animate;
+	}
+
 	public float animateFrom(String id, float initial, float target, float rate) {
 		animations.putIfAbsent(id, initial);
 		return animate(id, target, rate);

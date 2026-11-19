@@ -1,5 +1,9 @@
 package net.pretupid.client.mixin;
 
+import net.pretupid.client.cosmetic.EmotePoses;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
@@ -99,6 +103,11 @@ public abstract class AvatarRendererMixin {
 		ClientAsset.Texture asset = new ClientAsset.ResourceTexture(texture, texture);
 		state.skin = new PlayerSkin(skin.body(), asset, asset, skin.model(), skin.secure());
 		state.showCape = player.isModelPartShown(PlayerModelPart.CAPE);
+	}
+
+	@Inject(method = "setupRotations(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;FF)V", at = @At("TAIL"))
+	private void pretupid$emoteRoot(AvatarRenderState state, PoseStack poseStack, float bodyRot, float scale, CallbackInfo ci) {
+		EmotePoses.applyRoot(state, poseStack);
 	}
 
 	@Inject(method = "shouldShowName(Lnet/minecraft/world/entity/Avatar;D)Z", at = @At("HEAD"), cancellable = true)

@@ -18,6 +18,10 @@ public final class Widgets {
 	public static final int ROW_HEIGHT = 22;
 	public static final int CONTROL_WIDTH = 118;
 	private static final Map<TextSetting, TextInput> TEXT_INPUTS = new WeakHashMap<>();
+	private static final Map<String, Long> HOVER_START = new java.util.HashMap<>();
+	private static final long MARQUEE_HOLD_MS = 1800L;
+	private static final float MARQUEE_SPEED = 24f;
+	private static final long TOOLTIP_DELAY_MS = 450L;
 
 	private Widgets() {
 	}
@@ -67,6 +71,49 @@ public final class Widgets {
 	}
 
 	private static final float MIN_LABEL_SCALE = 0.7f;
+
+	public static void marquee(UiContext ui, String id, Component text, int x, int y, int w, int color, boolean hovered) {
+		var font = ui.font();
+		int width = font.width(text);
+		if (width <= w) {
+			HOVER_START.remove(id);
+			Draw.text(ui.g(), font, text, x, y, color);
+			return;
+		}
+		if (!ui.animationsEnabled()) {
+			Draw.text(ui.g(), font, Draw.ellipsize(font, text, w), x, y, color);
+		} else {
+			int overflow = width - w;
+			long travel = Math.round(overflow / MARQUEE_SPEED * 1000f);
+			long cycle = 2 * (MARQUEE_HOLD_MS + travel);
+			long phase = Math.floorMod(System.currentTimeMillis() + Math.floorMod(id.hashCode(), 4000), cycle);
+			float progress;
+			if (phase < MARQUEE_HOLD_MS) {
+				progress = 0f;
+			} else if (phase < MARQUEE_HOLD_MS + travel) {
+				progress = Easing.inOutCubic((phase - MARQUEE_HOLD_MS) / (float) travel);
+			} else if (phase < 2 * MARQUEE_HOLD_MS + travel) {
+				progress = 1f;
+			} else {
+				progress = 1f - Easing.inOutCubic((phase - 2 * MARQUEE_HOLD_MS - travel) / (float) travel);
+			}
+			ui.pushClip(x, y - 1, w, font.lineHeight + 2);
+			ui.g().pose().pushMatrix();
+			ui.g().pose().translate(-progress * overflow, 0f);
+			Draw.text(ui.g(), font, text, x, y, color);
+			ui.g().pose().popMatrix();
+			ui.popClip();
+		}
+		if (hovered && ui.hovered(x, y - 2, w, font.lineHeight + 4)) {
+			long now = System.currentTimeMillis();
+			long since = HOVER_START.computeIfAbsent(id, key -> now);
+			if (now - since >= TOOLTIP_DELAY_MS) {
+				ui.tooltip(text);
+			}
+		} else {
+			HOVER_START.remove(id);
+		}
+	}
 
 	public static void fittedLabel(UiContext ui, Component label, int x, int y, int w, int h, int color) {
 		int available = Math.max(1, w - 6);

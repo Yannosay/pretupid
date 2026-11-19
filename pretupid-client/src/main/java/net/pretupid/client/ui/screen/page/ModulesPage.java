@@ -191,11 +191,10 @@ public final class ModulesPage implements MenuPage {
 		int textWidth = w - 30 - 50;
 		Draw.text(g, font, Draw.ellipsize(font, module.name(), textWidth), textX, y + 9, Theme.TEXT);
 		Component description = module.isPaused() ? Component.translatable("pretupid.compat.paused_badge") : module.description();
-		Draw.text(g, font, Draw.ellipsize(font, description, textWidth + 18), textX, y + 22, module.isPaused() ? Theme.WARNING : Theme.TEXT_MUTED);
-		if (hover && module.isPaused() && ui.mouseX() < x + w - 50) {
+		boolean pausedHover = hover && module.isPaused() && ui.mouseX() < x + w - 50;
+		Widgets.marquee(ui, id + ".description", description, textX, y + 22, textWidth + 18, module.isPaused() ? Theme.WARNING : Theme.TEXT_MUTED, hover && !pausedHover);
+		if (pausedHover) {
 			ui.tooltip(module.pauseReason());
-		} else if (hover && font.width(description) > textWidth + 18 && ui.mouseX() < x + w - 50) {
-			ui.tooltip(description);
 		}
 		Widgets.toggle(ui, id, x + w - 28, y + 7, module.enabledSetting().get(), module::toggle);
 		boolean favorite = config.isFavorite(module);
@@ -220,7 +219,7 @@ public final class ModulesPage implements MenuPage {
 		Widgets.iconButton(ui, "settings.back", x, y, 20, 18, UiIcon.CHEVRON_LEFT, () -> selected = null);
 		module.icon().draw(g, x + 26, y + 1);
 		Draw.textShadow(g, font, module.name(), x + 46, y + 1, Theme.TEXT);
-		Draw.text(g, font, Draw.ellipsize(font, module.description(), w - 120), x + 46, y + 11, Theme.TEXT_MUTED);
+		Widgets.marquee(ui, "settings.description." + module.id(), module.description(), x + 46, y + 11, w - 120, Theme.TEXT_MUTED, true);
 		Widgets.toggle(ui, "settings.enabled." + module.id(), x + w - 26, y + 4, module.enabledSetting().get(), module::toggle);
 		Widgets.button(ui, "settings.reset", x + w - 74, y + 1, 42, 16, Component.translatable("pretupid.ui.reset"), Widgets.ButtonStyle.GHOST, module::resetSettings);
 		int listY = y + 28;

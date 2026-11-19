@@ -240,7 +240,7 @@
                   JSON: particle ({{ particles.join(', ') }}), colors (up to 4 hex), density 1–5, pattern ({{ patterns.join(', ') }}), size 0.5–2.
                 </template>
                 <template v-else>
-                  JSON: duration (seconds), loop, ease (smooth|linear), parts ({{ parts.join(', ') }}) → keyframes with t (0–1) and x/y/z rotation in degrees.
+                  JSON: duration (seconds), loop, ease (smooth|linear), parts ({{ parts.join(', ') }}) → keyframes with t (0–1) and x/y/z rotation in degrees. The root part turns and moves the whole player (px/py/pz in pixels, 16 per block). hold keeps the last pose until the player stops it; stop: "sneak" lets only sneaking end it.
                 </template>
               </p>
               <textarea v-model="cosmeticForm.data" class="input admin__textarea admin__mono" spellcheck="false" />

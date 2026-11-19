@@ -88,7 +88,7 @@ public final class EmotePlayer {
 				return false;
 			}
 			EmoteAnimation animation = emote.get().animation();
-			if (animation.loop() || now - value.startedAt() < animation.durationSeconds() * 1000L) {
+			if (animation.endless() || now - value.startedAt() < animation.durationSeconds() * 1000L) {
 				active.put(entry.getKey(), new Active(value.id(), animation, value.startedAt()));
 			}
 			return true;
@@ -106,7 +106,7 @@ public final class EmotePlayer {
 		RemoteProfile.EmoteRef emote = profile.emote();
 		if (emote == null) {
 			Active current = active.get(uuid);
-			if (current != null && current.animation().loop()) {
+			if (current != null && current.animation().endless()) {
 				active.remove(uuid);
 			}
 			return;
@@ -127,7 +127,7 @@ public final class EmotePlayer {
 		}
 		EmoteAnimation animation = entry.get().animation();
 		long elapsed = SmoothClock.millisLong() - emote.startedAtMillis();
-		if (!animation.loop() && elapsed > animation.durationSeconds() * 1000L) {
+		if (!animation.endless() && elapsed > animation.durationSeconds() * 1000L) {
 			return;
 		}
 		active.put(uuid, new Active(emote.id(), animation, emote.startedAtMillis()));
@@ -138,7 +138,7 @@ public final class EmotePlayer {
 		resolvePending(now);
 		active.entrySet().removeIf(entry -> {
 			Active value = entry.getValue();
-			return !value.animation().loop() && now - value.startedAt() > value.animation().durationSeconds() * 1000L + 50L;
+			return !value.animation().endless() && now - value.startedAt() > value.animation().durationSeconds() * 1000L + 50L;
 		});
 		LocalPlayer player = minecraft.player;
 		if (player == null) {
@@ -152,6 +152,14 @@ public final class EmotePlayer {
 			return;
 		}
 		var settings = PretupidClient.get().settings();
+		if (own.animation().sneakOnly()) {
+			if (player.isShiftKeyDown() && SmoothClock.millisLong() - own.startedAt() > 250L) {
+				active.remove(player.getUUID());
+				broadcast(null);
+				restoreCamera();
+			}
+			return;
+		}
 		boolean moved = settings.emoteStopOnMove.enabled() && startPosition != null && player.position().distanceToSqr(startPosition) > 0.04;
 		boolean sneaked = settings.emoteStopOnSneak.enabled() && player.isShiftKeyDown();
 		boolean attacked = settings.emoteStopOnAttack.enabled() && player.isSwinging();
@@ -184,7 +192,7 @@ public final class EmotePlayer {
 		}
 		float progress = value.animation().loop() ? (elapsed % duration) / duration : Math.min(1f, elapsed / duration);
 		float weight = Math.min(1f, elapsed / BLEND_SECONDS);
-		if (!value.animation().loop()) {
+		if (!value.animation().endless()) {
 			weight = Math.min(weight, Math.max(0f, (duration - elapsed) / BLEND_SECONDS));
 		}
 		EmoteAnimation.Part[] parts = EmoteAnimation.Part.values();

@@ -21,6 +21,7 @@ import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
+import net.pretupid.client.cosmetic.EmoteAnimation;
 import net.pretupid.client.emoji.ChatEmojis;
 import net.pretupid.client.emoji.EmojiIndex;
 import net.pretupid.client.emoji.EmojiPicker;
@@ -64,6 +65,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testTexturedWearable(context);
 			testCosmetics(context);
 			testEmotes(context);
+			testDeadPose(context, world, feet);
 			testEmoteWheel(context);
 			testNotifications(context);
 			testMenuPages(context);
@@ -350,6 +352,51 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 
 	private static java.util.List<String> wearableIds(Catalog.WearableKind kind) {
 		return PretupidClient.get().cosmetics().catalog().wearables(kind).stream().map(Catalog.WearableEntry::id).toList();
+	}
+
+	private static void testDeadPose(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		Catalog.EmoteEntry dead;
+		try (var stream = PretupidClientGameTest.class.getResourceAsStream("/dead_pose.json")) {
+			var json = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+			dead = new Catalog.EmoteEntry("dead_pose", "Dead Pose", "", EmoteAnimation.fromJson(json));
+		} catch (java.io.IOException exception) {
+			throw new AssertionError("Dead pose data is missing", exception);
+		}
+		check(dead.animation().hold() && dead.animation().sneakOnly(), "Dead pose does not hold until sneaking");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 90 0");
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> {
+			ClientSettings settings = PretupidClient.get().settings();
+			settings.hat.set("");
+			settings.back.set("");
+			settings.pet.set("");
+			settings.cape.set("");
+			PretupidClient.get().emotes().playLocal(dead);
+			minecraft.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+		});
+		context.waitTicks(14);
+		context.takeScreenshot("pretupid-dead-pose-falling");
+		context.waitTicks(80);
+		boolean holding = context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID()));
+		check(holding, "Dead pose ended before sneaking");
+		context.takeScreenshot("pretupid-dead-pose-front");
+		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		context.getInput().lookAt(180f, 40f);
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-dead-pose-side");
+		context.getInput().holdKey(options -> options.keyUp);
+		context.waitTicks(10);
+		context.getInput().releaseKey(options -> options.keyUp);
+		check(context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID())), "Walking stopped the dead pose");
+		context.getInput().holdShift();
+		context.getInput().holdKey(options -> options.keyShift);
+		context.waitTicks(3);
+		context.getInput().releaseKey(options -> options.keyShift);
+		context.getInput().releaseShift();
+		check(!context.computeOnClient(minecraft -> PretupidClient.get().emotes().playing(minecraft.player.getUUID())), "Sneaking did not end the dead pose");
+		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		context.waitTicks(5);
 	}
 
 	private static void testEmotes(ClientGameTestContext context) {

@@ -8,14 +8,15 @@ import java.util.List;
 import java.util.Map;
 import net.pretupid.client.network.Json;
 
-public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth, Map<Part, Keyframe[]> parts) {
+public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth, boolean hold, boolean sneakOnly, Map<Part, Keyframe[]> parts) {
 	public enum Part {
 		HEAD("head"),
 		BODY("body"),
 		RIGHT_ARM("right_arm"),
 		LEFT_ARM("left_arm"),
 		RIGHT_LEG("right_leg"),
-		LEFT_LEG("left_leg");
+		LEFT_LEG("left_leg"),
+		ROOT("root");
 
 		private final String key;
 
@@ -24,7 +25,11 @@ public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth
 		}
 	}
 
-	public record Keyframe(float t, float x, float y, float z) {
+	public record Keyframe(float t, float x, float y, float z, float px, float py, float pz) {
+	}
+
+	public boolean endless() {
+		return loop || hold;
 	}
 
 	public static EmoteAnimation fromJson(JsonObject object) {
@@ -42,7 +47,10 @@ public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth
 						(float) Math.clamp(Json.decimal(frame, "t", 0), 0, 1),
 						(float) Math.toRadians(Math.clamp(Json.decimal(frame, "x", 0), -360, 360)),
 						(float) Math.toRadians(Math.clamp(Json.decimal(frame, "y", 0), -360, 360)),
-						(float) Math.toRadians(Math.clamp(Json.decimal(frame, "z", 0), -360, 360))
+						(float) Math.toRadians(Math.clamp(Json.decimal(frame, "z", 0), -360, 360)),
+						(float) Math.clamp(Json.decimal(frame, "px", 0), -32, 32) / 16f,
+						(float) Math.clamp(Json.decimal(frame, "py", 0), -32, 32) / 16f,
+						(float) Math.clamp(Json.decimal(frame, "pz", 0), -32, 32) / 16f
 					));
 				}
 				if (!frames.isEmpty()) {
@@ -55,6 +63,8 @@ public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth
 			(float) Math.clamp(Json.decimal(object, "duration", 1.5), 0.25, 12),
 			Json.bool(object, "loop", false),
 			!"linear".equals(Json.string(object, "ease")),
+			!Json.bool(object, "loop", false) && Json.bool(object, "hold", false),
+			"sneak".equals(Json.string(object, "stop")),
 			parts
 		);
 	}
@@ -65,7 +75,7 @@ public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth
 			return null;
 		}
 		if (progress <= frames[0].t()) {
-			return new float[] {frames[0].x(), frames[0].y(), frames[0].z()};
+			return values(frames[0]);
 		}
 		for (int i = 1; i < frames.length; i++) {
 			Keyframe next = frames[i];
@@ -79,11 +89,17 @@ public record EmoteAnimation(float durationSeconds, boolean loop, boolean smooth
 				return new float[] {
 					previous.x() + (next.x() - previous.x()) * t,
 					previous.y() + (next.y() - previous.y()) * t,
-					previous.z() + (next.z() - previous.z()) * t
+					previous.z() + (next.z() - previous.z()) * t,
+					previous.px() + (next.px() - previous.px()) * t,
+					previous.py() + (next.py() - previous.py()) * t,
+					previous.pz() + (next.pz() - previous.pz()) * t
 				};
 			}
 		}
-		Keyframe last = frames[frames.length - 1];
-		return new float[] {last.x(), last.y(), last.z()};
+		return values(frames[frames.length - 1]);
+	}
+
+	private static float[] values(Keyframe frame) {
+		return new float[] {frame.x(), frame.y(), frame.z(), frame.px(), frame.py(), frame.pz()};
 	}
 }
