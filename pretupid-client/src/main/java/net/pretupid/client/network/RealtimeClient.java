@@ -150,6 +150,12 @@ public final class RealtimeClient {
 		send(frame);
 	}
 
+	public void sendChatEmojis(JsonObject frame) {
+		if (joinedRoom != null) {
+			send(frame);
+		}
+	}
+
 	public void sendProfileChanged() {
 		JsonObject frame = new JsonObject();
 		frame.addProperty("t", "profile");
@@ -201,6 +207,16 @@ public final class RealtimeClient {
 				}
 			}
 			case "social" -> client.social().syncSoon();
+			case "chat" -> {
+				UUID uuid = uuid(Json.string(frame, "u"));
+				if (uuid != null && client.settings().chatEmojis.enabled()) {
+					try {
+						client.chatEmojis().received(uuid, frame);
+					} catch (RuntimeException exception) {
+						PretupidClient.LOGGER.debug("Ignored a malformed emoji frame", exception);
+					}
+				}
+			}
 			default -> {
 			}
 		}

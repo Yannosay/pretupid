@@ -31,6 +31,12 @@
         <li>The server address you are playing on, only if you turn on sharing it with friends.</li>
       </ul>
       <p>
+        When you send a chat message with emoji, the emoji are left out of the message the server receives. The client
+        passes the emoji names, their positions and a fingerprint of the remaining text to other Pretupid players on the
+        same server so they can show the emoji. The text of your message is not sent to Pretupid, and these notes are not
+        stored. Chat emoji can be switched off under Settings, Online &amp; social.
+      </p>
+      <p>
         Your account is verified with the chat signing key Mojang issues to your account and your Mojang-signed profile,
         the same proof Minecraft servers use for signed chat. Your Microsoft or Minecraft access token is never sent to
         Pretupid. Requests pass through Cloudflare, which processes IP addresses to deliver and protect

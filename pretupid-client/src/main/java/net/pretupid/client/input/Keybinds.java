@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.setting.KeySetting;
 import net.pretupid.client.setting.SettingChangeBus;
@@ -26,6 +27,7 @@ public final class Keybinds {
 	private KeyMapping zoom;
 	private KeyMapping emoteWheel;
 	private KeyMapping freelook;
+	private KeyMapping freecam;
 	private KeyMapping quickMenu;
 
 	public Keybinds(PretupidClient client) {
@@ -48,6 +50,7 @@ public final class Keybinds {
 		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, category));
 		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, category));
 		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", InputConstants.Type.KEYBOARD, InputConstants.KEY_LALT, category));
+		freecam = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freecam", InputConstants.Type.KEYBOARD, InputConstants.KEY_F6, category));
 	}
 
 	public KeyMapping emoteWheel() {
@@ -107,6 +110,24 @@ public final class Keybinds {
 			while (freelook.consumeClick()) {
 				if (minecraft.gui.screen() == null) {
 					freelookModule.toggleActive(minecraft);
+				}
+			}
+		}
+		FreecamModule freecamModule = client.modules().get(FreecamModule.class);
+		if (freecamModule.holdMode()) {
+			boolean pressed = freecam.isDown();
+			while (freecam.consumeClick()) {
+				pressed = true;
+			}
+			freecamModule.setHeld(minecraft, freecamModule.isEnabled() && pressed && minecraft.gui.screen() == null);
+		} else {
+			while (freecam.consumeClick()) {
+				if (minecraft.gui.screen() == null) {
+					if (!freecamModule.isEnabled() && !freecamModule.active()) {
+						freecamModule.explainUnavailable(minecraft);
+					} else {
+						freecamModule.toggleActive(minecraft);
+					}
 				}
 			}
 		}

@@ -13,6 +13,7 @@ import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.module.performance.FpsBenchmark;
 import net.pretupid.client.module.visual.CrosshairModule;
+import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 
@@ -30,6 +31,9 @@ public final class HudLayer implements HudElement {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, ID, this);
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (graphics, deltaTracker) -> {
 			Minecraft minecraft = Minecraft.getInstance();
+			if (client.modules().get(FreecamModule.class).active()) {
+				return;
+			}
 			CrosshairModule crosshair = client.modules().get(CrosshairModule.class);
 			if (crosshair.replacesVanilla(minecraft)) {
 				crosshair.render(graphics, minecraft);

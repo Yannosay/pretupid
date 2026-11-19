@@ -19,7 +19,8 @@ const MAX_FRAMES_PER_10S = 40
 const MAX_ROOM_MEMBERS = 1000
 const ROOM_PATTERN = /^[0-9a-f]{64}$/
 const ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+const CHAT_INSERT_PATTERN = /^(?: |:[a-z0-9_+-]{1,40}:){1,40}$/
+const UUID_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const encoder = new TextEncoder()
 let cachedKey: { secret: string; key: CryptoKey } | null = null
 
@@ -138,6 +139,28 @@ export class Peer extends DurableObject<Env> {
         const id = frame.id === null ? null : typeof frame.id === 'string' && ID_PATTERN.test(frame.id) ? frame.id : undefined
         if (id !== undefined && attachment.room) {
           await this.room(attachment.room, '/broadcast', { from: attachment.uuid, frame: { t: 'emote', u: attachment.uuid, id, at: now } })
+        }
+        break
+      }
+      case 'chat': {
+        const hash = typeof frame.h === 'string' && /^[0-9a-f]{16}$/.test(frame.h) ? frame.h : null
+        const length = typeof frame.l === 'number' && Number.isInteger(frame.l) && frame.l > 0 && frame.l <= 256 ? frame.l : null
+        const inserts = Array.isArray(frame.x) && frame.x.length > 0 && frame.x.length <= 32 ? frame.x : null
+        const valid =
+          inserts !== null &&
+          inserts.every(
+            (entry) =>
+              Array.isArray(entry) &&
+              entry.length === 2 &&
+              Number.isInteger(entry[0]) &&
+              entry[0] >= 0 &&
+              entry[0] <= 256 &&
+              typeof entry[1] === 'string' &&
+              entry[1].length <= 160 &&
+              CHAT_INSERT_PATTERN.test(entry[1])
+          )
+        if (hash && length && valid && attachment.room) {
+          await this.room(attachment.room, '/broadcast', { from: attachment.uuid, frame: { t: 'chat', u: attachment.uuid, h: hash, l: length, x: inserts, at: now } })
         }
         break
       }

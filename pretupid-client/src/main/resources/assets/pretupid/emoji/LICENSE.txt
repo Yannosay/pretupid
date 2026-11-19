@@ -1,0 +1,9 @@
+Emoji artwork: Twemoji by Twitter, Inc. and other contributors
+https://github.com/jdecked/twemoji
+Licensed under CC-BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+Emoji names and ordering: emoji-data by Cal Henderson (iamcal)
+https://github.com/iamcal/emoji-data
+Licensed under the MIT License.
+
+The images were scaled down to 32 pixels and packed into font sheets for Pretupid Client.

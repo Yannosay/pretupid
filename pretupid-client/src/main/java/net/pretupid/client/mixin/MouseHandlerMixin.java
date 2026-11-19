@@ -9,6 +9,7 @@ import net.minecraft.client.MouseHandler;
 import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.player.LocalPlayer;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
 import org.spongepowered.asm.mixin.Final;
@@ -65,6 +66,11 @@ public abstract class MouseHandlerMixin {
 	private void pretupid$freelookTurn(LocalPlayer player, double dx, double dy, Operation<Void> original) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client != null) {
+			FreecamModule freecam = client.modules().get(FreecamModule.class);
+			if (freecam.isEnabled() && freecam.active()) {
+				freecam.turn(dx, dy);
+				return;
+			}
 			FreelookModule freelook = client.modules().get(FreelookModule.class);
 			if (freelook.isEnabled() && freelook.active()) {
 				freelook.turn(dx, dy);

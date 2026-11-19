@@ -3,6 +3,7 @@ package net.pretupid.client.module.visual;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
+import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.setting.BooleanSetting;
@@ -54,7 +55,7 @@ public final class FreelookModule extends Module {
 	}
 
 	private void start(Minecraft minecraft) {
-		if (!isEnabled() || minecraft.player == null) {
+		if (!isEnabled() || minecraft.player == null || PretupidClient.get().modules().get(FreecamModule.class).active()) {
 			return;
 		}
 		yaw = minecraft.player.getYRot();

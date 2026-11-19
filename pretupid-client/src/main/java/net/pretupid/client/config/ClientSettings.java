@@ -39,6 +39,7 @@ public final class ClientSettings {
 	public final BooleanSetting hideHudInDebug = add(new BooleanSetting("hide_hud_in_debug", true));
 	public final BooleanSetting sharePresence = add(new BooleanSetting("share_presence", true));
 	public final BooleanSetting showOtherBadges = add(new BooleanSetting("show_other_badges", true));
+	public final BooleanSetting chatEmojis = add(new BooleanSetting("chat_emojis", true));
 	public final BooleanSetting tabListBadges = add(new BooleanSetting("tab_list_badges", true));
 	public final BooleanSetting autoProfileSwitch = add(new BooleanSetting("auto_profile_switch", true));
 	public final BooleanSetting enhancedTitleScreen = add(new BooleanSetting("enhanced_title_screen", true));
@@ -73,6 +74,7 @@ public final class ClientSettings {
 	public final TextSetting hat = add(new TextSetting("hat", "", 32));
 	public final TextSetting back = add(new TextSetting("back", "", 32));
 	public final TextSetting pet = add(new TextSetting("pet", "", 32));
+	public final TextSetting recentEmojis = add(new TextSetting("recent_emojis", "", 400));
 	public final TextSetting emoteWheel = add(new TextSetting("emote_wheel", "", 300));
 	public final TextSetting emoteKeys = add(new TextSetting("emote_keys", "", 600));
 	public final BooleanSetting emoteWheelHold = add(new BooleanSetting("emote_wheel_hold", true));

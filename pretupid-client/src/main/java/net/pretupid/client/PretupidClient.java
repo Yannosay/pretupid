@@ -76,6 +76,8 @@ import net.pretupid.client.module.visual.MotionBlurModule;
 import net.pretupid.client.module.visual.LowFireModule;
 import net.pretupid.client.module.visual.NoHurtCamModule;
 import net.pretupid.client.module.visual.OwnNametagModule;
+import net.pretupid.client.emoji.ChatEmojis;
+import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.visual.FreelookModule;
 import net.pretupid.client.module.visual.ZoomModule;
 import net.pretupid.client.mods.ModCatalog;
@@ -127,6 +129,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private ServerCompatibility compatibility;
 	private final UpdateService updates = new UpdateService(api);
 	private final SocialService social = new SocialService(api, session);
+	private final ChatEmojis chatEmojis = new ChatEmojis();
 	private final LocalHosting hosting = new LocalHosting();
 	private final ModIcons modIcons = new ModIcons();
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
@@ -205,6 +208,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new FpsBoostModule());
 		modules.register(new ZoomModule());
 		modules.register(new FreelookModule());
+		modules.register(new FreecamModule());
 		modules.register(new NoHurtCamModule());
 		modules.register(new LowFireModule());
 		modules.register(new ClearWeatherModule());
@@ -235,6 +239,7 @@ public final class PretupidClient implements ClientModInitializer {
 			api.shutdown();
 		});
 		presence.onProfile(emotes::onRemoteProfile);
+		chatEmojis.setPublisher(overlay -> realtime.sendChatEmojis(ChatEmojis.toFrame(overlay)));
 		presence.watchPublishedSettings(settings);
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, minecraft) -> minecraft.execute(() -> {
 			modules.get(SessionHud.class).onWorldJoined();
@@ -267,6 +272,7 @@ public final class PretupidClient implements ClientModInitializer {
 		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, minecraft) -> minecraft.execute(() -> {
 			compatibility.onDisconnected();
+			chatEmojis.clear();
 			config.onServerLeft();
 			presence.onWorldLeft();
 			emotes.clear();
@@ -464,6 +470,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public UpdateService updates() {
 		return updates;
+	}
+
+	public ChatEmojis chatEmojis() {
+		return chatEmojis;
 	}
 
 	public SocialService social() {

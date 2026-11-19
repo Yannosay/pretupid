@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
@@ -20,7 +21,11 @@ import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
+import net.pretupid.client.emoji.ChatEmojis;
+import net.pretupid.client.emoji.EmojiIndex;
+import net.pretupid.client.emoji.EmojiPicker;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.module.hud.BiomeHud;
 import net.pretupid.client.module.hud.DayHud;
 import net.pretupid.client.module.hud.LookAtHud;
@@ -53,6 +58,8 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testHudModules(context, feet);
 			testAccentLabels(context);
 			testChatModules(context);
+			testChatEmojis(context);
+			testFreecam(context, world, feet);
 			testWaypoints(context, world, feet);
 			testTexturedWearable(context);
 			testCosmetics(context);
@@ -148,6 +155,78 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(5);
 		context.takeScreenshot("pretupid-chat-modules");
 		context.runOnClient(minecraft -> PretupidClient.get().modules().get(NickHiderModule.class).setEnabled(false));
+	}
+
+	private static void testChatEmojis(ClientGameTestContext context) {
+		int fire = EmojiIndex.get().byName("fire").orElseThrow().codepoint();
+		int sob = EmojiIndex.get().byName("sob").orElseThrow().codepoint();
+		context.runOnClient(minecraft -> {
+			ChatEmojis.Outgoing outgoing = PretupidClient.get().chatEmojis().prepare("gg :fire: nice :sob:", minecraft.getUser().getProfileId());
+			check(outgoing.message().equals("gg nice"), "Emoji were not stripped from the sent text: \"" + outgoing.message() + "\"");
+			ChatEmojis.Outgoing only = PretupidClient.get().chatEmojis().prepare(":fire:", minecraft.getUser().getProfileId());
+			check(only.overlay() == null && only.message().equals("🔥"), "An emoji-only message did not fall back to Unicode");
+			minecraft.player.connection.sendChat("gg :fire: nice :sob:");
+		});
+		for (int i = 0; i < 60 && !context.computeOnClient(minecraft -> chatMessages(minecraft).getFirst().content().getString().contains("nice")); i++) {
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> {
+			String shown = chatMessages(minecraft).getFirst().content().getString();
+			check(shown.contains(new String(Character.toChars(fire))) && shown.contains(new String(Character.toChars(sob))),
+				"Own chat message did not get its emoji back: \"" + shown + "\"");
+			minecraft.gui.hud.getChat().addClientSystemMessage(Component.literal("Unicode emoji 😭 and :thumbsup: work"));
+			String unicode = chatMessages(minecraft).getFirst().content().getString();
+			check(unicode.contains(new String(Character.toChars(sob))) && !unicode.contains(":thumbsup:"), "Incoming emoji were not rendered: \"" + unicode + "\"");
+		});
+		context.setScreen(() -> new ChatScreen(":smi", false));
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> {
+			try {
+				for (Field field : ChatScreen.class.getDeclaredFields()) {
+					if (field.getType() == EmojiPicker.class) {
+						field.setAccessible(true);
+						Object picker = field.get(minecraft.gui.screen());
+						Field open = EmojiPicker.class.getDeclaredField("open");
+						open.setAccessible(true);
+						open.setBoolean(picker, true);
+					}
+				}
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("The emoji picker is not reachable", exception);
+			}
+		});
+		context.waitTicks(3);
+		context.takeScreenshot("pretupid-chat-emoji");
+		context.setScreen(() -> null);
+	}
+
+	private static void testFreecam(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		context.runOnClient(minecraft -> {
+			FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
+			freecam.setEnabled(true);
+			freecam.toggleActive(minecraft);
+			check(freecam.active(), "Freecam did not start in singleplayer");
+		});
+		var before = context.computeOnClient(minecraft -> minecraft.player.position());
+		context.getInput().holdKey(options -> options.keyUp);
+		context.getInput().holdKey(options -> options.keyJump);
+		context.waitTicks(25);
+		context.getInput().releaseKey(options -> options.keyUp);
+		context.getInput().releaseKey(options -> options.keyJump);
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			var after = minecraft.player.position();
+			check(after.distanceTo(before) < 0.2, "The player moved while Freecam was active");
+			var camera = minecraft.gameRenderer.mainCamera().position();
+			check(camera.distanceTo(minecraft.player.getEyePosition()) > 3, "The Freecam camera did not fly away");
+		});
+		context.takeScreenshot("pretupid-freecam");
+		context.runOnClient(minecraft -> {
+			FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
+			freecam.toggleActive(minecraft);
+			freecam.setEnabled(false);
+		});
+		context.waitTicks(5);
 	}
 
 	private static void testWaypoints(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {

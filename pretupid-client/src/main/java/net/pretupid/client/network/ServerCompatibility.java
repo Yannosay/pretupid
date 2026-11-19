@@ -29,7 +29,7 @@ public final class ServerCompatibility {
 		}
 	}
 
-	public static final Set<String> COMPETITIVE_MODULES = Set.of("zoom", "freelook", "fullbright", "clear_weather", "low_fire", "no_hurt_cam", "reach", "combo");
+	public static final Set<String> COMPETITIVE_MODULES = Set.of("zoom", "freelook", "freecam", "fullbright", "clear_weather", "low_fire", "no_hurt_cam", "reach", "combo");
 	private static final Pattern KICK_PATTERN = Pattern.compile(
 		"(disallowed|illegal|unfair|forbidden|blacklisted|prohibited|unallowed|not allowed)[^\\n]{0,40}(mod|client|modification|hack)|(hacked|modded) client",
 		Pattern.CASE_INSENSITIVE);

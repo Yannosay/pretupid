@@ -8,6 +8,7 @@ import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.emoji.ChatEmojis;
 import net.pretupid.client.module.utility.ChatTimestampsModule;
 import net.pretupid.client.module.utility.CompactChatModule;
 import net.pretupid.client.module.utility.NickHiderModule;
@@ -20,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ChatComponent.class)
-public abstract class ChatComponentMixin {
+public abstract class ChatComponentMixin implements ChatEmojis.ChatAccess {
 	@Shadow
 	@Final
 	private List<GuiMessage> allMessages;
@@ -44,7 +45,38 @@ public abstract class ChatComponentMixin {
 			result = compactChat.compact(result, allMessages, this::refreshTrimmedMessages);
 		}
 		ChatTimestampsModule timestamps = client.modules().get(ChatTimestampsModule.class);
-		return timestamps.isEnabled() ? timestamps.decorate(result) : result;
+		if (timestamps.isEnabled()) {
+			result = timestamps.decorate(result);
+		}
+		if (client.settings().chatEmojis.enabled()) {
+			try {
+				result = client.chatEmojis().decorate(result);
+			} catch (RuntimeException exception) {
+				PretupidClient.LOGGER.debug("Could not add emoji to a chat message", exception);
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public int size() {
+		return allMessages.size();
+	}
+
+	@Override
+	public Component content(int index) {
+		return allMessages.get(index).content();
+	}
+
+	@Override
+	public void replace(int index, Component content) {
+		GuiMessage old = allMessages.get(index);
+		allMessages.set(index, new GuiMessage(old.addedTime(), content, old.signature(), old.source(), old.tag()));
+	}
+
+	@Override
+	public void refresh() {
+		refreshTrimmedMessages();
 	}
 
 	@Inject(method = "addMessage", at = @At("TAIL"))
