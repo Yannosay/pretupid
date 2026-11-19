@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{
-    AppHandle, Manager, PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder, Wry,
+    AppHandle, Manager, PhysicalPosition, Position, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder, Wry,
 };
 
 pub const TRAY_ID: &str = "pretupid-main-tray";
@@ -13,10 +14,49 @@ pub const TRAY_PANEL_LABEL: &str = "tray-panel";
 const PANEL_WIDTH: f64 = 360.0;
 const PANEL_HEIGHT: f64 = 500.0;
 
-fn focus_main_window(app: &AppHandle<Wry>) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
+pub const MAIN_WINDOW_LABEL: &str = "main";
+
+pub fn attach_main_window_events(window: &WebviewWindow<Wry>) {
+    let handle = window.clone();
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+            api.prevent_close();
+            let _ = handle.hide();
+        }
+    });
+}
+
+fn main_window(app: &AppHandle<Wry>) -> Option<WebviewWindow<Wry>> {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        return Some(window);
+    }
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == MAIN_WINDOW_LABEL)?
+        .clone();
+    match WebviewWindowBuilder::from_config(app, &config).and_then(|b| b.build()) {
+        Ok(window) => {
+            attach_main_window_events(&window);
+            Some(window)
+        }
+        Err(err) => {
+            tracing::warn!("failed to recreate main window: {err}");
+            None
+        }
+    }
+}
+
+pub fn focus_main_window(app: &AppHandle<Wry>) {
+    let app_for_main = app.clone();
+    let shown = app.run_on_main_thread(move || {
+        let Some(window) = main_window(&app_for_main) else {
+            return;
+        };
         let _ = window.unminimize();
+        let _ = window.show();
 
         #[cfg(target_os = "windows")]
         {
@@ -33,6 +73,9 @@ fn focus_main_window(app: &AppHandle<Wry>) {
                 let _ = window_handle.set_always_on_top(false);
             });
         }
+    });
+    if let Err(err) = shown {
+        tracing::warn!("failed to show main window: {err}");
     }
 }
 

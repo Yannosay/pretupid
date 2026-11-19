@@ -30,11 +30,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+            tray::focus_main_window(app);
         }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
@@ -66,6 +62,10 @@ pub fn run() {
             app.manage(state);
 
             let handle = app.handle().clone();
+
+            if let Some(main) = app.get_webview_window(tray::MAIN_WINDOW_LABEL) {
+                tray::attach_main_window_events(&main);
+            }
 
             if let Err(err) = tray::create_panel_window(&handle) {
                 tracing::warn!("failed to create tray panel window: {err}");
@@ -168,8 +168,16 @@ pub fn run() {
             commands::tray::request_launch_from_tray,
             commands::tray::quit_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Pretupid Launcher");
+        .build(tauri::generate_context!())
+        .expect("error while building Pretupid Launcher")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                tray::focus_main_window(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }
 
 fn get_base_dir() -> std::path::PathBuf {

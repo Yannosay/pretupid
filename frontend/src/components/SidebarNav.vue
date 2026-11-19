@@ -25,7 +25,9 @@
       :to="{ name: 'instance-detail', params: { id: playing.id } }"
       class="sidebar__now"
     >
-      <span class="sidebar__now-dot" />
+      <svg class="sidebar__now-gem" viewBox="0 0 7 8" width="14" height="16" aria-hidden="true" shape-rendering="crispEdges">
+        <rect v-for="(px, i) in emeraldPixels" :key="i" :x="px.x" :y="px.y" width="1" height="1" :class="`sidebar__gem-${px.tone}`" />
+      </svg>
       <span class="sidebar__now-text">
         <span class="sidebar__now-label">Now playing</span>
         <span class="sidebar__now-name">{{ playing.name }}</span>
@@ -108,6 +110,21 @@ const playing = computed(() => {
   }
   return null
 })
+
+const EMERALD = [
+  '..ddd..',
+  '.dmlmd.',
+  'dmlwlmd',
+  'dmmlmmd',
+  'dmmmmsd',
+  '.dmmsd.',
+  '..dsd..',
+  '...d...'
+]
+const TONES: Record<string, string> = { d: 'dark', m: 'mid', l: 'light', w: 'glint', s: 'shade' }
+const emeraldPixels = EMERALD.flatMap((row, y) =>
+  [...row].flatMap((c, x) => (TONES[c] ? [{ x, y, tone: TONES[c] }] : []))
+)
 
 const quickInstance = computed(() => {
   if (!authStore.authenticated) return null
@@ -233,18 +250,40 @@ async function handleLogout() {
 .sidebar__now {
   color: inherit;
   text-decoration: none;
-  background-color: color-mix(in srgb, var(--success) 10%, transparent);
-  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  transition: border-color var(--transition-fast);
+
+  &:hover {
+    border-color: var(--accent);
+  }
 }
 
-.sidebar__now-dot {
-  width: 8px;
-  height: 8px;
-  margin-left: 0.25rem;
+.sidebar__now-gem {
   flex-shrink: 0;
-  border-radius: 50%;
-  background-color: var(--success);
-  animation: sidebar-pulse 1.4s ease-in-out infinite;
+  margin: 0 0.15rem 0 0.25rem;
+  image-rendering: pixelated;
+  filter: drop-shadow(1px 1px 0 rgb(0 0 0 / 0.45));
+  animation: sidebar-gem-bob 1.6s steps(1, end) infinite;
+}
+
+.sidebar__gem-dark {
+  fill: #0a5c2b;
+}
+
+.sidebar__gem-mid {
+  fill: #17b04f;
+}
+
+.sidebar__gem-shade {
+  fill: #11893d;
+}
+
+.sidebar__gem-light {
+  fill: #5ee38a;
+}
+
+.sidebar__gem-glint {
+  fill: #e6ffee;
+  animation: sidebar-gem-glint 1.6s steps(1, end) infinite;
 }
 
 .sidebar__now-text,
@@ -263,7 +302,11 @@ async function handleLogout() {
 }
 
 .sidebar__now-label {
-  color: var(--success);
+  font-family: var(--font-pixel);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: var(--text-secondary);
 }
 
 .sidebar__now-name,
@@ -361,9 +404,34 @@ async function handleLogout() {
   justify-content: flex-start;
 }
 
-@keyframes sidebar-pulse {
+@keyframes sidebar-gem-bob {
+  0% {
+    transform: translateY(0);
+  }
+
   50% {
-    opacity: 0.35;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes sidebar-gem-glint {
+  0% {
+    fill: #e6ffee;
+  }
+
+  25% {
+    fill: #5ee38a;
+  }
+
+  75% {
+    fill: #e6ffee;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar__now-gem,
+  .sidebar__gem-glint {
+    animation: none;
   }
 }
 </style>

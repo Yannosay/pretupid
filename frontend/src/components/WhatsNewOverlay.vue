@@ -13,21 +13,14 @@
         <div class="whats-new__body">
           <p v-if="formattedDate" class="whats-new__meta">Released {{ formattedDate }}</p>
 
-          <div v-if="parsedNotes.length > 0" class="whats-new__notes">
-            <section v-for="(section, i) in parsedNotes" :key="i" class="whats-new__section">
-              <h3 v-if="section.title" class="whats-new__section-title">{{ section.title }}</h3>
-              <ul class="whats-new__list">
-                <li v-for="(item, j) in section.items" :key="j">{{ item }}</li>
-              </ul>
-            </section>
-          </div>
+          <div v-if="notesHtml" class="whats-new__markdown" @click="onNotesClick" v-html="notesHtml" />
 
           <p v-else class="whats-new__empty">
             This release contains performance and stability improvements. See the full release notes
             on GitHub for details.
           </p>
 
-          <a :href="release.htmlUrl" target="_blank" rel="noopener noreferrer" class="whats-new__link">
+          <a :href="release.htmlUrl" class="whats-new__link" @click.prevent="openLink(release.htmlUrl)">
             View full release on GitHub
           </a>
         </div>
@@ -42,14 +35,11 @@
 
 <script setup lang="ts">
 import { vBackdropClose } from '@ui/backdropClose'
+import { renderMarkdown } from '@ui/markdown'
 import { computed, onMounted, ref } from 'vue'
+import { openExternalLink } from '@/api'
 import { useUpdaterStore, type PendingReleaseNotes } from '@/stores/updater'
 import { REPOSITORY_URL } from '@/config'
-
-interface NotesSection {
-  title: string
-  items: string[]
-}
 
 const updater = useUpdaterStore()
 const visible = ref(false)
@@ -64,58 +54,52 @@ const displayVersion = computed(() => release.value.version.replace(/^v/, ''))
 
 const formattedDate = computed(() => {
   if (!release.value.publishedAt) return ''
-  try {
-    const date = new Date(release.value.publishedAt)
-    if (Number.isNaN(date.getTime())) return ''
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  } catch {
-    return ''
-  }
+  const date = new Date(release.value.publishedAt)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
 })
 
-const parsedNotes = computed<NotesSection[]>(() => {
+const IN_APP_SKIPPED_SECTIONS = /^(downloads?|install(ation)?|assets)$/i
+
+function stripSkippedSections(body: string): string {
+  const kept: string[] = []
+  let skipping = 0
+  for (const line of body.replace(/\r\n?/g, '\n').split('\n')) {
+    const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line.trim())
+    if (heading) {
+      const level = heading[1].length
+      if (skipping && level <= skipping) skipping = 0
+      if (!skipping && IN_APP_SKIPPED_SECTIONS.test(heading[2].replace(/[*_`]/g, '').trim())) {
+        skipping = level
+        continue
+      }
+    }
+    if (!skipping) kept.push(line)
+  }
+  return kept.join('\n').trim()
+}
+
+function normalizeHeadings(body: string): string {
+  return body.replace(/^(\s*)#{4,6}(\s+)/gm, '$1###$2')
+}
+
+const notesHtml = computed(() => {
   const body = release.value.body
-  if (!body || body.trim().length === 0) return []
-
-  const sections: NotesSection[] = []
-  let current: NotesSection | null = null
-
-  for (const rawLine of body.split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (line.length === 0) continue
-
-    if (line.startsWith('#')) {
-      const title = line.replace(/^#+\s*/, '').trim()
-      if (title.length > 0) {
-        current = { title, items: [] }
-        sections.push(current)
-      }
-      continue
-    }
-
-    if (line.startsWith('- ') || line.startsWith('* ')) {
-      const item = line.slice(2).trim()
-      if (item.length === 0) continue
-      if (!current) {
-        current = { title: '', items: [] }
-        sections.push(current)
-      }
-      current.items.push(item)
-      continue
-    }
-
-    if (current && current.items.length > 0 && !line.startsWith('http')) {
-      const lastIndex = current.items.length - 1
-      current.items[lastIndex] = `${current.items[lastIndex]} ${line}`.trim()
-    }
-  }
-
-  return sections.filter((section) => section.items.length > 0)
+  if (!body || body.trim().length === 0) return ''
+  const cleaned = normalizeHeadings(stripSkippedSections(body))
+  return cleaned ? renderMarkdown(cleaned) : ''
 })
+
+function openLink(url: string) {
+  openExternalLink(url).catch(() => window.open(url, '_blank', 'noopener'))
+}
+
+function onNotesClick(event: MouseEvent) {
+  const anchor = (event.target as HTMLElement | null)?.closest('a')
+  if (!anchor) return
+  event.preventDefault()
+  if (anchor.href) openLink(anchor.href)
+}
 
 function dismiss() {
   visible.value = false
@@ -210,45 +194,112 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-.whats-new__notes {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.whats-new__section-title {
-  font-family: var(--font-pixel);
-  font-size: 0.85rem;
-  color: var(--accent);
-  margin: 0 0 0.5rem;
-}
-
-.whats-new__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.whats-new__list li {
-  position: relative;
-  padding-left: 1.25rem;
+.whats-new__markdown {
   font-size: 1rem;
-  line-height: 1.45;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
   color: var(--text-primary);
-}
+  user-select: text;
 
-.whats-new__list li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0.55rem;
-  width: 8px;
-  height: 8px;
-  background-color: var(--accent);
-  border-radius: var(--edge-radius);
+  :deep(h2),
+  :deep(h3),
+  :deep(h4) {
+    margin: 1.25rem 0 0.5rem;
+    font-family: var(--font-pixel);
+    line-height: 1.3;
+    color: var(--accent);
+  }
+
+  :deep(h2) {
+    font-size: 0.95rem;
+  }
+
+  :deep(h3),
+  :deep(h4) {
+    font-size: 0.85rem;
+  }
+
+  :deep(> :first-child) {
+    margin-top: 0;
+  }
+
+  :deep(> :last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(p),
+  :deep(ul),
+  :deep(ol),
+  :deep(blockquote),
+  :deep(pre) {
+    margin: 0 0 0.9rem;
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 1.3rem;
+  }
+
+  :deep(ul) {
+    list-style: square;
+  }
+
+  :deep(ol) {
+    list-style: decimal;
+  }
+
+  :deep(li) {
+    margin-bottom: 0.35rem;
+  }
+
+  :deep(li::marker) {
+    color: var(--accent);
+  }
+
+  :deep(strong) {
+    font-weight: 700;
+  }
+
+  :deep(a) {
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  :deep(code) {
+    padding: 0.1rem 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+    background-color: var(--well-bg);
+  }
+
+  :deep(pre) {
+    padding: 0.75rem 1rem;
+    overflow-x: auto;
+    background-color: var(--well-bg);
+    border: 1px solid var(--border-color);
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  :deep(blockquote) {
+    padding: 0.5rem 0.9rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-tertiary);
+    border-left: 3px solid var(--accent);
+  }
+
+  :deep(hr) {
+    margin: 1rem 0;
+    border: none;
+    border-top: 1px solid var(--border-color);
+  }
+
+  :deep(img) {
+    max-width: 100%;
+  }
 }
 
 .whats-new__empty {

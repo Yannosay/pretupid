@@ -4,26 +4,7 @@ use url::Url;
 use crate::state::AppState;
 
 pub fn focus_main_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-
-        #[cfg(target_os = "windows")]
-        {
-            let _ = window.set_always_on_top(true);
-        }
-
-        let _ = window.set_focus();
-
-        #[cfg(target_os = "windows")]
-        {
-            let handle = window.clone();
-            tauri::async_runtime::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(120)).await;
-                let _ = handle.set_always_on_top(false);
-            });
-        }
-    }
+    crate::tray::focus_main_window(app);
 }
 
 pub fn handle_url(app: &AppHandle, raw: &str) {
