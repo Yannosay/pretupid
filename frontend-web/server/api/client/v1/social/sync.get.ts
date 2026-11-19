@@ -5,6 +5,7 @@ interface FriendRow {
   online: number
   server_address: string | null
   share_server: number
+  minecraft_version: string | null
   created_at: number
 }
 
@@ -30,7 +31,7 @@ export default defineEventHandler(async (event) => {
   const [friends, incoming, outgoing, messages, unread, blocked] = await database.batch([
     database
       .prepare(
-        `SELECT p.uuid, p.name, p.last_seen, p.online, p.server_address, p.share_server, f.created_at
+        `SELECT p.uuid, p.name, p.last_seen, p.online, p.server_address, p.share_server, p.minecraft_version, f.created_at
          FROM friendships f JOIN players p ON p.uuid = f.friend WHERE f.uuid = ? ORDER BY p.name_lower`
       )
       .bind(player.uuid),
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
         online,
         lastSeen: row.last_seen,
         server: online && row.share_server ? row.server_address : null,
+        minecraft: online ? row.minecraft_version : null,
         since: row.created_at,
         unread: unreadBy.get(row.uuid) ?? 0
       }

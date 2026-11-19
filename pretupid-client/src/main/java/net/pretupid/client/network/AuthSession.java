@@ -1,8 +1,8 @@
 package net.pretupid.client.network;
 
+import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.properties.Property;
-import com.mojang.authlib.services.ProfileResult;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
@@ -184,11 +184,7 @@ public final class AuthSession {
 	}
 
 	private static Property signedTextures(Minecraft minecraft, UUID uuid) {
-		ProfileResult result = minecraft.services().sessionService().fetchProfile(uuid, true);
-		if (result == null) {
-			throw new IllegalStateException("Profile lookup failed");
-		}
-		return result.profile().properties().get("textures").stream()
+		return Platform.profileProperties(minecraft, uuid, "textures").stream()
 			.filter(Property::hasSignature)
 			.findFirst()
 			.orElseThrow(() -> new IllegalStateException("Profile has no signed textures"));

@@ -1,5 +1,6 @@
 package net.pretupid.client.module.visual;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.phys.EntityHitResult;
@@ -117,7 +118,7 @@ public final class CrosshairModule extends Module {
 		if (!minecraft.player.onGround()) {
 			target = Math.max(target, 2.5f);
 		}
-		if (minecraft.player.isSwinging()) {
+		if (Platform.swinging(minecraft.player)) {
 			target = Math.max(target, 3f);
 		}
 		spread += (target - spread) * 0.35f;

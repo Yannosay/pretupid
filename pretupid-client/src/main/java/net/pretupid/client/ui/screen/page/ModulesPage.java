@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen.page;
 
+import net.pretupid.client.platform.Platform;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.input.KeyEvent;
@@ -241,7 +242,7 @@ public final class ModulesPage implements MenuPage {
 		float appear = ui.animateFrom("settings.appear." + settingsOpenedAt, 0f, 1f, 12f);
 		if (crosshair) {
 			Widgets.button(ui, "settings.crosshair_designer", x + 4, rowY + 2, 150, 18, Component.translatable("pretupid.crosshair.open_designer"), Widgets.ButtonStyle.PRIMARY,
-				() -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(new net.pretupid.client.ui.screen.CrosshairDesignerScreen(screen)));
+				() -> Platform.setScreen(new net.pretupid.client.ui.screen.CrosshairDesignerScreen(screen)));
 			rowY += 24;
 		}
 		int index = 0;

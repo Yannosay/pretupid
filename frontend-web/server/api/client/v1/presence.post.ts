@@ -1,3 +1,5 @@
+const MINECRAFT_VERSION = /^[0-9][0-9a-z.\-]{0,15}$/
+
 export default defineEventHandler(async (event) => {
   noStore(event)
   const player = await requirePlayer(event)
@@ -9,6 +11,7 @@ export default defineEventHandler(async (event) => {
     shareServer: unknown
     allowRequests: unknown
     server: unknown
+    minecraft: unknown
   }>(event)
   const style = sanitizeStyle(body.style)
   const equipped = sanitizeEquipped(body.equipped)
@@ -16,11 +19,12 @@ export default defineEventHandler(async (event) => {
   const shareServer = body.shareServer === true
   const allowRequests = body.allowRequests !== false
   const server = shareServer ? cleanServerAddress(body.server) : null
+  const minecraft = typeof body.minecraft === 'string' && MINECRAFT_VERSION.test(body.minecraft) ? body.minecraft : null
   const now = nowSeconds()
   await db(event)
     .prepare(
       `UPDATE players SET name = ?2, name_lower = ?3, last_seen = ?4, online = 1, client_version = ?5, style = ?6, equipped = ?7,
-       server_address = ?8, share_server = ?9, allow_requests = ?10 WHERE uuid = ?1`
+       server_address = ?8, share_server = ?9, allow_requests = ?10, minecraft_version = ?11 WHERE uuid = ?1`
     )
     .bind(
       player.uuid,
@@ -32,7 +36,8 @@ export default defineEventHandler(async (event) => {
       JSON.stringify(equipped),
       server,
       shareServer ? 1 : 0,
-      allowRequests ? 1 : 0
+      allowRequests ? 1 : 0,
+      minecraft
     )
     .run()
   const [online, catalog] = await Promise.all([

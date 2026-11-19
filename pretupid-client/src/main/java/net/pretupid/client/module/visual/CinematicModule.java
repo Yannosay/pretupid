@@ -1,5 +1,6 @@
 package net.pretupid.client.module.visual;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
@@ -50,7 +51,7 @@ public final class CinematicModule extends Module {
 			notify(isPaused() ? pauseReason() : Component.translatable("pretupid.cinematic.turn_on"), isPaused());
 			return;
 		}
-		minecraft.gui.setScreen(new CinematicEditorScreen());
+		Platform.setScreen(new CinematicEditorScreen());
 	}
 
 	public void addKeyframe(Minecraft minecraft) {

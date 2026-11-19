@@ -1,5 +1,6 @@
 package net.pretupid.client.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
@@ -15,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlayerTabOverlay.class)
 public abstract class PlayerTabOverlayMixin {
 	@Inject(method = "extractPingIcon", at = @At("HEAD"), cancellable = true)
-	private void pretupid$numericPing(GuiGraphicsExtractor graphics, int width, int x, int y, PlayerInfo info, CallbackInfo ci) {
+	private void pretupid$numericPing(CallbackInfo ci, @Local(argsOnly = true) GuiGraphicsExtractor graphics, @Local(argsOnly = true, ordinal = 0) int width,
+		@Local(argsOnly = true, ordinal = 1) int x, @Local(argsOnly = true, ordinal = 2) int y, @Local(argsOnly = true) PlayerInfo info) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;
@@ -28,7 +30,7 @@ public abstract class PlayerTabOverlayMixin {
 	}
 
 	@Inject(method = "getNameForDisplay", at = @At("RETURN"), cancellable = true)
-	private void pretupid$badgeTabName(PlayerInfo info, CallbackInfoReturnable<Component> cir) {
+	private void pretupid$badgeTabName(CallbackInfoReturnable<Component> cir, @Local(argsOnly = true) PlayerInfo info) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;

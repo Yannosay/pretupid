@@ -80,7 +80,7 @@ public abstract class ChatComponentMixin implements ChatEmojis.ChatAccess {
 	}
 
 	@Inject(method = "addMessage", at = @At("TAIL"))
-	private void pretupid$rememberLatest(Component message, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag, CallbackInfo ci) {
+	private void pretupid$rememberLatest(CallbackInfo ci) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;

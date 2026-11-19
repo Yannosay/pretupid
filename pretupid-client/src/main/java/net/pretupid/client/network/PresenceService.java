@@ -156,6 +156,7 @@ public final class PresenceService {
 		}
 		body.add("equipped", equipped);
 		body.addProperty("clientVersion", PretupidInfo.shortVersion());
+		body.addProperty("minecraft", PretupidInfo.minecraftVersion());
 		body.addProperty("allowRequests", settings.allowFriendRequests.enabled());
 		body.addProperty("shareServer", settings.shareServerWithFriends.enabled() && server != null);
 		if (settings.shareServerWithFriends.enabled() && server != null) {

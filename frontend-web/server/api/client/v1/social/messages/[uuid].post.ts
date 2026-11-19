@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Friend not found' })
   }
   await rateLimit(event, `message:${player.uuid}`, 30, 60)
-  const body = await readJson<{ kind: unknown; text: unknown; address: unknown; label: unknown; lan: unknown }>(event)
+  const body = await readJson<{ kind: unknown; text: unknown; address: unknown; label: unknown; lan: unknown; minecraft: unknown }>(event)
   let kind: 'text' | 'invite' = 'text'
   let stored: string
   if (body.kind === 'invite') {
@@ -18,7 +18,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'Invalid server address' })
     }
     kind = 'invite'
-    stored = JSON.stringify({ address, label: cleanSingleLine(body.label, 48), lan: body.lan === true })
+    const minecraft = typeof body.minecraft === 'string' && /^[0-9][0-9a-z.\-]{0,15}$/.test(body.minecraft) ? body.minecraft : undefined
+    stored = JSON.stringify({ address, label: cleanSingleLine(body.label, 48), lan: body.lan === true, minecraft })
   } else {
     stored = cleanText(body.text, MAX_MESSAGE_LENGTH).replace(/\n{3,}/g, '\n\n')
     if (!stored) {

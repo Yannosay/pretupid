@@ -1,5 +1,7 @@
 package net.pretupid.client.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
+import net.pretupid.client.platform.Platform;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -26,9 +28,9 @@ public abstract class MouseHandlerMixin {
 	private Minecraft minecraft;
 
 	@Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
-	private void pretupid$zoomScroll(long window, double scrollX, double scrollY, CallbackInfo ci) {
+	private void pretupid$zoomScroll(CallbackInfo ci, @Local(argsOnly = true, ordinal = 1) double scrollY) {
 		PretupidClient client = PretupidClient.getOrNull();
-		if (client == null || minecraft.gui.screen() != null) {
+		if (client == null || Platform.screen() != null) {
 			return;
 		}
 		if (client.modules().get(ZoomModule.class).handleScroll(scrollY)) {
@@ -37,9 +39,9 @@ public abstract class MouseHandlerMixin {
 	}
 
 	@Inject(method = "onButton", at = @At("HEAD"))
-	private void pretupid$trackClicks(long window, MouseButtonInfo info, int action, CallbackInfo ci) {
+	private void pretupid$trackClicks(CallbackInfo ci, @Local(argsOnly = true) MouseButtonInfo info, @Local(argsOnly = true) int action) {
 		PretupidClient client = PretupidClient.getOrNull();
-		if (client == null || action != InputConstants.PRESS || minecraft.gui.screen() != null) {
+		if (client == null || action != InputConstants.PRESS || Platform.screen() != null) {
 			return;
 		}
 		if (info.button() == InputConstants.MOUSE_BUTTON_LEFT) {

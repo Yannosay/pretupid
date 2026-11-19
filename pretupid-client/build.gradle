@@ -1,123 +1,18 @@
-import java.awt.RenderingHints
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
-
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
-version = "${project.mod_version}+mc${project.minecraft_version}"
-group = project.maven_group
-
-base {
-	archivesName = project.archives_base_name
-}
-
-repositories {
-	exclusiveContent {
-		forRepository {
-			maven {
-				name = "Modrinth"
-				url = "https://api.modrinth.com/maven"
-			}
-		}
-		filter {
-			includeGroup "maven.modrinth"
-		}
-	}
-}
+ext.targetId = providers.gradleProperty("target").getOrElse(property("default_target"))
+apply from: "gradle/target.gradle"
 
 dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-	localRuntime "maven.modrinth:sodium:${project.sodium_version}"
-	localRuntime "maven.modrinth:immediatelyfast:${project.immediatelyfast_version}"
-	localRuntime "maven.modrinth:entityculling:${project.entityculling_version}"
-}
-
-abstract class GenerateBranding extends DefaultTask {
-	@InputFile
-	abstract RegularFileProperty getLogo()
-
-	@OutputDirectory
-	abstract DirectoryProperty getOutputDirectory()
-
-	@TaskAction
-	void generate() {
-		BufferedImage source = ImageIO.read(logo.get().asFile)
-		if (source == null) {
-			throw new GradleException("Unreadable logo: ${logo.get().asFile}")
-		}
-		File root = outputDirectory.get().asFile
-		root.deleteDir()
-		BufferedImage mark = trim(source)
-		write(mark, 128, new File(root, "assets/pretupid/icon.png"))
-		write(mark, 64, new File(root, "assets/pretupid/textures/gui/logo.png"))
-		for (int size : [16, 24, 32, 48, 64, 96, 128, 192, 256]) {
-			File target = new File(root, "assets/pretupid/textures/gui/logo/${size}.png")
-			write(mark, size, target)
-			new File(target.parentFile, "${size}.png.mcmeta").text = '{"texture":{"blur":true,"clamp":true}}'
-		}
-		write(mark, 32, new File(root, "assets/pretupid/textures/font/badge.png"))
-	}
-
-	private static BufferedImage trim(BufferedImage source) {
-		int minX = source.width, minY = source.height, maxX = -1, maxY = -1
-		for (int y = 0; y < source.height; y++) {
-			for (int x = 0; x < source.width; x++) {
-				if (((source.getRGB(x, y) >>> 24) & 0xFF) > 0) {
-					minX = Math.min(minX, x)
-					minY = Math.min(minY, y)
-					maxX = Math.max(maxX, x)
-					maxY = Math.max(maxY, y)
-				}
-			}
-		}
-		if (maxX < 0) {
-			throw new GradleException("Logo is fully transparent")
-		}
-		int side = Math.max(maxX - minX + 1, maxY - minY + 1)
-		BufferedImage square = new BufferedImage(side, side, BufferedImage.TYPE_INT_ARGB)
-		def graphics = square.createGraphics()
-		graphics.drawImage(source.getSubimage(minX, minY, maxX - minX + 1, maxY - minY + 1),
-			(int) ((side - (maxX - minX + 1)) / 2), (int) ((side - (maxY - minY + 1)) / 2), null)
-		graphics.dispose()
-		return square
-	}
-
-	private static void write(BufferedImage source, int size, File target) {
-		BufferedImage current = source
-		while (current.width / 2 >= size) {
-			current = resize(current, (int) (current.width / 2))
-		}
-		if (current.width != size) {
-			current = resize(current, size)
-		}
-		target.parentFile.mkdirs()
-		ImageIO.write(current, "png", target)
-	}
-
-	private static BufferedImage resize(BufferedImage source, int size) {
-		BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
-		def graphics = scaled.createGraphics()
-		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-		graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-		graphics.drawImage(source, 0, 0, size, size, null)
-		graphics.dispose()
-		return scaled
+	if (targetId == property("default_target")) {
+		localRuntime "maven.modrinth:sodium:${project.sodium_version}"
+		localRuntime "maven.modrinth:immediatelyfast:${project.immediatelyfast_version}"
+		localRuntime "maven.modrinth:entityculling:${project.entityculling_version}"
 	}
 }
-
-def generateBranding = tasks.register("generateBranding", GenerateBranding) {
-	logo = rootProject.layout.projectDirectory.file("../assets/branding/pretupid_logo_512x.png")
-	outputDirectory = layout.buildDirectory.dir("generated/branding")
-}
-
-sourceSets.main.resources.srcDir(generateBranding)
 
 fabricApi {
 	configureTests {
@@ -129,29 +24,53 @@ fabricApi {
 	}
 }
 
-processResources {
-	def props = [
-		version          : project.version,
-		minecraft_version: project.minecraft_version,
-		loader_version   : project.loader_version
-	]
-	inputs.properties props
+def otherTargets = file("targets").listFiles().findAll { it.isDirectory() && it.name != targetId }.collect { it.name }
 
-	filesMatching("fabric.mod.json") {
-		expand props
+subprojects {
+	def descriptor = new Properties()
+	file("target.properties").withInputStream { descriptor.load(it) }
+	apply plugin: descriptor.loom == "remap" ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
+	ext.targetId = name
+	apply from: rootProject.file("gradle/target.gradle")
+}
+
+def buildAllVersions = tasks.register("buildAllVersions") {
+	group = "build"
+	description = "Builds Pretupid Client for every Minecraft version in targets/ and collects the jars and their manifest in build/all-versions."
+	dependsOn "assemble"
+	otherTargets.each { dependsOn ":${it}:assemble" }
+	def output = layout.buildDirectory.dir("all-versions")
+	def modVersion = property("mod_version")
+	def ids = [targetId] + otherTargets
+	def jars = ids.collect { id -> id == targetId ? layout.buildDirectory.dir("libs") : layout.projectDirectory.dir("targets/${id}/build/libs") }
+	def minecraftVersions = ids.collect { id ->
+		def descriptor = new Properties()
+		file("targets/${id}/target.properties").withInputStream { descriptor.load(it) }
+		descriptor.minecraft_version
 	}
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
-	it.options.encoding = "UTF-8"
-	it.options.compilerArgs.addAll(["-Xlint:deprecation", "-Xlint:unchecked"])
-}
-
-java {
-	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
+	def primaryMinecraft = targetProperties.minecraft_version
+	inputs.files(jars)
+	outputs.dir(output)
+	doLast {
+		def out = output.get().asFile
+		out.deleteDir()
+		out.mkdirs()
+		def builds = []
+		jars.eachWithIndex { dir, index ->
+			def minecraft = minecraftVersions[index]
+			def jar = dir.get().asFile.listFiles().find { it.name.endsWith("+mc${minecraft}.jar") }
+			if (jar == null) {
+				throw new GradleException("No jar for Minecraft ${minecraft}")
+			}
+			def copy = new File(out, jar.name)
+			copy.bytes = jar.bytes
+			def digest = { String algorithm -> java.security.MessageDigest.getInstance(algorithm).digest(copy.bytes).encodeHex().toString() }
+			builds << [minecraft: minecraft, file: copy.name, sha256: digest("SHA-256"), sha1: digest("SHA-1"), sha512: digest("SHA-512"), size: copy.length()]
+		}
+		def newest = builds.find { it.minecraft == primaryMinecraft } ?: builds[0]
+		def manifest = [version: modVersion, minecraft: newest.minecraft, file: newest.file, sha256: newest.sha256, sha1: newest.sha1, sha512: newest.sha512, size: newest.size, builds: builds]
+		new File(out, "client-manifest.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(manifest))
+	}
 }
 
 publishing {

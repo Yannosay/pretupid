@@ -1,8 +1,9 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.Hud;
+import net.minecraft.client.gui.Gui;
 import net.pretupid.client.PretupidClient;
 import net.minecraft.client.Minecraft;
 import net.pretupid.client.module.visual.CinematicModule;
@@ -12,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Hud.class)
+@Mixin(Gui.class)
 public abstract class HudMixin {
 	@Inject(method = "extractRenderState", at = @At("HEAD"), cancellable = true)
 	private void pretupid$cinematicHud(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, CallbackInfo ci) {
@@ -21,7 +22,7 @@ public abstract class HudMixin {
 			return;
 		}
 		CinematicModule cinematic = client.modules().get(CinematicModule.class);
-		boolean editing = Minecraft.getInstance().gui.screen() instanceof CinematicEditorScreen;
+		boolean editing = Platform.screen() instanceof CinematicEditorScreen;
 		if (editing || cinematic.isEnabled() && cinematic.hidesHud() && client.cinematic().playing()) {
 			ci.cancel();
 		}

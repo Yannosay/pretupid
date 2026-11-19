@@ -1,5 +1,6 @@
 package net.pretupid.client.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.Camera;
 import net.minecraft.world.phys.Vec3;
 import net.pretupid.client.cinematic.Shot;
@@ -34,7 +35,7 @@ public abstract class CameraMixin {
 	protected abstract void setRotation(float yaw, float pitch);
 
 	@Inject(method = "alignWithEntity", at = @At("TAIL"))
-	private void pretupid$freecam(float partialTick, CallbackInfo ci) {
+	private void pretupid$freecam(CallbackInfo ci, @Local(argsOnly = true) float partialTick) {
 		Shot.View shot = pretupid$shot();
 		if (shot != null) {
 			setRotation(shot.yaw(), shot.pitch());
@@ -100,7 +101,7 @@ public abstract class CameraMixin {
 	}
 
 	@Inject(method = "calculateFov", at = @At("RETURN"), cancellable = true)
-	private void pretupid$applyZoom(float partialTick, CallbackInfoReturnable<Float> cir) {
+	private void pretupid$applyZoom(CallbackInfoReturnable<Float> cir) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;

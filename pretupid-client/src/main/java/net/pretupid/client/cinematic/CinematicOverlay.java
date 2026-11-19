@@ -1,5 +1,6 @@
 package net.pretupid.client.cinematic;
 
+import net.pretupid.client.platform.Platform;
 import java.util.List;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -28,7 +29,7 @@ public final class CinematicOverlay {
 			return;
 		}
 		Minecraft minecraft = Minecraft.getInstance();
-		Camera camera = minecraft.gameRenderer.mainCamera();
+		Camera camera = Platform.camera();
 		if (camera == null || !camera.isInitialized()) {
 			return;
 		}

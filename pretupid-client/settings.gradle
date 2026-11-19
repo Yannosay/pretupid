@@ -10,3 +10,11 @@ pluginManagement {
 }
 
 rootProject.name = 'pretupid-client'
+
+def defaults = new Properties()
+file("gradle.properties").withInputStream { defaults.load(it) }
+def primary = startParameter.projectProperties.get("target") ?: defaults.getProperty("default_target")
+file("targets").listFiles().findAll { it.isDirectory() && it.name != primary }.each { dir ->
+	include(dir.name)
+	project(":${dir.name}").projectDir = dir
+}

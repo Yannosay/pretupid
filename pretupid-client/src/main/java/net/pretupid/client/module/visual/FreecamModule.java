@@ -1,5 +1,6 @@
 package net.pretupid.client.module.visual;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -124,7 +125,7 @@ public final class FreecamModule extends Module {
 			return;
 		}
 		previousPosition = position;
-		Input input = minecraft.gui.screen() == null ? heldInput : Input.EMPTY;
+		Input input = Platform.screen() == null ? heldInput : Input.EMPTY;
 		float forward = (input.forward() ? 1f : 0f) - (input.backward() ? 1f : 0f);
 		float strafe = (input.left() ? 1f : 0f) - (input.right() ? 1f : 0f);
 		float vertical = (input.jump() ? 1f : 0f) - (input.shift() ? 1f : 0f);

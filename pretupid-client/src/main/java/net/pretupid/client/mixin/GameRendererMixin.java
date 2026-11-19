@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
 	@Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
-	private void pretupid$disableHurtCam(CameraRenderState camera, PoseStack poseStack, CallbackInfo ci) {
+	private void pretupid$disableHurtCam(CallbackInfo ci) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client != null && client.modules().get(NoHurtCamModule.class).isEnabled()) {
 			ci.cancel();

@@ -1,0 +1,164 @@
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def targetDir = rootProject.file("targets/${project.ext.targetId}")
+def target = new Properties()
+new File(targetDir, "target.properties").withInputStream { target.load(it) }
+project.ext.targetProperties = target
+
+def clientRoot = rootProject.projectDir
+def bridgeDir = new File(clientRoot, "bridges/${target.bridge}")
+def javaVersion = Integer.parseInt(target.java_version)
+
+version = "${rootProject.property('mod_version')}+mc${target.minecraft_version}"
+group = rootProject.property('maven_group')
+
+base {
+	archivesName = rootProject.property('archives_base_name')
+}
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = "Modrinth"
+				url = "https://api.modrinth.com/maven"
+			}
+		}
+		filter {
+			includeGroup "maven.modrinth"
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${target.minecraft_version}"
+	if (target.loom == "remap") {
+		mappings loom.officialMojangMappings()
+		modImplementation "net.fabricmc:fabric-loader:${rootProject.property('loader_version')}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${target.fabric_api_version}"
+	} else {
+		implementation "net.fabricmc:fabric-loader:${rootProject.property('loader_version')}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${target.fabric_api_version}"
+	}
+}
+
+sourceSets {
+	main {
+		java {
+			srcDirs = [new File(clientRoot, "src/main/java"), new File(bridgeDir, "java")]
+		}
+		resources {
+			srcDirs = [new File(clientRoot, "src/main/resources"), new File(bridgeDir, "resources")]
+		}
+	}
+}
+
+abstract class GenerateBranding extends DefaultTask {
+	@InputFile
+	abstract RegularFileProperty getLogo()
+
+	@OutputDirectory
+	abstract DirectoryProperty getOutputDirectory()
+
+	@TaskAction
+	void generate() {
+		BufferedImage source = ImageIO.read(logo.get().asFile)
+		if (source == null) {
+			throw new GradleException("Unreadable logo: ${logo.get().asFile}")
+		}
+		File root = outputDirectory.get().asFile
+		root.deleteDir()
+		BufferedImage mark = trim(source)
+		write(mark, 128, new File(root, "assets/pretupid/icon.png"))
+		write(mark, 64, new File(root, "assets/pretupid/textures/gui/logo.png"))
+		for (int size : [16, 24, 32, 48, 64, 96, 128, 192, 256]) {
+			File target = new File(root, "assets/pretupid/textures/gui/logo/${size}.png")
+			write(mark, size, target)
+			new File(target.parentFile, "${size}.png.mcmeta").text = '{"texture":{"blur":true,"clamp":true}}'
+		}
+		write(mark, 32, new File(root, "assets/pretupid/textures/font/badge.png"))
+	}
+
+	private static BufferedImage trim(BufferedImage source) {
+		int minX = source.width, minY = source.height, maxX = -1, maxY = -1
+		for (int y = 0; y < source.height; y++) {
+			for (int x = 0; x < source.width; x++) {
+				if (((source.getRGB(x, y) >>> 24) & 0xFF) > 0) {
+					minX = Math.min(minX, x)
+					minY = Math.min(minY, y)
+					maxX = Math.max(maxX, x)
+					maxY = Math.max(maxY, y)
+				}
+			}
+		}
+		if (maxX < 0) {
+			throw new GradleException("Logo is fully transparent")
+		}
+		int side = Math.max(maxX - minX + 1, maxY - minY + 1)
+		BufferedImage square = new BufferedImage(side, side, BufferedImage.TYPE_INT_ARGB)
+		def graphics = square.createGraphics()
+		graphics.drawImage(source.getSubimage(minX, minY, maxX - minX + 1, maxY - minY + 1),
+			(int) ((side - (maxX - minX + 1)) / 2), (int) ((side - (maxY - minY + 1)) / 2), null)
+		graphics.dispose()
+		return square
+	}
+
+	private static void write(BufferedImage source, int size, File target) {
+		BufferedImage current = source
+		while (current.width / 2 >= size) {
+			current = resize(current, (int) (current.width / 2))
+		}
+		if (current.width != size) {
+			current = resize(current, size)
+		}
+		target.parentFile.mkdirs()
+		ImageIO.write(current, "png", target)
+	}
+
+	private static BufferedImage resize(BufferedImage source, int size) {
+		BufferedImage scaled = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+		def graphics = scaled.createGraphics()
+		graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+		graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+		graphics.drawImage(source, 0, 0, size, size, null)
+		graphics.dispose()
+		return scaled
+	}
+}
+
+def generateBranding = tasks.register("generateBranding", GenerateBranding) {
+	logo = new File(clientRoot, "../assets/branding/pretupid_logo_512x.png")
+	outputDirectory = layout.buildDirectory.dir("generated/branding")
+}
+
+sourceSets.main.resources.srcDir(generateBranding)
+
+processResources {
+	def props = [
+		version          : project.version,
+		minecraft_version: target.minecraft_version,
+		minecraft_range  : target.minecraft_range,
+		loader_version   : rootProject.property('loader_version'),
+		java_version     : target.java_version
+	]
+	inputs.properties props
+
+	filesMatching(["fabric.mod.json", "*.mixins.json"]) {
+		expand props
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = javaVersion
+	it.options.encoding = "UTF-8"
+	it.options.compilerArgs.addAll(["-Xlint:deprecation", "-Xlint:unchecked"])
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.toVersion(javaVersion)
+	targetCompatibility = JavaVersion.toVersion(javaVersion)
+}

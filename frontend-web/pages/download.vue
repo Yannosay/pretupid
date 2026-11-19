@@ -34,11 +34,17 @@
           Download the mod and put it into your mods folder together with Fabric API.
         </p>
         <span v-if="info?.client" class="download-page__client-meta">
-          Version {{ info.client.version }}<template v-if="info.client.minecraft"> · Minecraft {{ info.client.minecraft }}</template>
+          Version {{ info.client.version }} · {{ clientVersions.length > 1 ? `${clientVersions.length} Minecraft versions` : `Minecraft ${info.client.minecraft}` }}
         </span>
       </div>
       <div class="download-page__client-actions">
-        <a href="/api/download/client" class="btn" rel="nofollow">Download the mod</a>
+        <label v-if="clientVersions.length > 1" class="download-page__client-version">
+          <span class="download-page__client-version-label">Minecraft</span>
+          <select v-model="chosenMinecraft" class="input download-page__client-select" aria-label="Minecraft version">
+            <option v-for="version in clientVersions" :key="version" :value="version">{{ version }}</option>
+          </select>
+        </label>
+        <a :href="clientDownloadUrl" class="btn" rel="nofollow">Download the mod</a>
         <a href="https://modrinth.com/mod/fabric-api" class="download-page__client-link" target="_blank" rel="noopener noreferrer">Get Fabric API</a>
       </div>
     </section>
@@ -83,7 +89,7 @@ import { useVisitorPlatform, type VisitorPlatform } from '~/composables/useVisit
 
 interface DownloadInfo {
   launcher: { version: string } | null
-  client: { version: string; minecraft: string } | null
+  client: { version: string; minecraft: string; minecraftVersions?: string[] } | null
 }
 
 const route = useRoute()
@@ -91,6 +97,18 @@ const { openLauncher } = useLauncherBridge()
 const { platform } = useVisitorPlatform()
 const { data: info } = useFetch<DownloadInfo>('/api/download/info', { lazy: true, server: false })
 const unavailable = computed(() => typeof route.query.unavailable === 'string')
+const clientVersions = computed(() => info.value?.client?.minecraftVersions ?? (info.value?.client ? [info.value.client.minecraft] : []))
+const chosenMinecraft = ref('')
+watch(
+  () => info.value?.client?.minecraft,
+  (minecraft) => {
+    if (minecraft && !chosenMinecraft.value) chosenMinecraft.value = minecraft
+  },
+  { immediate: true }
+)
+const clientDownloadUrl = computed(() =>
+  chosenMinecraft.value ? `/api/download/client?mc=${encodeURIComponent(chosenMinecraft.value)}` : '/api/download/client'
+)
 
 const options: {
   id: VisitorPlatform
@@ -202,6 +220,21 @@ const options: {
   &:hover {
     color: var(--accent);
   }
+}
+
+.download-page__client-version {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.download-page__client-version-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.download-page__client-select {
+  min-width: 8rem;
 }
 
 .download-page__client-actions {

@@ -1,5 +1,6 @@
 package net.pretupid.client.social;
 
+import net.pretupid.client.platform.Platform;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -61,7 +62,7 @@ public final class LocalHosting {
 		friendsOnly = true;
 		if (!server.isPublished()) {
 			int chosen = HttpUtil.getAvailablePort();
-			if (!server.publishServer(MinecraftServer.MultiplayerScope.LAN, false, chosen)) {
+			if (!Platform.publishLan(server, chosen)) {
 				friendsOnly = false;
 				return CompletableFuture.failedFuture(new IllegalStateException("The world could not be opened"));
 			}

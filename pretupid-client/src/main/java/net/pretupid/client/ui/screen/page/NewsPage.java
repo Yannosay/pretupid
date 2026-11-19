@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen.page;
 
+import net.pretupid.client.platform.Platform;
 import java.net.URI;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -247,8 +248,8 @@ public final class NewsPage implements MenuPage {
 
 	public static void openMenu() {
 		Minecraft minecraft = Minecraft.getInstance();
-		ClientMenuScreen menu = new ClientMenuScreen(minecraft.gui.screen());
+		ClientMenuScreen menu = new ClientMenuScreen(Platform.screen());
 		menu.select(ClientMenuScreen.Tab.NEWS);
-		minecraft.gui.setScreen(menu);
+		Platform.setScreen(menu);
 	}
 }

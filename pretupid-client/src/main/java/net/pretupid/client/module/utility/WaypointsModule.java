@@ -1,5 +1,6 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -73,10 +74,10 @@ public final class WaypointsModule extends HudModule {
 			put(minecraft, DEATH_NAME);
 		}
 		wasDead = dead;
-		boolean keyDown = addKey.isBound() && minecraft.gui.screen() == null && InputConstants.isKeyDown(addKey.get());
+		boolean keyDown = addKey.isBound() && Platform.screen() == null && Platform.isKeyDown(addKey.get());
 		if (keyDown && !addKeyHeld) {
 			Component result = add(minecraft, nextName(minecraft));
-			minecraft.gui.hud.getChat().addClientSystemMessage(result);
+			Platform.chat().addClientSystemMessage(result);
 		}
 		addKeyHeld = keyDown;
 	}

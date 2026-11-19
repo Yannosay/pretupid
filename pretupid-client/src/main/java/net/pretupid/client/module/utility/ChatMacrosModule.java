@@ -1,5 +1,6 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -27,10 +28,10 @@ public final class ChatMacrosModule extends Module {
 
 	@Override
 	public void onTick(Minecraft minecraft) {
-		boolean canSend = minecraft.gui.screen() == null && minecraft.player != null;
+		boolean canSend = Platform.screen() == null && minecraft.player != null;
 		long now = System.currentTimeMillis();
 		for (int i = 0; i < SLOTS; i++) {
-			boolean down = keys[i].isBound() && InputConstants.isKeyDown(keys[i].get());
+			boolean down = keys[i].isBound() && Platform.isKeyDown(keys[i].get());
 			if (down && !held[i] && canSend && now - lastSent[i] >= COOLDOWN_MS) {
 				send(minecraft, messages[i].get().trim());
 				lastSent[i] = now;

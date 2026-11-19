@@ -1,5 +1,6 @@
 package net.pretupid.client.cosmetic;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.model.player.PlayerModel;
@@ -42,7 +43,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		}
 		poseStack.pushPose();
 		poseStack.translate(placement.x(), placement.y(), placement.z());
-		poseStack.rotateDegrees(Axis.YP, 180f - placement.yaw());
+		Platform.rotateDegrees(poseStack, Axis.YP, 180f - placement.yaw());
 		poseStack.scale(-state.scale, -state.scale, state.scale);
 		draw(entry, poseStack, collector, state.lightCoords, state);
 		poseStack.popPose();
@@ -52,6 +53,6 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		if (entry == null) {
 			return;
 		}
-		collector.submitModel(entry.model(), state, poseStack, entry.model().renderType(entry.texture()), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
+		Platform.submitModel(collector, entry.model(), state, poseStack, entry.model().renderType(entry.texture()), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 	}
 }

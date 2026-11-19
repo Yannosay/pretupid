@@ -2,25 +2,20 @@
 	"required": true,
 	"minVersion": "0.8",
 	"package": "net.pretupid.client.mixin",
-	"compatibilityLevel": "JAVA_25",
+	"compatibilityLevel": "JAVA_${java_version}",
 	"client": [
 		"AvatarRendererMixin",
 		"AvatarRenderStateMixin",
 		"BlockEntityRenderDispatcherMixin",
-		"CapeLayerMixin",
 		"CameraMixin",
 		"ChatComponentMixin",
 		"ChatScreenMixin",
 		"ClientPacketListenerMixin",
-		"EntityRendererMixin",
 		"FontPreparedTextBuilderMixin",
 		"FramerateLimitTrackerMixin",
-		"HudMixin",
-		"KeyboardInputMixin",
 		"GameRendererMixin",
-		"GameRendererPostEffectMixin",
+		"KeyboardInputMixin",
 		"LevelMixin",
-		"LevelRendererMixin",
 		"LightmapRenderStateExtractorMixin",
 		"LivingEntityRendererMixin",
 		"MinecraftMixin",
@@ -28,8 +23,7 @@
 		"ParticleEngineMixin",
 		"PlayerListMixin",
 		"PlayerModelMixin",
-		"PlayerTabOverlayMixin",
-		"ScreenEffectRendererMixin"
+		"PlayerTabOverlayMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

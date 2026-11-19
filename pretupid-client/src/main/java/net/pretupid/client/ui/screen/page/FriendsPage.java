@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen.page;
 
+import net.pretupid.client.platform.Platform;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -9,7 +10,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.pretupid.client.PretupidInfo;
+import net.pretupid.client.util.VersionOrder;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.multiplayer.ServerData;
@@ -255,6 +259,9 @@ public final class FriendsPage implements MenuPage {
 		Component status = friend.online()
 			? friend.server() != null ? Component.translatable("pretupid.friends.playing_on", friend.server()) : Component.translatable("pretupid.friends.online")
 			: Component.translatable("pretupid.friends.offline_since", relative(friend.lastSeen()));
+		if (friend.online() && friend.minecraft() != null) {
+			status = status.copy().append(Component.translatable("pretupid.friends.on_version", friend.minecraft()));
+		}
 		Draw.text(g, font, Draw.ellipsize(font, status, w - 140), x + 14, y + 12, Theme.TEXT_DIM);
 		int buttonX = x + w - 6;
 		boolean armed = System.currentTimeMillis() - confirmRemoveAt < 3000L;
@@ -273,7 +280,7 @@ public final class FriendsPage implements MenuPage {
 		if (friend.server() != null) {
 			buttonX -= 40;
 			Widgets.button(ui, "friends.join", buttonX, y + 3, 38, 16, Component.translatable("pretupid.friends.join"), Widgets.ButtonStyle.PRIMARY,
-				() -> confirmJoin(friend.server(), friend.name(), "", false));
+				() -> confirmJoin(friend.server(), friend.name(), "", false, friend.minecraft()));
 		}
 		int inputHeight = 18;
 		int chatY = y + 26;
@@ -336,7 +343,7 @@ public final class FriendsPage implements MenuPage {
 		Draw.text(g, font, Draw.ellipsize(font, Component.literal(target), w - 70), x + 6, y + 15, Theme.TEXT_MUTED);
 		if (!mine) {
 			Widgets.button(ui, "friends.invite.join." + entry.id(), x + w - 58, y + 5, 52, 16, Component.translatable("pretupid.friends.join"), Widgets.ButtonStyle.PRIMARY,
-				() -> confirmJoin(invite.address(), friend.name(), invite.label(), invite.lan()));
+				() -> confirmJoin(invite.address(), friend.name(), invite.label(), invite.lan(), invite.minecraft()));
 		}
 	}
 
@@ -375,19 +382,44 @@ public final class FriendsPage implements MenuPage {
 		track(social.sendInvite(friend.uuid(), server.ip, server.name, false), Component.translatable("pretupid.friends.invite_sent_to", friend.name()));
 	}
 
-	private void confirmJoin(String address, String friendName, String label, boolean lan) {
-		Minecraft minecraft = Minecraft.getInstance();
+	private void confirmJoin(String address, String friendName, String label, boolean lan, String friendMinecraft) {
 		Optional<UUID> tunnelHost = LocalHosting.tunnelHost(address);
 		if (tunnelHost.isEmpty() && !ServerAddress.isValidAddress(address)) {
 			show(Component.translatable("pretupid.friends.invalid_address"), true);
 			return;
 		}
+		String ownMinecraft = PretupidInfo.minecraftVersion();
+		boolean otherVersion = friendMinecraft != null && !friendMinecraft.equals(ownMinecraft);
+		boolean hostedWorld = tunnelHost.isPresent() || lan;
+		if (otherVersion && hostedWorld) {
+			Component direction = Component.translatable(VersionOrder.compare(friendMinecraft, ownMinecraft) > 0 ? "pretupid.friends.version_newer" : "pretupid.friends.version_older");
+			Platform.setScreen(new AlertScreen(() -> Platform.setScreen(screen), Component.translatable("pretupid.friends.version_title"),
+				Component.translatable("pretupid.friends.version_world", friendName, friendMinecraft, ownMinecraft, direction)));
+			return;
+		}
+		if (otherVersion) {
+			Platform.setScreen(new ConfirmScreen(accepted -> {
+				if (accepted) {
+					startJoin(address, friendName, label, lan, tunnelHost);
+				} else {
+					Platform.setScreen(screen);
+				}
+			}, Component.translatable("pretupid.friends.version_title"),
+				Component.translatable("pretupid.friends.version_server", friendName, friendMinecraft, ownMinecraft),
+				Component.translatable("pretupid.friends.version_join_anyway"), Component.translatable("gui.cancel")));
+			return;
+		}
+		startJoin(address, friendName, label, lan, tunnelHost);
+	}
+
+	private void startJoin(String address, String friendName, String label, boolean lan, Optional<UUID> tunnelHost) {
+		Minecraft minecraft = Minecraft.getInstance();
 		Component body = tunnelHost.isPresent()
 			? Component.translatable("pretupid.friends.join_confirm_world", friendName, label.isEmpty() ? friendName : label)
 			: Component.translatable(lan ? "pretupid.friends.join_confirm_lan" : "pretupid.friends.join_confirm", friendName, address);
-		minecraft.gui.setScreen(new ConfirmScreen(accepted -> {
+		Platform.setScreen(new ConfirmScreen(accepted -> {
 			if (!accepted) {
-				minecraft.gui.setScreen(screen);
+				Platform.setScreen(screen);
 				return;
 			}
 			if (minecraft.level != null) {
@@ -399,7 +431,7 @@ public final class FriendsPage implements MenuPage {
 				try {
 					target = PretupidClient.get().hosting().joinThroughTunnel(tunnelHost.get());
 				} catch (java.io.IOException exception) {
-					minecraft.gui.setScreen(screen);
+					Platform.setScreen(screen);
 					show(Component.translatable("pretupid.friends.join_failed"), true);
 					return;
 				}

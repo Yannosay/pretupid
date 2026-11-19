@@ -1,5 +1,6 @@
 package net.pretupid.client.cinematic;
 
+import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -119,7 +120,7 @@ public final class CinematicDirector {
 	}
 
 	public int addKeyframeAtCamera(Minecraft minecraft, double spacing) {
-		Camera camera = minecraft.gameRenderer.mainCamera();
+		Camera camera = Platform.camera();
 		if (minecraft.player == null || camera == null) {
 			return -1;
 		}

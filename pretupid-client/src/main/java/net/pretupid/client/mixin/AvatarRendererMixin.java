@@ -1,5 +1,7 @@
 package net.pretupid.client.mixin;
 
+import com.llamalad7.mixinextras.sugar.Local;
+import net.pretupid.client.platform.Platform;
 import net.pretupid.client.cosmetic.EmotePoses;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -32,7 +34,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(AvatarRenderer.class)
 public abstract class AvatarRendererMixin {
 	@Inject(method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V", at = @At("TAIL"))
-	private void pretupid$decorate(Avatar avatar, AvatarRenderState state, float partialTick, CallbackInfo ci) {
+	private void pretupid$decorate(CallbackInfo ci, @Local(argsOnly = true) Avatar avatar, @Local(argsOnly = true) AvatarRenderState state) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null || !(avatar instanceof Player player)) {
 			return;
@@ -106,14 +108,14 @@ public abstract class AvatarRendererMixin {
 	}
 
 	@Inject(method = "setupRotations(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;FF)V", at = @At("TAIL"))
-	private void pretupid$emoteRoot(AvatarRenderState state, PoseStack poseStack, float bodyRot, float scale, CallbackInfo ci) {
+	private void pretupid$emoteRoot(CallbackInfo ci, @Local(argsOnly = true) AvatarRenderState state, @Local(argsOnly = true) PoseStack poseStack) {
 		EmotePoses.applyRoot(state, poseStack);
 	}
 
 	@Inject(method = "shouldShowName(Lnet/minecraft/world/entity/Avatar;D)Z", at = @At("HEAD"), cancellable = true)
-	private void pretupid$showOwnNametag(Avatar avatar, double distanceSquared, CallbackInfoReturnable<Boolean> cir) {
+	private void pretupid$showOwnNametag(CallbackInfoReturnable<Boolean> cir, @Local(argsOnly = true) Avatar avatar) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (avatar != minecraft.player || minecraft.options.getCameraType().isFirstPerson() || minecraft.gui.hud.isHidden()) {
+		if (avatar != minecraft.player || minecraft.options.getCameraType().isFirstPerson() || Platform.hudHidden()) {
 			return;
 		}
 		PretupidClient client = PretupidClient.getOrNull();

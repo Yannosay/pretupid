@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +101,7 @@ public final class HudEditorScreen extends PretupidScreen {
 			@Override
 			public boolean click(double mouseX, double mouseY, int button) {
 				if (button == 1) {
-					minecraft.gui.setScreen(ClientMenuScreen.forModule(HudEditorScreen.this, hud));
+					Platform.setScreen(ClientMenuScreen.forModule(HudEditorScreen.this, hud));
 					return true;
 				}
 				if (button == 2) {
@@ -333,7 +334,7 @@ public final class HudEditorScreen extends PretupidScreen {
 			Component.translatable(snapping ? "pretupid.hud_editor.snap_on" : "pretupid.hud_editor.snap_off"), Widgets.ButtonStyle.SECONDARY, () -> snapping = !snapping);
 		bx += buttonWidth + 4;
 		Widgets.button(ui, "editor.menu", bx, y + 4, buttonWidth, 18, Component.translatable("pretupid.hud_editor.menu"), Widgets.ButtonStyle.SECONDARY,
-			() -> minecraft.gui.setScreen(parent instanceof ClientMenuScreen menu ? menu : new ClientMenuScreen(this)));
+			() -> Platform.setScreen(parent instanceof ClientMenuScreen menu ? menu : new ClientMenuScreen(this)));
 		bx += buttonWidth + 4;
 		Widgets.button(ui, "editor.done", bx, y + 4, buttonWidth, 18, Component.translatable("pretupid.ui.done"), Widgets.ButtonStyle.PRIMARY, this::onClose);
 	}

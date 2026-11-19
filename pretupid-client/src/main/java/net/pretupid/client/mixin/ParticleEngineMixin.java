@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ParticleEngine.class)
 public abstract class ParticleEngineMixin {
 	@Inject(method = "add", at = @At("HEAD"), cancellable = true)
-	private void pretupid$limitParticles(Particle particle, CallbackInfo ci) {
+	private void pretupid$limitParticles(CallbackInfo ci) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;

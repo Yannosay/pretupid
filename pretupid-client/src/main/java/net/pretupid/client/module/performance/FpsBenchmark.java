@@ -1,5 +1,6 @@
 package net.pretupid.client.module.performance;
 
+import net.pretupid.client.platform.Platform;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -110,7 +111,7 @@ public final class FpsBenchmark {
 			cancel(minecraft, Component.translatable("pretupid.benchmark.reason.focus"));
 			return;
 		}
-		if (minecraft.gui.screen() != null && now - phaseStart > 500_000_000L) {
+		if (Platform.screen() != null && now - phaseStart > 500_000_000L) {
 			cancel(minecraft, Component.translatable("pretupid.benchmark.reason.screen"));
 			return;
 		}

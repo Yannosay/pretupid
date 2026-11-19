@@ -1,5 +1,6 @@
 package net.pretupid.client.gametest;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -51,7 +52,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
-			world.getConnection().waitForChunksRender();
+			waitForChunks(world);
 			world.getServer().runCommand("time set noon");
 			world.getServer().runCommand("weather clear");
 			BlockPos feet = context.computeOnClient(minecraft -> minecraft.player.blockPosition());
@@ -82,6 +83,19 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitForScreen(TitleScreen.class);
 		context.waitTicks(20);
 		context.takeScreenshot("pretupid-title-screen");
+	}
+
+	private static void waitForChunks(TestSingleplayerContext world) {
+		for (String accessor : new String[] {"getConnection", "getClientLevel", "getClientWorld"}) {
+			try {
+				Object level = TestSingleplayerContext.class.getMethod(accessor).invoke(world);
+				level.getClass().getMethod("waitForChunksRender").invoke(level);
+				return;
+			} catch (ReflectiveOperationException exception) {
+				continue;
+			}
+		}
+		throw new AssertionError("No way to wait for chunks in this Fabric API");
 	}
 
 	private static void enable(Minecraft minecraft, Class<? extends Module> type) {
@@ -132,7 +146,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		try {
 			Field field = ChatComponent.class.getDeclaredField("allMessages");
 			field.setAccessible(true);
-			return (List<GuiMessage>) field.get(minecraft.gui.hud.getChat());
+			return (List<GuiMessage>) field.get(Platform.chat());
 		} catch (ReflectiveOperationException exception) {
 			throw new AssertionError("Chat messages are not readable", exception);
 		}
@@ -141,7 +155,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 	private static void testChatModules(ClientGameTestContext context) {
 		context.runOnClient(minecraft -> {
 			enable(minecraft, CompactChatModule.class);
-			ChatComponent chat = minecraft.gui.hud.getChat();
+			ChatComponent chat = Platform.chat();
 			for (int i = 0; i < 3; i++) {
 				chat.addClientSystemMessage(Component.literal("Pretupid compact chat test"));
 			}
@@ -179,7 +193,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			String shown = chatMessages(minecraft).getFirst().content().getString();
 			check(shown.contains(new String(Character.toChars(fire))) && shown.contains(new String(Character.toChars(sob))),
 				"Own chat message did not get its emoji back: \"" + shown + "\"");
-			minecraft.gui.hud.getChat().addClientSystemMessage(Component.literal("Unicode emoji 😭 and :thumbsup: work"));
+			Platform.chat().addClientSystemMessage(Component.literal("Unicode emoji 😭 and :thumbsup: work"));
 			String unicode = chatMessages(minecraft).getFirst().content().getString();
 			check(unicode.contains(new String(Character.toChars(sob))) && !unicode.contains(":thumbsup:"), "Incoming emoji were not rendered: \"" + unicode + "\"");
 		});
@@ -190,7 +204,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				for (Field field : ChatScreen.class.getDeclaredFields()) {
 					if (field.getType() == EmojiPicker.class) {
 						field.setAccessible(true);
-						Object picker = field.get(minecraft.gui.screen());
+						Object picker = field.get(Platform.screen());
 						Field open = EmojiPicker.class.getDeclaredField("open");
 						open.setAccessible(true);
 						open.setBoolean(picker, true);
@@ -262,7 +276,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> {
 			var after = minecraft.player.position();
 			check(after.distanceTo(before) < 0.2, "The player moved while Freecam was active");
-			var camera = minecraft.gameRenderer.mainCamera().position();
+			var camera = Platform.camera().position();
 			check(camera.distanceTo(minecraft.player.getEyePosition()) > 3, "The Freecam camera did not fly away");
 		});
 		context.takeScreenshot("pretupid-freecam");

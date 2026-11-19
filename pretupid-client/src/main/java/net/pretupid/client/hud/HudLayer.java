@@ -1,5 +1,6 @@
 package net.pretupid.client.hud;
 
+import net.pretupid.client.platform.Platform;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -58,7 +59,7 @@ public final class HudLayer implements HudElement {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
 		Minecraft minecraft = Minecraft.getInstance();
-		if (minecraft.gui.hud.isHidden() || minecraft.gui.screen() instanceof HudEditorScreen) {
+		if (Platform.hudHidden() || Platform.screen() instanceof HudEditorScreen) {
 			return;
 		}
 		if (client.benchmark().running()) {

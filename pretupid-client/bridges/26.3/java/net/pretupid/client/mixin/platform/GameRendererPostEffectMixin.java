@@ -1,7 +1,6 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import java.util.List;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.Identifier;
@@ -25,7 +24,7 @@ public abstract class GameRendererPostEffectMixin {
 	private Minecraft minecraft;
 
 	@Inject(method = "update", at = @At("TAIL"))
-	private void pretupid$requestMotionBlur(DeltaTracker deltaTracker, CallbackInfo ci) {
+	private void pretupid$requestMotionBlur(CallbackInfo ci) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
 			return;

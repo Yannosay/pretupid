@@ -1,5 +1,6 @@
 package net.pretupid.client.module.utility;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -53,6 +54,6 @@ public final class DeathCoordinatesModule extends Module {
 				.withClickEvent(new ClickEvent.CopyToClipboard(coordinates))
 				.withHoverEvent(new HoverEvent.ShowText(Component.translatable("pretupid.death.copy_hover")))));
 		}
-		minecraft.gui.hud.getChat().addClientSystemMessage(message);
+		Platform.chat().addClientSystemMessage(message);
 	}
 }

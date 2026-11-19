@@ -1,5 +1,6 @@
 package net.pretupid.client;
 
+import net.pretupid.client.platform.Platform;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -363,7 +364,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private void tick(Minecraft minecraft) {
 		if (openMenuNextTick) {
 			openMenuNextTick = false;
-			minecraft.gui.setScreen(new ClientMenuScreen(null));
+			Platform.setScreen(new ClientMenuScreen(null));
 		}
 		keybinds.tick(minecraft);
 		emoteKeys.tick(minecraft);

@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -37,7 +38,7 @@ public final class ScreenIntegration {
 	private static void attach(Screen screen) {
 		List<AbstractWidget> widgets = Screens.getWidgets(screen);
 		LogoButton button = new LogoButton(ICON_SIZE, Component.translatable("pretupid.ui.open_menu"),
-			pressed -> Minecraft.getInstance().gui.setScreen(new ClientMenuScreen(screen)));
+			pressed -> Platform.setScreen(new ClientMenuScreen(screen)));
 		List<AbstractWidget> row = iconRow(widgets);
 		if (row.isEmpty()) {
 			button.setPosition(EDGE_MARGIN, EDGE_MARGIN);

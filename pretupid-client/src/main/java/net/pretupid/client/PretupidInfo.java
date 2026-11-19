@@ -28,6 +28,17 @@ public final class PretupidInfo {
 		return version;
 	}
 
+	private static String minecraftVersion;
+
+	public static String minecraftVersion() {
+		if (minecraftVersion == null) {
+			minecraftVersion = FabricLoader.getInstance().getModContainer("minecraft")
+				.map(container -> container.getMetadata().getVersion().getFriendlyString())
+				.orElse("unknown");
+		}
+		return minecraftVersion;
+	}
+
 	public static String shortVersion() {
 		String full = version();
 		int plus = full.indexOf('+');

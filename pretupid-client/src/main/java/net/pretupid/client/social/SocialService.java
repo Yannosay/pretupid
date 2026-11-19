@@ -15,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
+import net.pretupid.client.PretupidInfo;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.AuthSession;
 import net.pretupid.client.network.Json;
@@ -41,13 +42,13 @@ public final class SocialService {
 	private boolean active;
 	private UUID openConversation;
 
-	public record Friend(UUID uuid, String name, boolean online, long lastSeen, String server, int unread) {
+	public record Friend(UUID uuid, String name, boolean online, long lastSeen, String server, String minecraft, int unread) {
 	}
 
 	public record Person(UUID uuid, String name, long at) {
 	}
 
-	public record Invite(String address, String label, boolean lan) {
+	public record Invite(String address, String label, boolean lan, String minecraft) {
 	}
 
 	public record Message(long id, UUID from, UUID to, String text, Invite invite, long at) {
@@ -182,11 +183,12 @@ public final class SocialService {
 			String name = Json.string(object, "name", 16);
 			if (uuid != null && name != null) {
 				String server = Json.string(object, "server", 253);
+				String minecraft = Json.string(object, "minecraft", 16);
 				int unread = (int) Math.clamp(Json.number(object, "unread", 0), 0, 999);
 				if (uuid.equals(openConversation)) {
 					unread = 0;
 				}
-				parsedFriends.add(new Friend(uuid, name, Json.bool(object, "online", false), Json.number(object, "lastSeen", 0L), server, unread));
+				parsedFriends.add(new Friend(uuid, name, Json.bool(object, "online", false), Json.number(object, "lastSeen", 0L), server, minecraft, unread));
 			}
 		}
 		parsedFriends.sort((a, b) -> a.online() != b.online() ? (a.online() ? -1 : 1) : a.name().compareToIgnoreCase(b.name()));
@@ -257,7 +259,7 @@ public final class SocialService {
 			}
 			List<Friend> updated = new ArrayList<>();
 			for (Friend entry : friends) {
-				updated.add(entry.uuid().equals(friend) ? new Friend(entry.uuid(), entry.name(), entry.online(), entry.lastSeen(), entry.server(), 0) : entry);
+				updated.add(entry.uuid().equals(friend) ? new Friend(entry.uuid(), entry.name(), entry.online(), entry.lastSeen(), entry.server(), entry.minecraft(), 0) : entry);
 			}
 			friends = Collections.unmodifiableList(updated);
 		}));
@@ -303,6 +305,7 @@ public final class SocialService {
 		body.addProperty("address", address);
 		body.addProperty("label", label);
 		body.addProperty("lan", lan);
+		body.addProperty("minecraft", PretupidInfo.minecraftVersion());
 		return post(friend, body);
 	}
 
@@ -347,7 +350,7 @@ public final class SocialService {
 				return null;
 			}
 			String label = Json.string(invite, "label", 48);
-			return new Message(id, from, to, "", new Invite(address, label == null ? "" : label, Json.bool(invite, "lan", false)), at);
+			return new Message(id, from, to, "", new Invite(address, label == null ? "" : label, Json.bool(invite, "lan", false), Json.string(invite, "minecraft", 16)), at);
 		}
 		String text = Json.string(object, "body", 300);
 		if (text == null) {

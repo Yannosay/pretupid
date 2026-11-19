@@ -64,8 +64,8 @@ jobs:
           java-version: "25"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build Pretupid Client
-        run: ./gradlew build --no-daemon
+        run: ./gradlew buildAllVersions --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: pretupid-client
-          path: pretupid-client/build/libs/*.jar
+          path: pretupid-client/build/all-versions/*

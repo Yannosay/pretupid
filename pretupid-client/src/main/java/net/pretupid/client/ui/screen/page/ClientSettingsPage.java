@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen.page;
 
+import net.pretupid.client.platform.Platform;
 import java.util.List;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.SharedConstants;
@@ -77,7 +78,7 @@ public final class ClientSettingsPage implements MenuPage {
 		Widgets.button(ui, "settings.update", x + 4, rowY, rowWidth - 8, 18, updateLabel,
 			updates.release() != null ? Widgets.ButtonStyle.PRIMARY : Widgets.ButtonStyle.SECONDARY, () -> {
 				if (updates.release() != null) {
-					Minecraft.getInstance().gui.setScreen(new net.pretupid.client.ui.screen.UpdateScreen(screen));
+					Platform.setScreen(new net.pretupid.client.ui.screen.UpdateScreen(screen));
 				} else {
 					updates.check();
 				}
@@ -88,7 +89,7 @@ public final class ClientSettingsPage implements MenuPage {
 		int buttonWidth = Math.min(110, (rowWidth - 12) / 3);
 		Minecraft minecraft = Minecraft.getInstance();
 		Widgets.button(ui, "settings.keybinds", x + 4, rowY, buttonWidth, 18, Component.translatable("pretupid.settings.keybinds"), Widgets.ButtonStyle.SECONDARY,
-			() -> minecraft.gui.setScreen(new KeyBindsScreen(screen, minecraft.options)));
+			() -> Platform.setScreen(new KeyBindsScreen(screen, minecraft.options)));
 		Widgets.button(ui, "settings.config", x + 8 + buttonWidth, rowY, buttonWidth, 18, Component.translatable("pretupid.settings.open_config"), Widgets.ButtonStyle.SECONDARY,
 			() -> PlatformOpener.openFolder(FabricLoader.getInstance().getConfigDir().resolve(PretupidClient.MOD_ID)));
 		boolean armed = System.currentTimeMillis() - resetArmedAt < 3000L;

@@ -1,6 +1,10 @@
 export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Cache-Control', 'public, max-age=300')
-  const [launchers, client] = await Promise.all([launcherReleases(event).catch(() => []), latestClientRelease(event).catch(() => null)])
+  const [launchers, client, builds] = await Promise.all([
+    launcherReleases(event).catch(() => []),
+    latestClientRelease(event).catch(() => null),
+    latestClientBuilds(event).catch(() => [])
+  ])
   const available = (platform: LauncherPlatform, variant: LauncherVariant) => newestLauncherAsset(launchers, platform, variant) !== null
   const launcher = launchers[0] ?? null
   return {
@@ -17,7 +21,12 @@ export default defineEventHandler(async (event) => {
         }
       : null,
     client: client
-      ? { version: client.manifest.version, minecraft: client.manifest.minecraft, publishedAt: client.release.published_at }
+      ? {
+          version: client.manifest.version,
+          minecraft: client.manifest.minecraft,
+          minecraftVersions: builds.map((entry) => entry.manifest.minecraft),
+          publishedAt: client.release.published_at
+        }
       : null
   }
 })

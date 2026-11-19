@@ -1,5 +1,6 @@
 package net.pretupid.client.cosmetic;
 
+import net.pretupid.client.platform.Platform;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -162,7 +163,7 @@ public final class EmotePlayer {
 		}
 		boolean moved = settings.emoteStopOnMove.enabled() && startPosition != null && player.position().distanceToSqr(startPosition) > 0.04;
 		boolean sneaked = settings.emoteStopOnSneak.enabled() && player.isShiftKeyDown();
-		boolean attacked = settings.emoteStopOnAttack.enabled() && player.isSwinging();
+		boolean attacked = settings.emoteStopOnAttack.enabled() && Platform.swinging(player);
 		if (moved || sneaked || attacked) {
 			active.remove(player.getUUID());
 			broadcast(null);

@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.List;
@@ -100,7 +101,7 @@ public final class ClientMenuScreen extends PretupidScreen {
 	}
 
 	public void openHudEditor() {
-		minecraft.gui.setScreen(parent instanceof HudEditorScreen editor ? editor : new HudEditorScreen(this));
+		Platform.setScreen(parent instanceof HudEditorScreen editor ? editor : new HudEditorScreen(this));
 	}
 
 	public boolean inWorld() {

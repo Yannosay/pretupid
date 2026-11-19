@@ -1,5 +1,6 @@
 package net.pretupid.client.emoji;
 
+import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -185,7 +186,7 @@ public final class ChatEmojis {
 	}
 
 	private boolean patchRecent(Overlay overlay) {
-		if (!(Minecraft.getInstance().gui.hud.getChat() instanceof ChatAccess access)) {
+		if (!(Platform.chat() instanceof ChatAccess access)) {
 			return false;
 		}
 		long now = System.currentTimeMillis();

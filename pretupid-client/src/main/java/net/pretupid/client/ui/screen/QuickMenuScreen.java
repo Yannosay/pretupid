@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +49,7 @@ public final class QuickMenuScreen extends PretupidScreen {
 		super(Component.translatable("pretupid.quick.title"), null);
 		PretupidClient client = PretupidClient.get();
 		InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(client.keybinds().quickMenu());
-		boolean keyboard = key.getType() == InputConstants.Type.KEYBOARD && key.getValue() != InputConstants.UNKNOWN.getValue();
+		boolean keyboard = key.getType() == Platform.keyboard() && key.getValue() != InputConstants.UNKNOWN.getValue();
 		this.holdMode = keyboard;
 		this.holdKey = key.getValue();
 		this.tiles = collectTiles(client);
@@ -138,16 +139,16 @@ public final class QuickMenuScreen extends PretupidScreen {
 		int actionX = panelX + PADDING;
 		drawAction(ui, "edit_hud", actionX, actionY, actionWidth, UiIcon.GEAR, () -> {
 			if (minecraft.level != null) {
-				minecraft.gui.setScreen(new HudEditorScreen(null));
+				Platform.setScreen(new HudEditorScreen(null));
 			}
 		});
 		actionX += actionWidth + GAP;
-		drawAction(ui, "all_modules", actionX, actionY, actionWidth, UiIcon.STAR, () -> minecraft.gui.setScreen(new ClientMenuScreen(null)));
+		drawAction(ui, "all_modules", actionX, actionY, actionWidth, UiIcon.STAR, () -> Platform.setScreen(new ClientMenuScreen(null)));
 		actionX += actionWidth + GAP;
-		drawAction(ui, "emotes", actionX, actionY, actionWidth, null, () -> minecraft.gui.setScreen(new EmoteWheelScreen()));
+		drawAction(ui, "emotes", actionX, actionY, actionWidth, null, () -> Platform.setScreen(new EmoteWheelScreen()));
 		actionX += actionWidth + GAP;
 		drawAction(ui, "benchmark", actionX, actionY, actionWidth, null, () -> {
-			minecraft.gui.setScreen(null);
+			Platform.setScreen(null);
 			PretupidClient.get().benchmark().start(minecraft);
 		});
 
@@ -157,7 +158,7 @@ public final class QuickMenuScreen extends PretupidScreen {
 		}
 		g.pose().popMatrix();
 
-		if (holdMode && !released && !InputConstants.isKeyDown(holdKey)) {
+		if (holdMode && !released && !Platform.isKeyDown(holdKey)) {
 			released = true;
 			boolean tapped = System.currentTimeMillis() - createdAt <= TAP_MS;
 			if (!tapped) {
@@ -180,7 +181,7 @@ public final class QuickMenuScreen extends PretupidScreen {
 			public boolean click(double mouseX, double mouseY, int button) {
 				interacted = true;
 				if (button == 1) {
-					minecraft.gui.setScreen(ClientMenuScreen.forModule(null, module));
+					Platform.setScreen(ClientMenuScreen.forModule(null, module));
 				} else if (button == 0) {
 					toggle(module);
 				} else {
@@ -270,6 +271,6 @@ public final class QuickMenuScreen extends PretupidScreen {
 
 	@Override
 	public void onClose() {
-		minecraft.gui.setScreen(null);
+		Platform.setScreen(null);
 	}
 }

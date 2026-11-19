@@ -1,0 +1,17 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "net.pretupid.client.mixin.platform",
+	"compatibilityLevel": "JAVA_${java_version}",
+	"client": [
+		"CapeLayerMixin",
+		"EntityRendererMixin",
+		"GameRendererPostEffectMixin",
+		"HudMixin",
+		"LevelRendererMixin",
+		"ScreenEffectRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

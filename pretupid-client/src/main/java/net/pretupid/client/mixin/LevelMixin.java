@@ -15,7 +15,7 @@ public abstract class LevelMixin {
 	public abstract boolean isClientSide();
 
 	@Inject(method = "getRainLevel", at = @At("HEAD"), cancellable = true)
-	private void pretupid$clearRain(float partialTick, CallbackInfoReturnable<Float> cir) {
+	private void pretupid$clearRain(CallbackInfoReturnable<Float> cir) {
 		if (!isClientSide()) {
 			return;
 		}
@@ -26,7 +26,7 @@ public abstract class LevelMixin {
 	}
 
 	@Inject(method = "getThunderLevel", at = @At("HEAD"), cancellable = true)
-	private void pretupid$clearThunder(float partialTick, CallbackInfoReturnable<Float> cir) {
+	private void pretupid$clearThunder(CallbackInfoReturnable<Float> cir) {
 		if (!isClientSide()) {
 			return;
 		}

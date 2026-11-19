@@ -1,5 +1,6 @@
 package net.pretupid.client.ui;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -233,6 +234,6 @@ public abstract class PretupidScreen extends Screen {
 	@Override
 	public void onClose() {
 		PretupidClient.get().config().saveAsync();
-		minecraft.gui.setScreen(parent);
+		Platform.setScreen(parent);
 	}
 }

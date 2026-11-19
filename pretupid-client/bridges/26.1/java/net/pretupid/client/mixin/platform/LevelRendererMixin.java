@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import net.minecraft.client.renderer.LevelRenderer;
 import net.pretupid.client.PretupidClient;
@@ -10,13 +10,13 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(LevelRenderer.class)
 public abstract class LevelRendererMixin {
-	@ModifyVariable(method = "submitHitOutline", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "renderHitOutline", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private int pretupid$outlineColor(int color) {
 		BlockOutlineModule module = pretupid$outline();
 		return module == null ? color : module.color();
 	}
 
-	@ModifyVariable(method = "submitHitOutline", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+	@ModifyVariable(method = "renderHitOutline", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	private float pretupid$outlineWidth(float width) {
 		BlockOutlineModule module = pretupid$outline();
 		return module == null ? width : module.width(width);

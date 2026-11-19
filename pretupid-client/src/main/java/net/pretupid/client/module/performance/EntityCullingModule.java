@@ -1,5 +1,6 @@
 package net.pretupid.client.module.performance;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
@@ -44,7 +45,7 @@ public final class EntityCullingModule extends Module {
 
 	public boolean shouldCullBlockEntity(BlockEntity blockEntity) {
 		Minecraft minecraft = Minecraft.getInstance();
-		Vec3 camera = minecraft.gameRenderer.mainCamera().position();
+		Vec3 camera = Platform.camera().position();
 		double limit = blockEntityDistance.get();
 		if (blockEntity.getBlockPos().distToCenterSqr(camera) > limit * limit) {
 			return true;

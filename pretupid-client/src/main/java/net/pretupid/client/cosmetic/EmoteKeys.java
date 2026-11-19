@@ -1,5 +1,6 @@
 package net.pretupid.client.cosmetic;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -93,7 +94,7 @@ public final class EmoteKeys {
 	}
 
 	public void tick(Minecraft minecraft) {
-		boolean inGame = minecraft.gui.screen() == null && minecraft.player != null;
+		boolean inGame = Platform.screen() == null && minecraft.player != null;
 		PretupidClient client = PretupidClient.get();
 		for (Map.Entry<String, KeySetting> entry : bindings.entrySet()) {
 			KeySetting key = entry.getValue();
@@ -101,7 +102,7 @@ public final class EmoteKeys {
 				held.remove(entry.getKey());
 				continue;
 			}
-			boolean down = inGame && InputConstants.isKeyDown(key.get());
+			boolean down = inGame && Platform.isKeyDown(key.get());
 			boolean wasDown = held.getOrDefault(entry.getKey(), false);
 			if (down && !wasDown) {
 				client.cosmetics().catalog().emote(entry.getKey()).ifPresent(emote -> client.emotes().playLocal(emote));

@@ -1,5 +1,6 @@
 package net.pretupid.client.cosmetic;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.model.HumanoidModel;
@@ -43,9 +44,9 @@ public final class EmotePoses {
 		}
 		float weight = pose[pose.length - 1][0];
 		poseStack.translate(root[3] * weight, root[4] * weight, root[5] * weight);
-		poseStack.rotate(Axis.YP, root[1] * weight);
-		poseStack.rotate(Axis.XP, root[0] * weight);
-		poseStack.rotate(Axis.ZP, root[2] * weight);
+		Platform.rotate(poseStack, Axis.YP, root[1] * weight);
+		Platform.rotate(poseStack, Axis.XP, root[0] * weight);
+		Platform.rotate(poseStack, Axis.ZP, root[2] * weight);
 	}
 
 	private static void blend(ModelPart part, float[] rotation, float weight) {

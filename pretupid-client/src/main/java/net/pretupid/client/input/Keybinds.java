@@ -1,5 +1,6 @@
 package net.pretupid.client.input;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,23 +40,23 @@ public final class Keybinds {
 
 	public void register() {
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "main"));
-		openMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_RSHIFT, category));
-		openHudEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.hud_editor", InputConstants.Type.KEYBOARD, InputConstants.KEY_H, category));
+		openMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.menu", Platform.keyboard(), InputConstants.KEY_RSHIFT, category));
+		openHudEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.hud_editor", Platform.keyboard(), InputConstants.KEY_H, category));
 		SettingChangeBus.subscribe(setting -> {
 			if (setting == client.settings().hudEditorKey && !syncingHudEditorKey) {
 				int key = client.settings().hudEditorKey.get();
-				openHudEditor.setKey(key == KeySetting.UNBOUND ? InputConstants.UNKNOWN : InputConstants.Type.KEYBOARD.getOrCreate(key));
+				openHudEditor.setKey(key == KeySetting.UNBOUND ? InputConstants.UNKNOWN : Platform.keyboard().getOrCreate(key));
 				KeyMapping.resetMapping();
 				Minecraft.getInstance().options.save();
 			}
 		});
-		zoom = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.zoom", InputConstants.Type.KEYBOARD, InputConstants.KEY_C, category));
-		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, category));
-		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, category));
-		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", InputConstants.Type.KEYBOARD, InputConstants.KEY_LALT, category));
-		freecam = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freecam", InputConstants.Type.KEYBOARD, InputConstants.KEY_F6, category));
-		cinematicEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_editor", InputConstants.Type.KEYBOARD, InputConstants.KEY_J, category));
-		cinematicKeyframe = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_keyframe", InputConstants.Type.KEYBOARD, InputConstants.KEY_K, category));
+		zoom = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.zoom", Platform.keyboard(), InputConstants.KEY_C, category));
+		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", Platform.keyboard(), InputConstants.KEY_B, category));
+		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", Platform.keyboard(), InputConstants.KEY_G, category));
+		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", Platform.keyboard(), InputConstants.KEY_LALT, category));
+		freecam = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freecam", Platform.keyboard(), InputConstants.KEY_F6, category));
+		cinematicEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_editor", Platform.keyboard(), InputConstants.KEY_J, category));
+		cinematicKeyframe = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_keyframe", Platform.keyboard(), InputConstants.KEY_K, category));
 	}
 
 	public KeyMapping emoteWheel() {
@@ -84,7 +85,7 @@ public final class Keybinds {
 
 	private void syncHudEditorKey() {
 		InputConstants.Key bound = KeyMappingHelper.getBoundKeyOf(openHudEditor);
-		int key = bound.getType() == InputConstants.Type.KEYBOARD && bound != InputConstants.UNKNOWN ? bound.getValue() : KeySetting.UNBOUND;
+		int key = bound.getType() == Platform.keyboard() && bound != InputConstants.UNKNOWN ? bound.getValue() : KeySetting.UNBOUND;
 		KeySetting setting = client.settings().hudEditorKey;
 		if (setting.get() != key) {
 			syncingHudEditorKey = true;
@@ -98,18 +99,18 @@ public final class Keybinds {
 
 	public void tick(Minecraft minecraft) {
 		while (openMenu.consumeClick()) {
-			if (minecraft.gui.screen() == null) {
-				minecraft.gui.setScreen(new ClientMenuScreen(null));
+			if (Platform.screen() == null) {
+				Platform.setScreen(new ClientMenuScreen(null));
 			}
 		}
 		while (emoteWheel.consumeClick()) {
-			if (minecraft.gui.screen() == null && minecraft.player != null) {
-				minecraft.gui.setScreen(new EmoteWheelScreen());
+			if (Platform.screen() == null && minecraft.player != null) {
+				Platform.setScreen(new EmoteWheelScreen());
 			}
 		}
 		while (quickMenu.consumeClick()) {
-			if (minecraft.gui.screen() == null && minecraft.player != null) {
-				minecraft.gui.setScreen(new QuickMenuScreen());
+			if (Platform.screen() == null && minecraft.player != null) {
+				Platform.setScreen(new QuickMenuScreen());
 			}
 		}
 		FreelookModule freelookModule = client.modules().get(FreelookModule.class);
@@ -118,10 +119,10 @@ public final class Keybinds {
 			while (freelook.consumeClick()) {
 				pressed = true;
 			}
-			freelookModule.setHeld(minecraft, freelookModule.isEnabled() && pressed && minecraft.gui.screen() == null);
+			freelookModule.setHeld(minecraft, freelookModule.isEnabled() && pressed && Platform.screen() == null);
 		} else {
 			while (freelook.consumeClick()) {
-				if (minecraft.gui.screen() == null) {
+				if (Platform.screen() == null) {
 					freelookModule.toggleActive(minecraft);
 				}
 			}
@@ -132,10 +133,10 @@ public final class Keybinds {
 			while (freecam.consumeClick()) {
 				pressed = true;
 			}
-			freecamModule.setHeld(minecraft, freecamModule.isEnabled() && pressed && minecraft.gui.screen() == null);
+			freecamModule.setHeld(minecraft, freecamModule.isEnabled() && pressed && Platform.screen() == null);
 		} else {
 			while (freecam.consumeClick()) {
-				if (minecraft.gui.screen() == null) {
+				if (Platform.screen() == null) {
 					if (!freecamModule.isEnabled() && !freecamModule.active()) {
 						freecamModule.explainUnavailable(minecraft);
 					} else {
@@ -146,28 +147,28 @@ public final class Keybinds {
 		}
 		CinematicModule cinematicModule = client.modules().get(CinematicModule.class);
 		while (cinematicEditor.consumeClick()) {
-			if (minecraft.gui.screen() == null) {
+			if (Platform.screen() == null) {
 				cinematicModule.openEditor(minecraft);
 			}
 		}
 		while (cinematicKeyframe.consumeClick()) {
-			if (minecraft.gui.screen() == null) {
+			if (Platform.screen() == null) {
 				cinematicModule.addKeyframe(minecraft);
 			}
 		}
 		syncHudEditorKey();
 		while (openHudEditor.consumeClick()) {
-			if (minecraft.gui.screen() == null && minecraft.level != null) {
-				minecraft.gui.setScreen(new HudEditorScreen(null));
+			if (Platform.screen() == null && minecraft.level != null) {
+				Platform.setScreen(new HudEditorScreen(null));
 			}
 		}
-		boolean inGame = minecraft.gui.screen() == null && minecraft.level != null;
+		boolean inGame = Platform.screen() == null && minecraft.level != null;
 		for (Module module : client.modules().all()) {
 			if (!module.toggleKey().isBound()) {
 				held.remove(module);
 				continue;
 			}
-			boolean down = inGame && InputConstants.isKeyDown(module.toggleKey().get());
+			boolean down = inGame && Platform.isKeyDown(module.toggleKey().get());
 			boolean wasDown = held.getOrDefault(module, false);
 			if (down && !wasDown) {
 				module.toggle();

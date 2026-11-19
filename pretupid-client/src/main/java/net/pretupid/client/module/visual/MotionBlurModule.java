@@ -1,5 +1,6 @@
 package net.pretupid.client.module.visual;
 
+import net.pretupid.client.platform.Platform;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
@@ -29,7 +30,7 @@ public final class MotionBlurModule extends Module {
 		if (!isEnabled() || minecraft.level == null || minecraft.player == null) {
 			return null;
 		}
-		if (pauseInMenus.enabled() && minecraft.gui.screen() != null) {
+		if (pauseInMenus.enabled() && Platform.screen() != null) {
 			return null;
 		}
 		return strength.get().effect;

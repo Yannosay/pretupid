@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.List;
 import java.util.Optional;
@@ -46,8 +47,8 @@ public final class EmoteWheelScreen extends PretupidScreen {
 		super(Component.translatable("pretupid.emotes.title"), null);
 		PretupidClient client = PretupidClient.get();
 		InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(client.keybinds().emoteWheel());
-		boolean keyboard = key.getType() == InputConstants.Type.KEYBOARD && key.getValue() != InputConstants.UNKNOWN.getValue();
-		this.holdMode = client.settings().emoteWheelHold.enabled() && keyboard && InputConstants.isKeyDown(key.getValue());
+		boolean keyboard = key.getType() == Platform.keyboard() && key.getValue() != InputConstants.UNKNOWN.getValue();
+		this.holdMode = client.settings().emoteWheelHold.enabled() && keyboard && Platform.isKeyDown(key.getValue());
 		this.holdKey = key.getValue();
 	}
 
@@ -109,7 +110,7 @@ public final class EmoteWheelScreen extends PretupidScreen {
 
 		drawCenter(ui, slots, cx, cy, open);
 
-		if (holdMode && !released && !InputConstants.isKeyDown(holdKey)) {
+		if (holdMode && !released && !Platform.isKeyDown(holdKey)) {
 			released = true;
 			if (selected >= 0) {
 				slots.get(selected).ifPresent(this::play);
@@ -245,7 +246,7 @@ public final class EmoteWheelScreen extends PretupidScreen {
 		if (PretupidClient.get().settings().uiSounds.enabled()) {
 			minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1.6f, 0.35f));
 		}
-		minecraft.gui.setScreen(null);
+		Platform.setScreen(null);
 		PretupidClient.get().emotes().playLocal(emote);
 	}
 
@@ -268,6 +269,6 @@ public final class EmoteWheelScreen extends PretupidScreen {
 
 	@Override
 	public void onClose() {
-		minecraft.gui.setScreen(null);
+		Platform.setScreen(null);
 	}
 }

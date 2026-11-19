@@ -1,5 +1,6 @@
 package net.pretupid.client.ui;
 
+import net.pretupid.client.platform.Platform;
 import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 import net.minecraft.client.Minecraft;
@@ -64,11 +65,10 @@ public final class TextInput {
 
 	public void setFocused(boolean focused) {
 		if (this.focused != focused) {
-			var manager = Minecraft.getInstance().textInputManager();
 			if (focused) {
-				manager.startTextInput(this);
+				Platform.startTextInput(this);
 			} else {
-				manager.stopTextInput(this);
+				Platform.stopTextInput(this);
 			}
 		}
 		this.focused = focused;

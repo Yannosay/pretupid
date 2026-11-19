@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.ScreenEffectRenderer;

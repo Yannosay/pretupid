@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -88,7 +89,7 @@ public final class TitleScreenEnhancer {
 			y += 24;
 		}
 		if (client.updates().updateVisible()) {
-			updateButton = Button.builder(Component.translatable("pretupid.update.button"), button -> Minecraft.getInstance().gui.setScreen(new UpdateScreen(screen)))
+			updateButton = Button.builder(Component.translatable("pretupid.update.button"), button -> Platform.setScreen(new UpdateScreen(screen)))
 				.bounds(width - 106, y, 100, 20)
 				.build();
 			updateButton.setTooltip(Tooltip.create(Component.translatable("pretupid.update.tooltip", client.updates().release().version())));

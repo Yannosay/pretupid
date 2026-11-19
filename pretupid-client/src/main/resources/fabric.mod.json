@@ -21,12 +21,13 @@
 		]
 	},
 	"mixins": [
-		"pretupid.mixins.json"
+		"pretupid.mixins.json",
+		"pretupid.platform.mixins.json"
 	],
 	"depends": {
 		"fabricloader": ">=${loader_version}",
-		"minecraft": "~${minecraft_version}",
-		"java": ">=25",
+		"minecraft": "${minecraft_range}",
+		"java": ">=${java_version}",
 		"fabric-api": "*"
 	},
 	"custom": {

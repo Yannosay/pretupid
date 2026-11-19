@@ -12,7 +12,7 @@ import net.pretupid.client.module.visual.FreecamModule;
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
 	@Inject(method = "runTick", at = @At("HEAD"))
-	private void pretupid$beginFrame(boolean advanceGameTime, CallbackInfo ci) {
+	private void pretupid$beginFrame(CallbackInfo ci) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client != null) {
 			client.onFrame((Minecraft) (Object) this);
@@ -27,7 +27,7 @@ public abstract class MinecraftMixin {
 	}
 
 	@Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
-	private void pretupid$freecamContinueAttack(boolean down, CallbackInfo ci) {
+	private void pretupid$freecamContinueAttack(CallbackInfo ci) {
 		if (pretupid$freecamActive()) {
 			ci.cancel();
 		}

@@ -139,27 +139,23 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build
-        run: ./gradlew build --no-daemon
+      - name: Build every Minecraft version
+        run: ./gradlew buildAllVersions --no-daemon
 
-      - name: Write manifest and upload
+      - name: Upload jars and manifest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TITLE: ${{ needs.detect.outputs.title }}
         run: |
-          jar=$(ls build/libs/*.jar | grep -v -- '-sources.jar' | head -n 1)
-          file=$(basename "$jar")
           mod_version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
-          minecraft_version=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
           if [ "${GITHUB_REF_NAME}" != "v${mod_version}" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match mod_version ${mod_version}" >&2
             exit 1
           fi
-          jq -n             --arg version "$mod_version"             --arg minecraft "$minecraft_version"             --arg file "$file"             --arg sha256 "$(sha256sum "$jar" | cut -d' ' -f1)"             --arg sha1 "$(sha1sum "$jar" | cut -d' ' -f1)"             --arg sha512 "$(sha512sum "$jar" | cut -d' ' -f1)"             --argjson size "$(stat -c%s "$jar")"             '{version: $version, minecraft: $minecraft, file: $file, sha256: $sha256, sha1: $sha1, sha512: $sha512, size: $size}'             > build/libs/client-manifest.json
           if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
             gh release create "${GITHUB_REF_NAME}" --verify-tag --title "${RELEASE_TITLE}" --notes "Pretupid Client ${GITHUB_REF_NAME}"
           fi
-          gh release upload "${GITHUB_REF_NAME}" "$jar" build/libs/client-manifest.json --clobber
+          gh release upload "${GITHUB_REF_NAME}" build/all-versions/*.jar build/all-versions/client-manifest.json --clobber
 
   publish:
     needs: [detect, build-and-release, client]

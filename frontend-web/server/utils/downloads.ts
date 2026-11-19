@@ -18,6 +18,7 @@ export interface ClientRelease {
   manifest: ClientManifest
   release: GithubRelease
   asset: GithubAsset
+  primary: boolean
 }
 
 export interface LauncherRelease {
@@ -68,15 +69,14 @@ function hasInstaller(release: GithubRelease): boolean {
   })
 }
 
-function isValidClientManifest(value: unknown): value is ClientManifest {
+function isValidClientBuild(value: unknown): value is Omit<ClientManifest, 'version'> {
   if (value === null || typeof value !== 'object') {
     return false
   }
   const manifest = value as Record<string, unknown>
   return (
-    typeof manifest.version === 'string' &&
-    /^\d[0-9A-Za-z.+-]{0,40}$/.test(manifest.version) &&
     typeof manifest.minecraft === 'string' &&
+    /^[0-9][0-9a-z.\-]{0,15}$/.test(manifest.minecraft) &&
     typeof manifest.file === 'string' &&
     manifest.file.endsWith('.jar') &&
     isSha256(manifest.sha256) &&
@@ -87,6 +87,39 @@ function isValidClientManifest(value: unknown): value is ClientManifest {
     typeof manifest.size === 'number' &&
     manifest.size > 0
   )
+}
+
+function isValidClientManifest(value: unknown): value is ClientManifest & { builds?: unknown } {
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  const manifest = value as Record<string, unknown>
+  return typeof manifest.version === 'string' && /^\d[0-9A-Za-z.+-]{0,40}$/.test(manifest.version) && isValidClientBuild(manifest)
+}
+
+function manifestBuilds(manifest: ClientManifest & { builds?: unknown }): ClientManifest[] {
+  const builds = Array.isArray(manifest.builds) ? manifest.builds.filter(isValidClientBuild).slice(0, 64) : []
+  const entries = builds.map((build) => ({
+    version: manifest.version,
+    minecraft: build.minecraft,
+    file: build.file,
+    sha256: build.sha256,
+    sha1: build.sha1,
+    sha512: build.sha512,
+    size: build.size
+  }))
+  if (!entries.some((entry) => entry.minecraft === manifest.minecraft)) {
+    entries.unshift({
+      version: manifest.version,
+      minecraft: manifest.minecraft,
+      file: manifest.file,
+      sha256: manifest.sha256,
+      sha1: manifest.sha1,
+      sha512: manifest.sha512,
+      size: manifest.size
+    })
+  }
+  return entries
 }
 
 export async function launcherReleases(event: H3Event): Promise<LauncherRelease[]> {
@@ -140,15 +173,34 @@ export async function clientReleases(event: H3Event): Promise<ClientRelease[]> {
     candidates.map(async (release) => {
       const manifest = await releaseAssetJson<unknown>(event, release, 'client-manifest.json').catch(() => null)
       if (!isValidClientManifest(manifest)) {
-        return null
+        return []
       }
-      const asset = release.assets.find((candidate) => candidate.name === manifest.file)
-      return asset ? { version: manifest.version, manifest, release, asset } : null
+      return manifestBuilds(manifest).flatMap((build) => {
+        const asset = release.assets.find((candidate) => candidate.name === build.file)
+        return asset ? [{ version: build.version, manifest: build, release, asset, primary: build.minecraft === manifest.minecraft }] : []
+      })
     })
   )
-  return newestFirst(entries.filter((entry): entry is ClientRelease & { version: string } => entry !== null))
+  return newestFirst(entries.flat())
 }
 
 export async function latestClientRelease(event: H3Event): Promise<ClientRelease | null> {
-  return (await clientReleases(event))[0] ?? null
+  const releases = await clientReleases(event)
+  return releases.find((entry) => entry.primary) ?? releases[0] ?? null
+}
+
+export async function latestClientBuilds(event: H3Event): Promise<ClientRelease[]> {
+  const releases = await clientReleases(event)
+  const newest = releases.find((entry) => entry.primary) ?? releases[0]
+  if (!newest) {
+    return []
+  }
+  const seen = new Set<string>()
+  return releases.filter((entry) => {
+    if (entry.manifest.version !== newest.manifest.version || seen.has(entry.manifest.minecraft)) {
+      return false
+    }
+    seen.add(entry.manifest.minecraft)
+    return true
+  })
 }

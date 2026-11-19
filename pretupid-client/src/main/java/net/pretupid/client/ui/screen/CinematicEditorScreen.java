@@ -1,5 +1,6 @@
 package net.pretupid.client.ui.screen;
 
+import net.pretupid.client.platform.Platform;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -382,7 +383,7 @@ public final class CinematicEditorScreen extends PretupidScreen {
 			freecam.setEnabled(true);
 		}
 		director.stop();
-		minecraft.gui.setScreen(null);
+		Platform.setScreen(null);
 		if (!freecam.isEnabled()) {
 			freecam.explainUnavailable(minecraft);
 			return;
@@ -408,7 +409,7 @@ public final class CinematicEditorScreen extends PretupidScreen {
 		int right = x + w;
 		Widgets.button(ui, "cinematic.delete_key", right - 46, y + 1, 46, 16, Component.translatable("pretupid.cinematic.delete"), Widgets.ButtonStyle.DANGER, this::deleteSelected);
 		Widgets.button(ui, "cinematic.set_view", right - 46 - 4 - 70, y + 1, 70, 16, Component.translatable("pretupid.cinematic.set_view"), Widgets.ButtonStyle.SECONDARY, () -> {
-			var camera = minecraft.gameRenderer.mainCamera();
+			var camera = Platform.camera();
 			FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
 			if (director.controlsCamera() || camera == null) {
 				return;
