@@ -24,15 +24,6 @@ export const TRAIL_PARTICLES = [
 export const TRAIL_PATTERNS = ['stream', 'spiral', 'ring', 'helix'] as const
 export const EMOTE_PARTS = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'] as const
 
-export interface NametagData {
-  animation: (typeof COLOR_ANIMATIONS)[number]
-  effect: (typeof MOTION_EFFECTS)[number]
-  primary: string
-  secondary: string
-  speed: number
-  bold: boolean
-}
-
 export interface TrailData {
   particle: (typeof TRAIL_PARTICLES)[number]
   colors: string[]
@@ -77,27 +68,6 @@ export function parseTrailData(input: unknown): TrailData {
   }
 }
 
-export function parseNametagData(input: unknown): NametagData {
-  const raw = input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {}
-  if (typeof raw.animation === 'string' && !(COLOR_ANIMATIONS as readonly string[]).includes(raw.animation)) {
-    throw createError({ statusCode: 400, statusMessage: `animation must be one of ${COLOR_ANIMATIONS.join(', ')}` })
-  }
-  if (typeof raw.effect === 'string' && !(MOTION_EFFECTS as readonly string[]).includes(raw.effect)) {
-    throw createError({ statusCode: 400, statusMessage: `effect must be one of ${MOTION_EFFECTS.join(', ')}` })
-  }
-  const style = sanitizeStyle(raw)
-  if (style.animation === 'NONE' && style.effect === 'NONE' && !style.bold) {
-    throw createError({ statusCode: 400, statusMessage: 'A nametag style needs an animation, an effect or bold text' })
-  }
-  return {
-    animation: style.animation,
-    effect: style.effect,
-    primary: style.primary,
-    secondary: style.secondary,
-    speed: style.speed,
-    bold: style.bold
-  }
-}
 
 export function parseEmoteData(input: unknown): EmoteData {
   const raw = input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {}
@@ -167,7 +137,6 @@ export interface Catalog {
   capes: { id: string; name: string; description: string; url: string; sha256: string }[]
   trails: ({ id: string; name: string; description: string } & TrailData)[]
   emotes: { id: string; name: string; description: string; animation: EmoteData }[]
-  nametags: ({ id: string; name: string; description: string } & NametagData)[]
   wearables: {
     id: string
     kind: WearableKind
@@ -182,7 +151,7 @@ export async function loadCatalog(event: H3Event): Promise<Catalog> {
   const { results } = await db(event)
     .prepare('SELECT id, type, name, description, asset_key, asset_sha256, data, updated_at FROM cosmetics WHERE enabled = 1 ORDER BY sort, name')
     .all<CatalogRow>()
-  const catalog: Catalog = { version: 0, capes: [], trails: [], emotes: [], nametags: [], wearables: [] }
+  const catalog: Catalog = { version: 0, capes: [], trails: [], emotes: [], wearables: [] }
   for (const row of results) {
     catalog.version = Math.max(catalog.version, row.updated_at)
     const base = { id: row.id, name: row.name, description: row.description }
@@ -192,9 +161,6 @@ export async function loadCatalog(event: H3Event): Promise<Catalog> {
       catalog.trails.push({ ...base, ...parseJsonColumn<TrailData>(row.data, { particle: 'end_rod', colors: ['#FFFFFF'], density: 2, pattern: 'stream', size: 1 }) })
     } else if (row.type === 'emote') {
       catalog.emotes.push({ ...base, animation: parseJsonColumn<EmoteData>(row.data, { duration: 1, loop: false, ease: 'smooth', parts: {} }) })
-    } else if (row.type === 'nametag') {
-      const { badge: _badge, ...style } = sanitizeStyle(parseJsonColumn<unknown>(row.data, {}))
-      catalog.nametags.push({ ...base, ...style })
     } else if (isWearableKind(row.type)) {
       const model = parseJsonColumn<WearableModel>(row.data, { nodes: [] })
       const texture = row.asset_key && row.asset_sha256 ? { url: catalogAssetUrl(event, row.asset_key), sha256: row.asset_sha256 } : null

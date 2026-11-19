@@ -234,44 +234,6 @@
                 <WearablePreview :kind="wearableKind" :model="previewModel" :texture-url="cosmeticForm.preview || null" />
               </ClientOnly>
             </div>
-            <div v-else-if="cosmeticForm.type === 'nametag'" class="admin__nametag">
-              <div class="admin__nametag-preview" :class="`admin__nametag-preview--${nametagForm.effect.toLowerCase()}`">
-                <span class="admin__nametag-badge">P</span>
-                <span
-                  v-for="(letter, index) in nametagPreviewName"
-                  :key="index"
-                  class="admin__nametag-letter"
-                  :style="nametagLetterStyle(index)"
-                >{{ letter }}</span>
-              </div>
-              <div class="admin__row">
-                <label class="admin__field">
-                  Color animation
-                  <select v-model="nametagForm.animation" class="input">
-                    <option v-for="animation in nametagOptions.animations" :key="animation" :value="animation">{{ titleCase(animation) }}</option>
-                  </select>
-                </label>
-                <label class="admin__field">
-                  Motion
-                  <select v-model="nametagForm.effect" class="input">
-                    <option v-for="effect in nametagOptions.effects" :key="effect" :value="effect">{{ titleCase(effect) }}</option>
-                  </select>
-                </label>
-              </div>
-              <div class="admin__row">
-                <label class="admin__field">Primary <input v-model="nametagForm.primary" type="color" class="admin__color" /></label>
-                <label class="admin__field">Secondary <input v-model="nametagForm.secondary" type="color" class="admin__color" /></label>
-                <label class="admin__field">
-                  Speed {{ nametagForm.speed.toFixed(1) }}x
-                  <input v-model.number="nametagForm.speed" type="range" min="0.1" max="3" step="0.1" />
-                </label>
-                <label class="admin__check"><input v-model="nametagForm.bold" type="checkbox" /> Bold</label>
-              </div>
-              <p class="admin__muted">
-                Primary is used by Static, Gradient, Wave, Pulse and Shimmer; secondary by Gradient, Wave, Pulse and Shimmer. Rainbow, Flame and Aurora pick their own colors.
-                The preview is an approximation of how the client draws the name.
-              </p>
-            </div>
             <template v-else>
               <p class="admin__muted">
                 <template v-if="cosmeticForm.type === 'trail'">
@@ -400,16 +362,7 @@ interface Cosmetic {
   equipped: number | null
 }
 
-type CosmeticCategory = 'cape' | 'trail' | 'emote' | 'nametag' | WearableKind
-
-interface NametagForm {
-  animation: string
-  effect: string
-  primary: string
-  secondary: string
-  speed: number
-  bold: boolean
-}
+type CosmeticCategory = 'cape' | 'trail' | 'emote' | WearableKind
 
 interface WearableOptions {
   patterns: string[]
@@ -529,7 +482,6 @@ const cosmeticCategories: { id: CosmeticCategory; label: string; singular: strin
   { id: 'cape', label: 'Capes', singular: 'Cape', hint: 'Official capes everyone can equip.' },
   { id: 'trail', label: 'Trails', singular: 'Trail', hint: 'Particle trails that follow the player.' },
   { id: 'emote', label: 'Emotes', singular: 'Emote', hint: 'Animations players start from the emote wheel.' },
-  { id: 'nametag', label: 'Nametags', singular: 'Nametag style', hint: 'Name colors and motion players pick in Cosmetics → Nametag.' },
   { id: 'hat', label: 'Hats', singular: 'Hat', hint: 'Models worn on the head, hidden when a helmet is worn.' },
   { id: 'back', label: 'Back items', singular: 'Back item', hint: 'Wings, shields and other models on the back, hidden while gliding.' },
   { id: 'pet', label: 'Pets', singular: 'Pet', hint: 'Companions that float beside the player and follow them.' }
@@ -563,128 +515,6 @@ function selectCosmeticCategory(category: CosmeticCategory) {
   cosmeticCategory.value = category
   editCosmetic(null)
 }
-const nametagOptions = ref<{ animations: string[]; effects: string[] }>({ animations: [], effects: [] })
-const nametagForm = reactive<NametagForm>({ animation: 'STATIC', effect: 'NONE', primary: '#8fc4ff', secondary: '#c4a8ff', speed: 1, bold: false })
-const nametagPreviewName = computed(() => (cosmeticForm.name.trim() || 'Pretupid').slice(0, 16).split(''))
-const previewClock = ref(0)
-let previewTimer: ReturnType<typeof setInterval> | null = null
-
-function readNametagForm(data: string) {
-  try {
-    const parsed = JSON.parse(data) as Partial<NametagForm>
-    Object.assign(nametagForm, {
-      animation: typeof parsed.animation === 'string' ? parsed.animation : 'STATIC',
-      effect: typeof parsed.effect === 'string' ? parsed.effect : 'NONE',
-      primary: typeof parsed.primary === 'string' ? parsed.primary.toLowerCase() : '#ffffff',
-      secondary: typeof parsed.secondary === 'string' ? parsed.secondary.toLowerCase() : '#ffffff',
-      speed: typeof parsed.speed === 'number' ? parsed.speed : 1,
-      bold: parsed.bold === true
-    })
-  } catch {
-    return
-  }
-}
-
-watch(
-  nametagForm,
-  (value) => {
-    if (cosmeticForm.type !== 'nametag') return
-    cosmeticForm.data = prettyJson({ ...value, primary: value.primary.toUpperCase(), secondary: value.secondary.toUpperCase() })
-  },
-  { deep: true }
-)
-
-watch(
-  () => cosmeticForm.type === 'nametag',
-  (active) => {
-    if (active && !previewTimer) {
-      previewTimer = setInterval(() => (previewClock.value = performance.now() / 1000), 50)
-    } else if (!active && previewTimer) {
-      clearInterval(previewTimer)
-      previewTimer = null
-    }
-  },
-  { immediate: true }
-)
-
-onBeforeUnmount(() => {
-  if (previewTimer) clearInterval(previewTimer)
-})
-
-function titleCase(value: string): string {
-  return value.charAt(0) + value.slice(1).toLowerCase()
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const value = Number.parseInt(hex.replace('#', ''), 16) || 0
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
-}
-
-function mix(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = hexToRgb(a)
-  const [br, bg, bb] = hexToRgb(b)
-  const k = Math.min(1, Math.max(0, t))
-  return `#${[ar + (br - ar) * k, ag + (bg - ag) * k, ab + (bb - ab) * k].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`
-}
-
-function nametagColor(index: number, length: number, seconds: number): string {
-  const { animation, primary, secondary } = nametagForm
-  const position = length <= 1 ? 0 : index / (length - 1)
-  switch (animation) {
-    case 'STATIC':
-      return primary
-    case 'GRADIENT':
-      return mix(primary, secondary, position)
-    case 'WAVE':
-      return mix(primary, secondary, 0.5 + 0.5 * Math.sin(seconds * 3 - index * 0.55))
-    case 'PULSE':
-      return mix(primary, secondary, 0.5 + 0.5 * Math.sin(seconds * 3.5))
-    case 'SHIMMER': {
-      const head = ((seconds * 9) % ((length + 6) * 1.6)) - 3
-      const glow = Math.max(0, 1 - Math.abs(index - head) / 2.5)
-      return mix(mix(primary, secondary, position), '#ffffff', glow * 0.85)
-    }
-    case 'RAINBOW':
-      return `hsl(${((seconds * 0.25 + index * 0.055) % 1) * 360}, 80%, 72%)`
-    case 'FLAME':
-      return `hsl(${(0.015 + 0.075 * (0.5 + 0.25 * (Math.sin(seconds * 7 + index * 1.7) + Math.sin(seconds * 11 + index * 0.9)))) * 360}, 90%, 60%)`
-    case 'AURORA':
-      return `hsl(${(0.38 + 0.18 * Math.sin(seconds * 1.4 + index * 0.35)) * 360}, 70%, 70%)`
-    default:
-      return '#ffffff'
-  }
-}
-
-function nametagOffset(index: number, seconds: number): string {
-  const t = seconds
-  switch (nametagForm.effect) {
-    case 'WAVE':
-      return `translateY(${-1.6 * Math.sin(t * 3.6 - index * 0.55) * 1.5}px)`
-    case 'BOUNCE':
-      return `translateY(${(-2.6 * Math.abs(Math.sin(t * 3.2)) + 1) * 1.5}px)`
-    case 'FLOAT':
-      return `translateY(${-1.4 * Math.sin(t * 1.6) * 1.5}px)`
-    case 'HOP': {
-      const phase = Math.sin(t * 4.5 - index * 0.75)
-      return `translateY(${(phase > 0 ? -2.4 * phase * phase * phase + 0.5 : 0.5) * 1.5}px)`
-    }
-    case 'SHAKE':
-      return `translate(${0.45 * (Math.sin(t * 29 + index * 2.3) * 0.6 + Math.sin(t * 17 + index * 5.1) * 0.4) * 1.5}px, ${0.45 * (Math.sin(t * 23 + index * 3.7) * 0.6 + Math.sin(t * 13 + index * 1.9) * 0.4) * 1.5}px)`
-    default:
-      return 'none'
-  }
-}
-
-function nametagLetterStyle(index: number) {
-  const seconds = previewClock.value * nametagForm.speed
-  const length = nametagPreviewName.value.length
-  return {
-    color: nametagForm.animation === 'NONE' ? '#ffffff' : nametagColor(index, length, seconds),
-    transform: nametagOffset(index, seconds),
-    fontWeight: nametagForm.bold ? '700' : '400'
-  }
-}
-
 const particles = ref<string[]>([])
 const patterns = ref<string[]>([])
 const parts = ref<string[]>([])
@@ -874,7 +704,6 @@ async function loadCosmetics() {
     particles: string[]
     patterns: string[]
     parts: string[]
-    nametag: { animations: string[]; effects: string[] }
     wearable: WearableOptions
   }>('/api/admin/cosmetics')
   cosmetics.value = result.cosmetics
@@ -883,7 +712,6 @@ async function loadCosmetics() {
   particles.value = result.particles
   patterns.value = result.patterns
   parts.value = result.parts
-  nametagOptions.value = result.nametag
 }
 
 function editCosmetic(item: Cosmetic | null) {
@@ -892,7 +720,6 @@ function editCosmetic(item: Cosmetic | null) {
     cosmeticForm.type = cosmeticCategory.value
     cosmeticForm.data = defaultCosmeticData(cosmeticForm.type)
     lastValidModel.value = null
-    if (cosmeticForm.type === 'nametag') readNametagForm(cosmeticForm.data)
     return
   }
   lastValidModel.value = null
@@ -909,7 +736,6 @@ function editCosmetic(item: Cosmetic | null) {
     preview: item.imageUrl ?? '',
     removeImage: false
   })
-  if (item.type === 'nametag') readNametagForm(cosmeticForm.data)
 }
 
 function duplicateCosmetic() {
@@ -1029,9 +855,6 @@ function prettyJson(value: unknown): string {
 function defaultCosmeticData(type: CosmeticCategory): string {
   if (isWearableCategory(type)) {
     return prettyJson(WEARABLE_TEMPLATES[type])
-  }
-  if (type === 'nametag') {
-    return prettyJson({ animation: 'GRADIENT', effect: 'NONE', primary: '#8FC4FF', secondary: '#C4A8FF', speed: 1, bold: false })
   }
   if (type === 'emote') {
     return JSON.stringify(
@@ -1424,45 +1247,6 @@ onMounted(async () => {
   image-rendering: pixelated;
   background: repeating-conic-gradient(#3a3f4b 0% 25%, #2a2e37 0% 50%) 50% / 16px 16px;
   border: 1px solid var(--border-color);
-}
-
-.admin__nametag {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.admin__nametag-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  min-height: 72px;
-  padding: 1rem;
-  font-family: var(--font-pixel);
-  font-size: 1.5rem;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent),
-    #0b0e14;
-  border: 1px solid var(--border-color);
-  border-radius: var(--edge-radius);
-}
-
-.admin__nametag-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.1em;
-  height: 1.1em;
-  margin-right: 0.4em;
-  font-size: 0.7em;
-  color: #ffffff;
-  background-color: var(--accent);
-}
-
-.admin__nametag-letter {
-  display: inline-block;
-  white-space: pre;
 }
 
 .admin__field {

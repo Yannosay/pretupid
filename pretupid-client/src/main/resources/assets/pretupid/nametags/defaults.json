@@ -6,5 +6,8 @@
 	{"id": "gold", "name": "Gold", "description": "A shine sweeps across bold gold letters.", "animation": "SHIMMER", "effect": "NONE", "primary": "#FACC15", "secondary": "#F59E0B", "speed": 1, "bold": true},
 	{"id": "rainbow", "name": "Rainbow", "description": "Every color, bouncing along.", "animation": "RAINBOW", "effect": "HOP", "primary": "#FFFFFF", "secondary": "#FFFFFF", "speed": 1, "bold": false},
 	{"id": "flame", "name": "Flame", "description": "Flickering fire colors.", "animation": "FLAME", "effect": "FLOAT", "primary": "#FFFFFF", "secondary": "#FFFFFF", "speed": 1, "bold": true},
-	{"id": "northern_lights", "name": "Aurora", "description": "Northern lights drifting through green and teal.", "animation": "AURORA", "effect": "NONE", "primary": "#FFFFFF", "secondary": "#FFFFFF", "speed": 1, "bold": false}
+	{"id": "northern_lights", "name": "Aurora", "description": "Northern lights drifting through green and teal.", "animation": "AURORA", "effect": "NONE", "primary": "#FFFFFF", "secondary": "#FFFFFF", "speed": 1, "bold": false},
+	{"id": "cherry", "name": "Cherry", "description": "Soft pink drifting into white.", "animation": "GRADIENT", "effect": "FLOAT", "primary": "#F9A8D4", "secondary": "#FFFFFF", "speed": 0.8, "bold": false},
+	{"id": "frost", "name": "Frost", "description": "An icy shine over pale blue.", "animation": "SHIMMER", "effect": "NONE", "primary": "#BAE6FD", "secondary": "#E0F2FE", "speed": 0.9, "bold": true},
+	{"id": "toxic", "name": "Toxic", "description": "Lime and yellow, a little unstable.", "animation": "PULSE", "effect": "SHAKE", "primary": "#A3E635", "secondary": "#FDE047", "speed": 1, "bold": true}
 ]

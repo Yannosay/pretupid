@@ -9,16 +9,13 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.network.Json;
-import net.pretupid.client.nametag.NametagStyle;
 import net.pretupid.client.network.RemoteProfile;
 
-public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trails, List<EmoteEntry> emotes, List<WearableEntry> wearables, List<NametagEntry> nametags) {
+public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trails, List<EmoteEntry> emotes, List<WearableEntry> wearables) {
 	private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,31}");
 	private static final String BUNDLED_WEARABLES = "/assets/pretupid/wearables/defaults.json";
-	private static final String BUNDLED_NAMETAGS = "/assets/pretupid/nametags/defaults.json";
 	public static final List<WearableEntry> DEFAULT_WEARABLES = loadDefaultWearables();
-	public static final List<NametagEntry> DEFAULT_NAMETAGS = loadDefaultNametags();
-	public static final Catalog EMPTY = new Catalog(0L, List.of(), List.of(), List.of(), DEFAULT_WEARABLES, DEFAULT_NAMETAGS);
+	public static final Catalog EMPTY = new Catalog(0L, List.of(), List.of(), List.of(), DEFAULT_WEARABLES);
 
 	public enum WearableKind {
 		HAT,
@@ -51,9 +48,6 @@ public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trai
 	public record EmoteEntry(String id, String name, String description, EmoteAnimation animation) {
 	}
 
-	public record NametagEntry(String id, String name, String description, NametagStyle style) {
-	}
-
 	public static Catalog fromJson(JsonObject object) {
 		List<CapeEntry> capes = new ArrayList<>();
 		for (JsonElement element : Json.array(object, "capes")) {
@@ -82,37 +76,8 @@ public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trai
 			}
 		}
 		List<WearableEntry> wearables = object.has("wearables") ? wearables(Json.array(object, "wearables")) : DEFAULT_WEARABLES;
-		List<NametagEntry> nametags = object.has("nametags") ? nametags(Json.array(object, "nametags")) : DEFAULT_NAMETAGS;
 		return new Catalog(Json.number(object, "version", 0L), Collections.unmodifiableList(capes), Collections.unmodifiableList(trails), Collections.unmodifiableList(emotes),
-			wearables, nametags);
-	}
-
-	private static List<NametagEntry> nametags(com.google.gson.JsonArray array) {
-		List<NametagEntry> nametags = new ArrayList<>();
-		for (JsonElement element : array) {
-			JsonObject entry = element.isJsonObject() ? element.getAsJsonObject() : null;
-			String id = id(entry);
-			if (id == null) {
-				continue;
-			}
-			NametagStyle.fromJson(entry)
-				.filter(NametagStyle::decoratesName)
-				.ifPresent(style -> nametags.add(new NametagEntry(id, name(entry), description(entry), style)));
-		}
-		return Collections.unmodifiableList(nametags);
-	}
-
-	private static List<NametagEntry> loadDefaultNametags() {
-		try (var stream = Catalog.class.getResourceAsStream(BUNDLED_NAMETAGS)) {
-			if (stream == null) {
-				return List.of();
-			}
-			var parsed = com.google.gson.JsonParser.parseReader(new java.io.InputStreamReader(stream, java.nio.charset.StandardCharsets.UTF_8));
-			return parsed.isJsonArray() ? nametags(parsed.getAsJsonArray()) : List.of();
-		} catch (java.io.IOException | RuntimeException exception) {
-			PretupidClient.LOGGER.warn("Could not read the bundled nametag styles", exception);
-			return List.of();
-		}
+			wearables);
 	}
 
 	private static List<WearableEntry> wearables(com.google.gson.JsonArray array) {
@@ -163,10 +128,6 @@ public record Catalog(long version, List<CapeEntry> capes, List<TrailEntry> trai
 
 	public Optional<TrailEntry> trail(String id) {
 		return trails.stream().filter(entry -> entry.id().equals(id)).findFirst();
-	}
-
-	public Optional<NametagEntry> nametag(String id) {
-		return nametags.stream().filter(entry -> entry.id().equals(id)).findFirst();
 	}
 
 	public Optional<EmoteEntry> emote(String id) {

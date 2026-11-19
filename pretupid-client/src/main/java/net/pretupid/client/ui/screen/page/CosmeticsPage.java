@@ -12,12 +12,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
 import net.pretupid.client.cosmetic.EmoteWheel;
 import net.pretupid.client.cosmetic.CosmeticsService;
 import net.pretupid.client.nametag.NametagFormatter;
+import net.pretupid.client.nametag.NametagPresets;
 import net.pretupid.client.nametag.NametagStyle;
 import net.pretupid.client.network.ApiClient;
 import net.pretupid.client.network.RemoteProfile;
@@ -158,60 +160,89 @@ public final class CosmeticsPage implements MenuPage {
 		StatusText.drawSession(ui, x, y, w);
 	}
 
+	private static final int PRESET_HEIGHT = 20;
+	private static final int PRESET_MIN_WIDTH = 74;
+
 	private void drawNametag(UiContext ui, int x, int y, int w, int h) {
 		PretupidClient client = PretupidClient.get();
 		ClientSettings settings = client.settings();
-		List<Catalog.NametagEntry> styles = client.cosmetics().catalog().nametags();
-		boolean previous = settings.hasPreviousNametagStyle() && settings.nametagStyleId.get().equals(ClientSettings.PREVIOUS_NAMETAG_STYLE);
 		drawNametagPreview(ui, x, y, w - 6);
 		int listY = y + PREVIEW_HEIGHT + 6;
 		int listH = h - PREVIEW_HEIGHT - 6;
-		List<Setting<?>> rows = new ArrayList<>();
-		for (Setting<?> setting : List.of(settings.nametagBadge, settings.nametagMovingBackground, settings.showOtherBadges, settings.tabListBadges)) {
-			if (setting.isVisible()) {
-				rows.add(setting);
+		List<NametagPresets.Preset> presets = NametagPresets.all();
+		int areaW = w - 6;
+		int columns = Math.max(1, (areaW + 4) / (PRESET_MIN_WIDTH + 4));
+		int presetW = (areaW - (columns - 1) * 4) / columns;
+		int presetRows = (presets.size() + 1 + columns - 1) / columns;
+		List<Setting<?>> custom = visible(settings.nametagAnimation, settings.nametagPrimary, settings.nametagSecondary, settings.nametagEffect, settings.nametagSpeed,
+			settings.nametagBold, settings.nametagBadge, settings.nametagMovingBackground);
+		List<Setting<?>> display = visible(settings.showOtherBadges, settings.tabListBadges);
+		List<FormattedCharSequence> hint = ui.font().split(Component.translatable("pretupid.cosmetics.nametag.hint"), areaW - 4);
+		int content = 16 + hint.size() * 10 + 4 + presetRows * (PRESET_HEIGHT + 4) + 8 + 16 + custom.size() * Widgets.ROW_HEIGHT + 8 + 16 + display.size() * Widgets.ROW_HEIGHT;
+		scroll.begin(ui, "cosmetics.nametag", x, listY, w, listH, content);
+		int rowY = listY - scroll.offset();
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.presets"), x, rowY + 2, areaW);
+		rowY += 16;
+		for (FormattedCharSequence line : hint) {
+			Draw.text(ui.g(), ui.font(), line, x, rowY, Theme.TEXT_DIM, false);
+			rowY += 10;
+		}
+		rowY += 4;
+		NametagStyle current = settings.nametagStyle();
+		for (int i = 0; i <= presets.size(); i++) {
+			int px = x + (i % columns) * (presetW + 4);
+			int py = rowY + (i / columns) * (PRESET_HEIGHT + 4);
+			if (i == 0) {
+				drawPreset(ui, "original", px, py, presetW, Component.translatable("pretupid.cosmetics.nametag.original"), NametagStyle.BADGE_ONLY,
+					!current.decoratesName(), Component.translatable("pretupid.cosmetics.nametag.original_hint"));
+			} else {
+				NametagPresets.Preset preset = presets.get(i - 1);
+				drawPreset(ui, preset.id(), px, py, presetW, Component.literal(preset.name()), preset.style(), preset.matches(current), Component.literal(preset.description()));
 			}
 		}
-		int choices = 1 + styles.size() + (previous ? 1 : 0);
-		scroll.begin(ui, "cosmetics.nametag", x, listY, w, listH, 16 + choices * 24 + 8 + rows.size() * Widgets.ROW_HEIGHT);
-		int rowY = listY - scroll.offset();
-		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.styles"), x, rowY + 2, w - 6);
+		rowY += presetRows * (PRESET_HEIGHT + 4) + 8;
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.customize"), x, rowY + 2, areaW);
 		rowY += 16;
-		String current = settings.nametagStyleId.get();
-		boolean known = current.isEmpty() || (previous && current.equals(ClientSettings.PREVIOUS_NAMETAG_STYLE)) || styles.stream().anyMatch(entry -> entry.id().equals(current));
-		rowY = drawChoice(ui, "nametag.none", x, rowY, w - 6, Component.translatable("pretupid.cosmetics.none"), Component.empty(), !known || current.isEmpty(),
-			() -> chooseNametag(""));
-		if (previous) {
-			rowY = drawNametagChoice(ui, "nametag.previous", x, rowY, w - 6, Component.translatable("pretupid.cosmetics.nametag.previous"),
-				Component.translatable("pretupid.cosmetics.nametag.previous_hint"), settings.previousNametagStyle(), true, () -> chooseNametag(ClientSettings.PREVIOUS_NAMETAG_STYLE));
-		}
-		for (Catalog.NametagEntry entry : styles) {
-			rowY = drawNametagChoice(ui, "nametag." + entry.id(), x, rowY, w - 6, Component.literal(entry.name()), Component.literal(entry.description()), entry.style(),
-				current.equals(entry.id()), () -> chooseNametag(entry.id()));
+		for (Setting<?> setting : custom) {
+			Widgets.settingRow(ui, screen, setting, x, rowY, areaW);
+			rowY += Widgets.ROW_HEIGHT;
 		}
 		rowY += 8;
-		for (Setting<?> setting : rows) {
-			Widgets.settingRow(ui, screen, setting, x, rowY, w - 6);
+		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.visibility"), x, rowY + 2, areaW);
+		rowY += 16;
+		for (Setting<?> setting : display) {
+			Widgets.settingRow(ui, screen, setting, x, rowY, areaW);
 			rowY += Widgets.ROW_HEIGHT;
 		}
 		scroll.end(ui, x, listY, w, listH);
 	}
 
-	private void chooseNametag(String id) {
-		PretupidClient client = PretupidClient.get();
-		client.settings().nametagStyleId.set(id);
-		client.presence().requestHeartbeat();
+	private static List<Setting<?>> visible(Setting<?>... candidates) {
+		List<Setting<?>> rows = new ArrayList<>();
+		for (Setting<?> setting : candidates) {
+			if (setting.isVisible()) {
+				rows.add(setting);
+			}
+		}
+		return rows;
 	}
 
-	private int drawNametagChoice(UiContext ui, String id, int x, int y, int w, Component title, Component subtitle, NametagStyle style, boolean selected, Runnable action) {
-		int next = drawChoice(ui, id, x, y, w, title, subtitle, selected, action);
-		String name = Minecraft.getInstance().getUser().getName();
-		Component sample = NametagFormatter.format(Component.literal(name), name, style.withBadge(false), false, true);
-		int sampleWidth = ui.font().width(sample);
-		int sampleX = x + w - sampleWidth - 8;
-		Draw.rect(ui.g(), sampleX - 3, y + 5, sampleWidth + 6, 12, 0x50000000);
-		Draw.text(ui.g(), ui.font(), sample, sampleX, y + 7, 0xFFFFFFFF);
-		return next;
+	private void drawPreset(UiContext ui, String id, int x, int y, int w, Component label, NametagStyle style, boolean selected, Component tooltip) {
+		var g = ui.g();
+		boolean hover = ui.interactive(x, y, w, PRESET_HEIGHT, UiContext.Handler.onClick(() -> {
+			PretupidClient client = PretupidClient.get();
+			client.settings().applyNametagStyle(style);
+			client.presence().requestHeartbeat();
+		}));
+		float t = ui.animate("cosmetics.preset." + id, hover ? 1f : 0f, 16f);
+		Draw.chamfer(g, x, y, w, PRESET_HEIGHT, Colors.lerp(Theme.SURFACE, Theme.SURFACE_HOVER, t));
+		Draw.border(g, x, y, w, PRESET_HEIGHT, selected ? Theme.accent() : Colors.lerp(Theme.SURFACE_BORDER, 0x60FFFFFF, t));
+		String text = Draw.ellipsize(ui.font(), label, w - 10).getString();
+		Component sample = NametagFormatter.format(Component.literal(text), text, style.withBadge(false), false, true);
+		Draw.centered(g, ui.font(), sample, x + w / 2, y + 6, selected || !style.decoratesName() ? (selected ? Theme.accentText() : Theme.TEXT) : 0xFFFFFFFF);
+		if (hover && !tooltip.getString().isEmpty()) {
+			ui.tooltip(tooltip);
+		}
 	}
 
 	private void drawNametagPreview(UiContext ui, int x, int y, int w) {

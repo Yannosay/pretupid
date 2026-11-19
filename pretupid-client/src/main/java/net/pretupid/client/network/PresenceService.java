@@ -53,7 +53,7 @@ public final class PresenceService {
 	}
 
 	public void watchPublishedSettings(ClientSettings settings) {
-		Set<Setting<?>> published = Set.of(settings.nametagBadge, settings.nametagStyleId, settings.nametagAnimation, settings.nametagEffect, settings.nametagPrimary,
+		Set<Setting<?>> published = Set.of(settings.nametagBadge, settings.nametagAnimation, settings.nametagEffect, settings.nametagPrimary,
 			settings.nametagSecondary, settings.nametagSpeed, settings.nametagBold, settings.cape, settings.trail, settings.hat, settings.back, settings.pet,
 			settings.allowFriendRequests, settings.shareServerWithFriends);
 		SettingChangeBus.subscribe(setting -> {

@@ -29,6 +29,9 @@ import net.pretupid.client.module.utility.NickHiderModule;
 import net.pretupid.client.module.utility.WaypointsModule;
 import net.pretupid.client.module.visual.BlockOutlineModule;
 import net.pretupid.client.module.visual.OwnNametagModule;
+import net.pretupid.client.nametag.NameAnimation;
+import net.pretupid.client.nametag.NameEffect;
+import net.pretupid.client.nametag.NametagPresets;
 import net.pretupid.client.social.LocalHosting;
 import net.pretupid.client.cosmetic.EmoteWheel;
 import net.pretupid.client.ui.Icon;
@@ -170,9 +173,13 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> {
 			ClientSettings settings = PretupidClient.get().settings();
 			enable(minecraft, OwnNametagModule.class);
-			check(PretupidClient.get().cosmetics().catalog().nametag("rainbow").isPresent(), "The rainbow nametag style is missing from the catalog");
-			settings.nametagStyleId.set("rainbow");
-			check(settings.nametagStyle().effect().moves(), "Choosing a catalog nametag style did not apply it");
+			var rainbow = NametagPresets.find("rainbow");
+			check(rainbow.isPresent(), "The rainbow nametag preset is missing");
+			settings.applyNametagStyle(rainbow.get().style());
+			check(settings.nametagStyle().effect().moves(), "Applying a nametag preset did not change the style");
+			settings.nametagEffect.set(NameEffect.SHAKE);
+			check(settings.nametagStyle().effect() == NameEffect.SHAKE && settings.nametagStyle().animation() == NameAnimation.RAINBOW,
+				"Customizing a preset did not keep the other fields");
 			settings.hat.set("crown");
 			settings.cape.set("catalog:pretupid");
 			minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);

@@ -107,8 +107,10 @@ public final class ColorPickerPopup implements Popup {
 		}
 		int rowY = sy + SQUARE_HEIGHT + 6;
 		hexInput.draw(ui, sx, rowY, 64, 14, Component.empty());
-		Draw.text(g, ui.font(), Component.translatable("pretupid.ui.chroma"), sx + 72, rowY + 3, Theme.TEXT_MUTED);
-		Widgets.toggle(ui, "color.chroma", x + WIDTH - 28, rowY + 2, setting.chroma(), () -> setting.setChroma(!setting.chroma()));
+		if (setting.allowsChroma()) {
+			Draw.text(g, ui.font(), Component.translatable("pretupid.ui.chroma"), sx + 72, rowY + 3, Theme.TEXT_MUTED);
+			Widgets.toggle(ui, "color.chroma", x + WIDTH - 28, rowY + 2, setting.chroma(), () -> setting.setChroma(!setting.chroma()));
+		}
 		int presetY = rowY + 20;
 		int size = 10;
 		int gap = (WIDTH - 16 - PRESETS.length * size) / (PRESETS.length - 1);

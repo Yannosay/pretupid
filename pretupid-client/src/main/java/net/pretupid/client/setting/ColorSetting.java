@@ -14,6 +14,7 @@ public final class ColorSetting extends Setting<ColorSetting.Value> {
 
 	private final boolean allowAlpha;
 	private Source source = Source.NONE;
+	private boolean allowChroma = true;
 
 	public ColorSetting(String id, int argb, boolean allowAlpha) {
 		super(id, new Value(allowAlpha ? argb : (argb | 0xFF000000), false));
@@ -26,6 +27,15 @@ public final class ColorSetting extends Setting<ColorSetting.Value> {
 
 	public boolean allowsAlpha() {
 		return allowAlpha;
+	}
+
+	public ColorSetting withoutChroma() {
+		this.allowChroma = false;
+		return this;
+	}
+
+	public boolean allowsChroma() {
+		return allowChroma;
 	}
 
 	public int argb() {
@@ -96,7 +106,8 @@ public final class ColorSetting extends Setting<ColorSetting.Value> {
 
 	@Override
 	protected Value sanitize(Value candidate) {
-		return allowAlpha ? candidate : new Value(candidate.argb() | 0xFF000000, candidate.chroma());
+		boolean chroma = allowChroma && candidate.chroma();
+		return allowAlpha ? new Value(candidate.argb(), chroma) : new Value(candidate.argb() | 0xFF000000, chroma);
 	}
 
 	@Override

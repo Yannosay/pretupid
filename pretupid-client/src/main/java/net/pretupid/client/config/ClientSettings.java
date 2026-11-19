@@ -6,11 +6,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import net.pretupid.client.PretupidClient;
-import net.pretupid.client.cosmetic.Catalog;
 import net.pretupid.client.nametag.NameAnimation;
 import net.pretupid.client.nametag.NameEffect;
+import net.pretupid.client.nametag.NametagPresets;
 import net.pretupid.client.nametag.NametagStyle;
 import net.pretupid.client.setting.BooleanSetting;
 import net.pretupid.client.setting.ColorSetting;
@@ -56,14 +54,14 @@ public final class ClientSettings {
 	public final BooleanSetting allowFriendRequests = add(new BooleanSetting("allow_friend_requests", true));
 	public final BooleanSetting shareServerWithFriends = add(new BooleanSetting("share_server_with_friends", false));
 	public final BooleanSetting friendNotifications = add(new BooleanSetting("friend_notifications", true));
-	public static final String PREVIOUS_NAMETAG_STYLE = "~previous";
+	private static final String LEGACY_NAMETAG_STYLE = "nametag_style";
+	private static final String LEGACY_PREVIOUS_STYLE = "~previous";
 
 	public final BooleanSetting nametagBadge = add(new BooleanSetting("nametag_badge", true));
-	public final TextSetting nametagStyleId = add(new TextSetting("nametag_style", "", 32));
 	public final EnumSetting<NameAnimation> nametagAnimation = add(new EnumSetting<>("nametag_animation", NameAnimation.NONE));
 	public final EnumSetting<NameEffect> nametagEffect = add(new EnumSetting<>("nametag_effect", NameEffect.NONE));
-	public final ColorSetting nametagPrimary = add(new ColorSetting("nametag_primary", 0xFF8FC4FF));
-	public final ColorSetting nametagSecondary = add(new ColorSetting("nametag_secondary", 0xFFC4A8FF));
+	public final ColorSetting nametagPrimary = add(new ColorSetting("nametag_primary", 0xFF8FC4FF).withoutChroma());
+	public final ColorSetting nametagSecondary = add(new ColorSetting("nametag_secondary", 0xFFC4A8FF).withoutChroma());
 	public final NumberSetting nametagSpeed = add(new NumberSetting("nametag_speed", 1.0, 0.1, 3.0, 0.1, "x"));
 	public final BooleanSetting nametagBold = add(new BooleanSetting("nametag_bold", false));
 	public final BooleanSetting nametagMovingBackground = add(new BooleanSetting("nametag_moving_background", false));
@@ -85,51 +83,38 @@ public final class ClientSettings {
 	public final TextSetting restrictedServers = add(new TextSetting("restricted_servers", "", 4000));
 	public final BooleanSetting serverCompatibility = add(new BooleanSetting("server_compatibility", true));
 	private NametagStyle cachedStyle;
-	private Catalog cachedCatalog;
 
 	public ClientSettings() {
 		net.pretupid.client.setting.SettingChangeBus.subscribe(setting -> {
-			if (setting == nametagBadge || setting == nametagStyleId || setting == nametagAnimation || setting == nametagEffect || setting == nametagPrimary
+			if (setting == nametagBadge || setting == nametagAnimation || setting == nametagEffect || setting == nametagPrimary
 				|| setting == nametagSecondary || setting == nametagSpeed || setting == nametagBold) {
 				cachedStyle = null;
 			}
 		});
 		nametagMovingBackground.visibleWhen(() -> nametagStyle().effect().moves());
-	}
-
-	public NametagStyle previousNametagStyle() {
-		return new NametagStyle(nametagBadge.enabled(), nametagAnimation.get(), nametagEffect.get(), nametagPrimary.argb(),
-			nametagSecondary.argb(), nametagSpeed.floatValue(), nametagBold.enabled());
-	}
-
-	public boolean hasPreviousNametagStyle() {
-		return previousNametagStyle().decoratesName();
+		nametagPrimary.visibleWhen(() -> nametagAnimation.get().usesPrimary());
+		nametagSecondary.visibleWhen(() -> nametagAnimation.get().usesSecondary());
+		nametagSpeed.visibleWhen(() -> nametagAnimation.get().animates() || nametagEffect.get().moves());
 	}
 
 	public NametagStyle nametagStyle() {
-		PretupidClient client = PretupidClient.getOrNull();
-		Catalog catalog = client == null ? Catalog.EMPTY : client.cosmetics().catalog();
 		NametagStyle style = cachedStyle;
-		if (style == null || catalog != cachedCatalog) {
-			style = resolveNametagStyle(catalog);
+		if (style == null) {
+			style = new NametagStyle(nametagBadge.enabled(), nametagAnimation.get(), nametagEffect.get(), nametagPrimary.argb(),
+				nametagSecondary.argb(), nametagSpeed.floatValue(), nametagBold.enabled());
 			cachedStyle = style;
-			cachedCatalog = catalog;
 		}
 		return style;
 	}
 
-	private NametagStyle resolveNametagStyle(Catalog catalog) {
-		String id = nametagStyleId.get();
-		if (id.equals(PREVIOUS_NAMETAG_STYLE)) {
-			return previousNametagStyle();
-		}
-		if (!id.isEmpty()) {
-			Optional<Catalog.NametagEntry> entry = catalog.nametag(id);
-			if (entry.isPresent()) {
-				return entry.get().style().withBadge(nametagBadge.enabled());
-			}
-		}
-		return NametagStyle.BADGE_ONLY.withBadge(nametagBadge.enabled());
+	public void applyNametagStyle(NametagStyle style) {
+		nametagAnimation.set(style.animation());
+		nametagEffect.set(style.effect());
+		nametagPrimary.setArgb(style.primary());
+		nametagSecondary.setArgb(style.secondary());
+		nametagSpeed.set((double) style.speed());
+		nametagBold.set(style.bold());
+		cachedStyle = null;
 	}
 
 	private <S extends Setting<?>> S add(S setting) {
@@ -157,9 +142,23 @@ public final class ClientSettings {
 				setting.fromJson(element);
 			}
 		}
-		if (!object.has(nametagStyleId.id()) && hasPreviousNametagStyle()) {
-			nametagStyleId.set(PREVIOUS_NAMETAG_STYLE);
-		}
+		migrateLegacyNametagStyle(object);
 		cachedStyle = null;
+	}
+
+	private void migrateLegacyNametagStyle(JsonObject object) {
+		JsonElement legacy = object.get(LEGACY_NAMETAG_STYLE);
+		if (legacy == null || !legacy.isJsonPrimitive()) {
+			return;
+		}
+		String id = legacy.getAsString();
+		if (id.equals(LEGACY_PREVIOUS_STYLE)) {
+			return;
+		}
+		if (id.isEmpty()) {
+			applyNametagStyle(NametagStyle.BADGE_ONLY);
+			return;
+		}
+		NametagPresets.find(id).ifPresentOrElse(preset -> applyNametagStyle(preset.style()), () -> applyNametagStyle(NametagStyle.BADGE_ONLY));
 	}
 }

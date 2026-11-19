@@ -50,7 +50,7 @@ Update notes reach players from these releases: the in-game updater and the laun
 
 - `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.
 - Hats, back items and pets are catalog cosmetics like capes, trails and emotes: admins create and edit their boxes, colors, optional textures and animations in the admin page, and players get changes without a client update. The client bundles the starting set in `pretupid-client/src/main/resources/assets/pretupid/wearables/defaults.json` for its first offline start; keep it in sync with `frontend-web/migrations/0005_wearables.sql` when the starting set changes.
-- Nametag styles are catalog cosmetics too. The client bundles the starting set in `pretupid-client/src/main/resources/assets/pretupid/nametags/defaults.json`; keep it in sync with `frontend-web/migrations/0006_nametag_styles.sql`.
+- Nametag styles are not catalog cosmetics: players combine color, motion, colors, speed and bold freely in the client, and the presence service shares the exact combination. The presets players can start from live only in `pretupid-client/src/main/resources/assets/pretupid/nametags/defaults.json`.
 - `npm run dev:desktop` serves the launcher UI in a browser with a mocked backend (`frontend/src/dev/tauriMock.ts`), which is handy for layout work.
 
 ## Conventions
