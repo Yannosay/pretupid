@@ -33,7 +33,7 @@ public final class CinematicOverlay {
 		if (camera == null || !camera.isInitialized()) {
 			return;
 		}
-		Matrix4f matrix = camera.getViewRotationProjectionMatrix(new Matrix4f());
+		Matrix4f matrix = Platform.viewProjection(camera);
 		Vec3 eye = camera.position();
 		List<CameraKeyframe> keyframes = shot.keyframes();
 		double duration = shot.duration();

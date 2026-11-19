@@ -1,5 +1,6 @@
 package net.pretupid.client.module.hud;
 
+import net.pretupid.client.platform.Platform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.I18n;
 import net.pretupid.client.hud.HudPosition;
@@ -18,7 +19,7 @@ public final class DayHud extends TextHudModule {
 
 	@Override
 	protected String value(Minecraft minecraft, boolean preview) {
-		long time = minecraft.level == null ? 6_000L : minecraft.level.getDefaultClockTime();
+		long time = minecraft.level == null ? 6_000L : Platform.dayTime(minecraft.level);
 		long day = Math.floorDiv(time, TICKS_PER_DAY) + 1;
 		String dayText = I18n.get("pretupid.hud.day.value", day);
 		if (!showTime.enabled()) {

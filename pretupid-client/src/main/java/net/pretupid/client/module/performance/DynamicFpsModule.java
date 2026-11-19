@@ -1,5 +1,6 @@
 package net.pretupid.client.module.performance;
 
+import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.Minecraft;
 import net.pretupid.client.module.Category;
@@ -28,7 +29,7 @@ public final class DynamicFpsModule extends Module {
 		if (window.isIconified()) {
 			return Math.min(original, minimizedFps.intValue());
 		}
-		if (!window.isFocused()) {
+		if (!Platform.windowFocused()) {
 			return Math.min(original, unfocusedFps.intValue());
 		}
 		if (idleLimit.enabled() && minecraft.level != null && System.currentTimeMillis() - lastInput > idleSeconds.intValue() * 1000L) {

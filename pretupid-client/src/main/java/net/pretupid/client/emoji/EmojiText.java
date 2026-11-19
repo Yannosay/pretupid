@@ -45,7 +45,7 @@ public final class EmojiText {
 	}
 
 	public static Style glyphStyle(Style base) {
-		return base.withFont(FONT).withColor(0xFFFFFF).withoutShadow().withBold(false).withItalic(false).withObfuscated(false);
+		return base.withFont(FONT).withColor(0xFFFFFF).withShadowColor(0).withBold(false).withItalic(false).withObfuscated(false);
 	}
 
 	public static Component glyph(EmojiIndex.Emoji emoji) {

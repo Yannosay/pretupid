@@ -5,7 +5,6 @@ import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.List;
 import java.util.Optional;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -46,7 +45,7 @@ public final class EmoteWheelScreen extends PretupidScreen {
 	public EmoteWheelScreen() {
 		super(Component.translatable("pretupid.emotes.title"), null);
 		PretupidClient client = PretupidClient.get();
-		InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(client.keybinds().emoteWheel());
+		InputConstants.Key key = Platform.boundKey(client.keybinds().emoteWheel());
 		boolean keyboard = key.getType() == Platform.keyboard() && key.getValue() != InputConstants.UNKNOWN.getValue();
 		this.holdMode = client.settings().emoteWheelHold.enabled() && keyboard && Platform.isKeyDown(key.getValue());
 		this.holdKey = key.getValue();

@@ -1,5 +1,26 @@
 package net.pretupid.client.platform;
 
+import org.joml.Matrix4f;
+import net.minecraft.world.level.Level;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.model.player.PlayerModel;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.KeyMapping;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.services.ProfileResult;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -93,5 +114,72 @@ public final class Platform {
 	public static Collection<Property> profileProperties(Minecraft minecraft, UUID uuid, String name) {
 		ProfileResult result = minecraft.services().sessionService().fetchProfile(uuid, true);
 		return result == null ? List.of() : result.profile().properties().get(name);
+	}
+
+	public static KeyMapping registerKey(KeyMapping mapping) {
+		return KeyMappingHelper.registerKeyMapping(mapping);
+	}
+
+	public static InputConstants.Key boundKey(KeyMapping mapping) {
+		return KeyMappingHelper.getBoundKeyOf(mapping);
+	}
+
+	public static LiteralArgumentBuilder<FabricClientCommandSource> literal(String name) {
+		return ClientCommands.literal(name);
+	}
+
+	public static <T> RequiredArgumentBuilder<FabricClientCommandSource, T> argument(String name, ArgumentType<T> type) {
+		return ClientCommands.argument(name, type);
+	}
+
+	public static <T extends CustomPacketPayload> void registerClientboundPayload(CustomPacketPayload.Type<T> type, StreamCodec<? super RegistryFriendlyByteBuf, T> codec) {
+		PayloadTypeRegistry.clientboundPlay().register(type, codec);
+	}
+
+	public static List<AbstractWidget> widgets(Screen screen) {
+		return Screens.getWidgets(screen);
+	}
+
+	public static void showMessage(Component message) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.player != null) {
+			minecraft.player.sendSystemMessage(message);
+		}
+	}
+
+	public static void addChatMessage(Component message) {
+		chat().addClientSystemMessage(message);
+	}
+
+	public static long overworldTime(Level level) {
+		return level.getOverworldClockTime();
+	}
+
+	public static long dayTime(Level level) {
+		return level.getDefaultClockTime();
+	}
+
+	public static boolean windowFocused() {
+		return Minecraft.getInstance().getWindow().isFocused();
+	}
+
+	public static Matrix4f viewProjection(Camera camera) {
+		return camera.getViewRotationProjectionMatrix(new Matrix4f());
+	}
+
+	public static void registerAvatarLayers(java.util.function.Function<AvatarRenderer<?>, RenderLayer<AvatarRenderState, PlayerModel>> factory) {
+		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
+			if (renderer instanceof AvatarRenderer<?> avatarRenderer) {
+				helper.register(factory.apply(avatarRenderer));
+			}
+		});
+	}
+
+	public static float cameraYaw(Camera camera) {
+		return camera.yRot();
+	}
+
+	public static float cameraPitch(Camera camera) {
+		return camera.xRot();
 	}
 }

@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import net.pretupid.client.ui.ChatHistory;
 
 public final class ChatEmojis {
 	public static final int MAX_INSERTS = 32;
@@ -33,16 +34,6 @@ public final class ChatEmojis {
 	}
 
 	public record Outgoing(String message, Overlay overlay) {
-	}
-
-	public interface ChatAccess {
-		int size();
-
-		Component content(int index);
-
-		void replace(int index, Component content);
-
-		void refresh();
 	}
 
 	private record Recent(Component content, long at) {
@@ -186,7 +177,7 @@ public final class ChatEmojis {
 	}
 
 	private boolean patchRecent(Overlay overlay) {
-		if (!(Platform.chat() instanceof ChatAccess access)) {
+		if (!(Platform.chat() instanceof ChatHistory access)) {
 			return false;
 		}
 		long now = System.currentTimeMillis();

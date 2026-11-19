@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.Camera;

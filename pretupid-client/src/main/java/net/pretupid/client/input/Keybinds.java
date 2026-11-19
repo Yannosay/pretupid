@@ -4,7 +4,6 @@ import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.HashMap;
 import java.util.Map;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
@@ -40,8 +39,8 @@ public final class Keybinds {
 
 	public void register() {
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(PretupidClient.MOD_ID, "main"));
-		openMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.menu", Platform.keyboard(), InputConstants.KEY_RSHIFT, category));
-		openHudEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.hud_editor", Platform.keyboard(), InputConstants.KEY_H, category));
+		openMenu = Platform.registerKey(new KeyMapping("key.pretupid.menu", Platform.keyboard(), InputConstants.KEY_RSHIFT, category));
+		openHudEditor = Platform.registerKey(new KeyMapping("key.pretupid.hud_editor", Platform.keyboard(), InputConstants.KEY_H, category));
 		SettingChangeBus.subscribe(setting -> {
 			if (setting == client.settings().hudEditorKey && !syncingHudEditorKey) {
 				int key = client.settings().hudEditorKey.get();
@@ -50,13 +49,13 @@ public final class Keybinds {
 				Minecraft.getInstance().options.save();
 			}
 		});
-		zoom = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.zoom", Platform.keyboard(), InputConstants.KEY_C, category));
-		emoteWheel = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.emote_wheel", Platform.keyboard(), InputConstants.KEY_B, category));
-		quickMenu = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.quick_menu", Platform.keyboard(), InputConstants.KEY_G, category));
-		freelook = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freelook", Platform.keyboard(), InputConstants.KEY_LALT, category));
-		freecam = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.freecam", Platform.keyboard(), InputConstants.KEY_F6, category));
-		cinematicEditor = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_editor", Platform.keyboard(), InputConstants.KEY_J, category));
-		cinematicKeyframe = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.pretupid.cinematic_keyframe", Platform.keyboard(), InputConstants.KEY_K, category));
+		zoom = Platform.registerKey(new KeyMapping("key.pretupid.zoom", Platform.keyboard(), InputConstants.KEY_C, category));
+		emoteWheel = Platform.registerKey(new KeyMapping("key.pretupid.emote_wheel", Platform.keyboard(), InputConstants.KEY_B, category));
+		quickMenu = Platform.registerKey(new KeyMapping("key.pretupid.quick_menu", Platform.keyboard(), InputConstants.KEY_G, category));
+		freelook = Platform.registerKey(new KeyMapping("key.pretupid.freelook", Platform.keyboard(), InputConstants.KEY_LALT, category));
+		freecam = Platform.registerKey(new KeyMapping("key.pretupid.freecam", Platform.keyboard(), InputConstants.KEY_F6, category));
+		cinematicEditor = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_editor", Platform.keyboard(), InputConstants.KEY_J, category));
+		cinematicKeyframe = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_keyframe", Platform.keyboard(), InputConstants.KEY_K, category));
 	}
 
 	public KeyMapping emoteWheel() {
@@ -84,7 +83,7 @@ public final class Keybinds {
 	}
 
 	private void syncHudEditorKey() {
-		InputConstants.Key bound = KeyMappingHelper.getBoundKeyOf(openHudEditor);
+		InputConstants.Key bound = Platform.boundKey(openHudEditor);
 		int key = bound.getType() == Platform.keyboard() && bound != InputConstants.UNKNOWN ? bound.getValue() : KeySetting.UNBOUND;
 		KeySetting setting = client.settings().hudEditorKey;
 		if (setting.get() != key) {

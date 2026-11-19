@@ -4,12 +4,17 @@
 	"package": "net.pretupid.client.mixin.platform",
 	"compatibilityLevel": "JAVA_${java_version}",
 	"client": [
+		"CameraMixin",
 		"CapeLayerMixin",
+		"ChatComponentMixin",
 		"ChatScreenMixin",
 		"EntityRendererMixin",
+		"FontPreparedTextBuilderMixin",
 		"GameRendererPostEffectMixin",
 		"HudMixin",
 		"LevelRendererMixin",
+		"LightmapRenderStateExtractorMixin",
+		"LivingEntityRendererMixin",
 		"PlayerTabOverlayMixin",
 		"ScreenEffectRendererMixin"
 	],

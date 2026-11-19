@@ -54,6 +54,6 @@ public final class DeathCoordinatesModule extends Module {
 				.withClickEvent(new ClickEvent.CopyToClipboard(coordinates))
 				.withHoverEvent(new HoverEvent.ShowText(Component.translatable("pretupid.death.copy_hover")))));
 		}
-		Platform.chat().addClientSystemMessage(message);
+		Platform.addChatMessage(message);
 	}
 }

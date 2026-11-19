@@ -1,5 +1,6 @@
 package net.pretupid.client.module.hud;
 
+import net.pretupid.client.platform.Platform;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -41,7 +42,7 @@ public final class ClockHud extends TextHudModule {
 			DateTimeFormatter formatter = twentyFourHour.enabled() ? (seconds.enabled() ? H24_SECONDS : H24) : (seconds.enabled() ? H12_SECONDS : H12);
 			return LocalTime.now().format(formatter);
 		}
-		long time = minecraft.level.getOverworldClockTime();
+		long time = Platform.overworldTime(minecraft.level);
 		long day = time / 24000L + 1L;
 		long dayTicks = Math.floorMod(time, 24000L);
 		int hour = (int) ((dayTicks / 1000L + 6L) % 24L);

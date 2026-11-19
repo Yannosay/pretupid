@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -26,9 +26,9 @@ public abstract class FontPreparedTextBuilderMixin {
 	}
 
 	@WrapOperation(method = "accept(ILnet/minecraft/network/chat/Style;Lnet/minecraft/client/gui/font/glyphs/BakedGlyph;)Z",
-		at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/font/glyphs/BakedGlyph;createGlyph(FFIILnet/minecraft/network/chat/Style;FF)Lnet/minecraft/client/gui/font/TextRenderable$Styled;"))
-	private TextRenderable.Styled pretupid$shiftGlyph(BakedGlyph glyph, float x, float y, int color, int shadowColor, Style style, float boldOffset, float shadowOffset,
-		Operation<TextRenderable.Styled> original) {
+		at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/font/glyphs/BakedGlyph;createGlyph(FFIILnet/minecraft/network/chat/Style;FF)Lnet/minecraft/client/gui/font/TextRenderable;"))
+	private TextRenderable pretupid$shiftGlyph(BakedGlyph glyph, float x, float y, int color, int shadowColor, Style style, float boldOffset, float shadowOffset,
+		Operation<TextRenderable> original) {
 		NameEffect.Offset offset = pretupid$offset;
 		if (offset == null) {
 			return original.call(glyph, x, y, color, shadowColor, style, boldOffset, shadowOffset);

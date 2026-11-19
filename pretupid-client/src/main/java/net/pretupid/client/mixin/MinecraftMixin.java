@@ -33,7 +33,7 @@ public abstract class MinecraftMixin {
 		}
 	}
 
-	@Inject(method = {"startUseItem", "pickBlockOrEntity"}, at = @At("HEAD"), cancellable = true)
+	@Inject(method = {"startUseItem", "pickBlockOrEntity", "pickBlock"}, at = @At("HEAD"), cancellable = true)
 	private void pretupid$freecamUse(CallbackInfo ci) {
 		if (pretupid$freecamActive()) {
 			ci.cancel();

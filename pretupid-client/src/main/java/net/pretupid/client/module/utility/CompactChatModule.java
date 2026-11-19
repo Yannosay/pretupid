@@ -1,37 +1,36 @@
 package net.pretupid.client.module.utility;
 
-import java.util.List;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.module.Module;
+import net.pretupid.client.ui.ChatHistory;
 
 public final class CompactChatModule extends Module {
 	private String lastText;
-	private GuiMessage lastMessage;
+	private Component lastMessage;
 	private int repeats;
 
 	public CompactChatModule() {
 		super("compact_chat", Category.UTILITY, "writable_book", false);
 	}
 
-	public Component compact(Component message, List<GuiMessage> messages, Runnable refresh) {
+	public Component compact(Component message, ChatHistory chat) {
 		String text = message.getString();
-		boolean repeated = text.equals(lastText) && lastMessage != null && !messages.isEmpty() && messages.getFirst() == lastMessage;
+		boolean repeated = text.equals(lastText) && lastMessage != null && chat.size() > 0 && chat.content(0) == lastMessage;
 		if (!repeated) {
 			lastText = text;
 			repeats = 1;
 			return message;
 		}
-		messages.removeFirst();
-		refresh.run();
+		chat.removeNewest();
+		chat.refresh();
 		repeats++;
 		return message.copy().append(Component.literal(" (" + repeats + "×)").withStyle(ChatFormatting.GRAY));
 	}
 
-	public void remember(List<GuiMessage> messages) {
-		lastMessage = messages.isEmpty() ? null : messages.getFirst();
+	public void remember(ChatHistory chat) {
+		lastMessage = chat.size() == 0 ? null : chat.content(0);
 	}
 
 	@Override

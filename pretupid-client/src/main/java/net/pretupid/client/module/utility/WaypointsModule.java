@@ -77,7 +77,7 @@ public final class WaypointsModule extends HudModule {
 		boolean keyDown = addKey.isBound() && Platform.screen() == null && Platform.isKeyDown(addKey.get());
 		if (keyDown && !addKeyHeld) {
 			Component result = add(minecraft, nextName(minecraft));
-			Platform.chat().addClientSystemMessage(result);
+			Platform.addChatMessage(result);
 		}
 		addKeyHeld = keyDown;
 	}

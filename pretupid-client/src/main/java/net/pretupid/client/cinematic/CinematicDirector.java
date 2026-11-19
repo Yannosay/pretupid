@@ -128,8 +128,8 @@ public final class CinematicDirector {
 		double time = shot.keyframes().isEmpty() ? 0.0 : shot.duration() + spacing;
 		FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
 		Vec3 position = freecam.active() ? freecam.position(1f) : camera.position();
-		float yaw = freecam.active() ? freecam.yaw() : camera.yRot();
-		float pitch = freecam.active() ? freecam.pitch() : camera.xRot();
+		float yaw = freecam.active() ? freecam.yaw() : Platform.cameraYaw(camera);
+		float pitch = freecam.active() ? freecam.pitch() : Platform.cameraPitch(camera);
 		float fov = minecraft.options.fov().get().floatValue();
 		int index = shot.add(new CameraKeyframe(time, position, yaw, pitch, 0f, fov, false));
 		if (index >= 0) {

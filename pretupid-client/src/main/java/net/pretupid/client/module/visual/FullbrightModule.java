@@ -1,6 +1,5 @@
 package net.pretupid.client.module.visual;
 
-import net.minecraft.client.renderer.state.LightmapRenderState;
 import net.pretupid.client.module.Category;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.setting.NumberSetting;
@@ -13,14 +12,14 @@ public final class FullbrightModule extends Module {
 		super("fullbright", Category.VISUAL, "glowstone_dust", false);
 	}
 
-	public void apply(LightmapRenderState state) {
+	public float nightVision(float original) {
+		return isEnabled() ? Math.max(original, intensity.floatValue() / 100f) : original;
+	}
+
+	public boolean needsLightUpdate() {
 		boolean active = isEnabled();
-		if (active) {
-			state.nightVisionEffectIntensity = Math.max(state.nightVisionEffectIntensity, intensity.floatValue() / 100f);
-			state.needsUpdate = true;
-		} else if (wasActive) {
-			state.needsUpdate = true;
-		}
+		boolean changed = active || wasActive;
 		wasActive = active;
+		return changed;
 	}
 }

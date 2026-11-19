@@ -36,7 +36,7 @@ public final class ScreenIntegration {
 	}
 
 	private static void attach(Screen screen) {
-		List<AbstractWidget> widgets = Screens.getWidgets(screen);
+		List<AbstractWidget> widgets = Platform.widgets(screen);
 		LogoButton button = new LogoButton(ICON_SIZE, Component.translatable("pretupid.ui.open_menu"),
 			pressed -> Platform.setScreen(new ClientMenuScreen(screen)));
 		List<AbstractWidget> row = iconRow(widgets);
@@ -47,9 +47,14 @@ public final class ScreenIntegration {
 		}
 		AbstractWidget last = row.getLast();
 		int gap = row.size() > 1 ? Math.max(2, row.get(1).getX() - row.getFirst().getX() - ICON_SIZE) : DEFAULT_GAP;
-		int shift = (ICON_SIZE + gap) / 2;
-		for (AbstractWidget icon : row) {
-			icon.setX(icon.getX() - shift);
+		boolean contiguous = gap <= ICON_SIZE / 2;
+		if (contiguous) {
+			int shift = (ICON_SIZE + gap) / 2;
+			for (AbstractWidget icon : row) {
+				icon.setX(icon.getX() - shift);
+			}
+		} else {
+			gap = DEFAULT_GAP;
 		}
 		button.setPosition(last.getX() + ICON_SIZE + gap, last.getY());
 		widgets.add(button);

@@ -3,15 +3,12 @@ package net.pretupid.client;
 import net.pretupid.client.platform.Platform;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.pretupid.client.network.Json;
@@ -173,11 +170,7 @@ public final class PretupidClient implements ClientModInitializer {
 		keybinds.register();
 		new HudLayer(this).register();
 		ScreenIntegration.register(this);
-		LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
-			if (renderer instanceof AvatarRenderer<?> avatarRenderer) {
-				helper.register(new CosmeticLayer(avatarRenderer));
-			}
-		});
+		Platform.registerAvatarLayers(CosmeticLayer::new);
 		registerEvents();
 		registerCommands();
 		LOGGER.info("Pretupid Client {} initialized with {} modules{}", PretupidInfo.version(), modules.all().size(),
@@ -260,7 +253,7 @@ public final class PretupidClient implements ClientModInitializer {
 				}
 			}
 		}));
-		PayloadTypeRegistry.clientboundPlay().register(ServerRulesPayload.TYPE, ServerRulesPayload.CODEC);
+		Platform.registerClientboundPayload(ServerRulesPayload.TYPE, ServerRulesPayload.CODEC);
 		ClientPlayNetworking.registerGlobalReceiver(ServerRulesPayload.TYPE, (payload, context) -> context.client().execute(() -> {
 			if (settings.serverCompatibility.enabled()) {
 				compatibility.onServerRules(parseRuleModules(payload.json()));
@@ -269,7 +262,7 @@ public final class PretupidClient implements ClientModInitializer {
 		ScreenEvents.AFTER_INIT.register((minecraft, screen, width, height) -> {
 			if (screen instanceof DisconnectedScreen) {
 				StringBuilder text = new StringBuilder();
-				for (AbstractWidget widget : Screens.getWidgets(screen)) {
+				for (AbstractWidget widget : Platform.widgets(screen)) {
 					text.append(widget.getMessage().getString()).append(' ');
 				}
 				compatibility.onDisconnectMessage(text.toString());
@@ -302,12 +295,12 @@ public final class PretupidClient implements ClientModInitializer {
 
 	private void registerCommands() {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-			ClientCommands.literal("pretupid")
+			Platform.literal("pretupid")
 				.executes(context -> {
 					openMenuNextTick = true;
 					return 1;
 				})
-				.then(ClientCommands.literal("benchmark")
+				.then(Platform.literal("benchmark")
 					.executes(context -> {
 						if (!benchmark.start(Minecraft.getInstance())) {
 							context.getSource().sendError(net.minecraft.network.chat.Component.translatable("pretupid.benchmark.unavailable"));
@@ -315,23 +308,23 @@ public final class PretupidClient implements ClientModInitializer {
 						}
 						return 1;
 					}))
-				.then(ClientCommands.literal("waypoint")
-					.then(ClientCommands.literal("add")
-						.then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+				.then(Platform.literal("waypoint")
+					.then(Platform.literal("add")
+						.then(Platform.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
 							.executes(context -> waypointFeedback(context.getSource(), waypoints().add(Minecraft.getInstance(),
 								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
-					.then(ClientCommands.literal("remove")
-						.then(ClientCommands.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+					.then(Platform.literal("remove")
+						.then(Platform.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
 							.suggests((context, builder) -> {
 								waypoints().names(Minecraft.getInstance()).forEach(builder::suggest);
 								return builder.buildFuture();
 							})
 							.executes(context -> waypointFeedback(context.getSource(), waypoints().remove(Minecraft.getInstance(),
 								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
-					.then(ClientCommands.literal("list")
+					.then(Platform.literal("list")
 						.executes(context -> waypointFeedback(context.getSource(), waypoints().list(Minecraft.getInstance())))))
-				.then(ClientCommands.literal("reportcape")
-					.then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
+				.then(Platform.literal("reportcape")
+					.then(Platform.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
 						.executes(context -> reportCape(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player")))))
 		));
 	}

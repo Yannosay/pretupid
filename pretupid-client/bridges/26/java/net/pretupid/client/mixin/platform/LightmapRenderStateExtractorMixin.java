@@ -1,4 +1,4 @@
-package net.pretupid.client.mixin;
+package net.pretupid.client.mixin.platform;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.renderer.LightmapRenderStateExtractor;
@@ -16,7 +16,11 @@ public abstract class LightmapRenderStateExtractorMixin {
 	private void pretupid$fullbright(CallbackInfo ci, @Local(argsOnly = true) LightmapRenderState state) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client != null) {
-			client.modules().get(FullbrightModule.class).apply(state);
+			FullbrightModule module = client.modules().get(FullbrightModule.class);
+			if (module.needsLightUpdate()) {
+				state.nightVisionEffectIntensity = module.nightVision(state.nightVisionEffectIntensity);
+				state.needsUpdate = true;
+			}
 		}
 	}
 }

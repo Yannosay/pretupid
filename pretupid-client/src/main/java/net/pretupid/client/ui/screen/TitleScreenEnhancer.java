@@ -46,11 +46,11 @@ public final class TitleScreenEnhancer {
 				return;
 			}
 			PretupidClient client = PretupidClient.get();
-			panels.init(screen, Screens.getWidgets(screen));
+			panels.init(screen, Platform.widgets(screen));
 			addTopRightButtons(screen, width);
 			entries.clear();
 			if (client.settings().enhancedTitleScreen.enabled() && client.settings().animations.enabled()) {
-				List<AbstractWidget> widgets = new ArrayList<>(Screens.getWidgets(screen));
+				List<AbstractWidget> widgets = new ArrayList<>(Platform.widgets(screen));
 				widgets.sort(Comparator.comparingInt(AbstractWidget::getY).thenComparingInt(AbstractWidget::getX));
 				for (int i = 0; i < widgets.size(); i++) {
 					AbstractWidget widget = widgets.get(i);
@@ -79,7 +79,7 @@ public final class TitleScreenEnhancer {
 
 	private void addTopRightButtons(Screen screen, int width) {
 		PretupidClient client = PretupidClient.get();
-		List<AbstractWidget> widgets = Screens.getWidgets(screen);
+		List<AbstractWidget> widgets = Platform.widgets(screen);
 		int y = 6;
 		newsButton = null;
 		updateButton = null;

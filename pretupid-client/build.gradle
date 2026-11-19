@@ -1,9 +1,13 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
 	id 'maven-publish'
 }
 
 ext.targetId = providers.gradleProperty("target").getOrElse(property("default_target"))
+def primaryDescriptor = new Properties()
+file("targets/${targetId}/target.properties").withInputStream { primaryDescriptor.load(it) }
+apply plugin: primaryDescriptor.loom == "remap" ? 'net.fabricmc.fabric-loom-remap' : 'net.fabricmc.fabric-loom'
 apply from: "gradle/target.gradle"
 
 dependencies {

@@ -5,7 +5,6 @@ import net.pretupid.client.platform.Platform;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -48,7 +47,7 @@ public final class QuickMenuScreen extends PretupidScreen {
 	public QuickMenuScreen() {
 		super(Component.translatable("pretupid.quick.title"), null);
 		PretupidClient client = PretupidClient.get();
-		InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(client.keybinds().quickMenu());
+		InputConstants.Key key = Platform.boundKey(client.keybinds().quickMenu());
 		boolean keyboard = key.getType() == Platform.keyboard() && key.getValue() != InputConstants.UNKNOWN.getValue();
 		this.holdMode = keyboard;
 		this.holdKey = key.getValue();

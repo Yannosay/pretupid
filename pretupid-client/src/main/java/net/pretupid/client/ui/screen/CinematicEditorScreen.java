@@ -415,7 +415,7 @@ public final class CinematicEditorScreen extends PretupidScreen {
 				return;
 			}
 			editSelected(current -> current.withView(freecam.active() ? freecam.position(1f) : camera.position(),
-				freecam.active() ? freecam.yaw() : camera.yRot(), freecam.active() ? freecam.pitch() : camera.xRot()));
+				freecam.active() ? freecam.yaw() : Platform.cameraYaw(camera), freecam.active() ? freecam.pitch() : Platform.cameraPitch(camera)));
 		});
 		Widgets.button(ui, "cinematic.ease", right - 46 - 4 - 70 - 4 - 56, y + 1, 56, 16,
 			Component.translatable(keyframe.linear() ? "pretupid.cinematic.linear" : "pretupid.cinematic.eased"), Widgets.ButtonStyle.GHOST,

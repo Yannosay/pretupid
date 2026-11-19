@@ -1,6 +1,7 @@
 package net.pretupid.client.gametest;
 
 import net.pretupid.client.platform.Platform;
+import net.pretupid.client.ui.ChatHistory;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -16,7 +17,6 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
@@ -109,7 +109,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			enable(minecraft, LookAtHud.class);
 			enable(minecraft, BlockOutlineModule.class);
 		});
-		context.getInput().lookAt(feet.offset(0, 0, 3));
+		lookAt(context, feet.offset(0, 0, 3));
 		context.waitTicks(10);
 		String target = context.computeOnClient(minecraft -> minecraft.level.getBlockState(feet.offset(0, 0, 3)).getBlock().getName().getString());
 		check(target.toLowerCase().contains("diamond"), "Looking At target is " + target);
@@ -141,15 +141,39 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> PretupidClient.get().settings().accent.reset());
 	}
 
-	@SuppressWarnings("unchecked")
-	private static List<GuiMessage> chatMessages(Minecraft minecraft) {
-		try {
-			Field field = ChatComponent.class.getDeclaredField("allMessages");
-			field.setAccessible(true);
-			return (List<GuiMessage>) field.get(Platform.chat());
-		} catch (ReflectiveOperationException exception) {
-			throw new AssertionError("Chat messages are not readable", exception);
+	private static List<Component> chatMessages(Minecraft minecraft) {
+		if (!(Platform.chat() instanceof ChatHistory history)) {
+			throw new AssertionError("Chat history is not readable");
 		}
+		List<Component> messages = new java.util.ArrayList<>();
+		for (int i = 0; i < history.size(); i++) {
+			messages.add(history.content(i));
+		}
+		return messages;
+	}
+
+	private static void look(ClientGameTestContext context, float yaw, float pitch) {
+		context.runOnClient(minecraft -> {
+			minecraft.player.setYRot(yaw);
+			minecraft.player.setXRot(pitch);
+			minecraft.player.yRotO = yaw;
+			minecraft.player.xRotO = pitch;
+		});
+	}
+
+	private static void lookAt(ClientGameTestContext context, BlockPos target) {
+		context.runOnClient(minecraft -> {
+			var eye = minecraft.player.getEyePosition();
+			double dx = target.getX() + 0.5 - eye.x;
+			double dy = target.getY() + 0.5 - eye.y;
+			double dz = target.getZ() + 0.5 - eye.z;
+			float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+			float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+			minecraft.player.setYRot(yaw);
+			minecraft.player.setXRot(pitch);
+			minecraft.player.yRotO = yaw;
+			minecraft.player.xRotO = pitch;
+		});
 	}
 
 	private static void testChatModules(ClientGameTestContext context) {
@@ -157,18 +181,18 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			enable(minecraft, CompactChatModule.class);
 			ChatComponent chat = Platform.chat();
 			for (int i = 0; i < 3; i++) {
-				chat.addClientSystemMessage(Component.literal("Pretupid compact chat test"));
+				Platform.addChatMessage(Component.literal("Pretupid compact chat test"));
 			}
-			String latest = chatMessages(minecraft).getFirst().content().getString();
+			String latest = chatMessages(minecraft).getFirst().getString();
 			check(latest.endsWith("(3×)"), "Compact Chat produced \"" + latest + "\"");
-			long copies = chatMessages(minecraft).stream().filter(message -> message.content().getString().startsWith("Pretupid compact chat test")).count();
+			long copies = chatMessages(minecraft).stream().filter(message -> message.getString().startsWith("Pretupid compact chat test")).count();
 			check(copies == 1, "Compact Chat kept " + copies + " copies");
 
 			NickHiderModule nickHider = PretupidClient.get().modules().get(NickHiderModule.class);
 			nickHider.setEnabled(true);
 			String name = minecraft.getUser().getName();
-			chat.addClientSystemMessage(Component.literal("<" + name + "> hello from the game test"));
-			String hidden = chatMessages(minecraft).getFirst().content().getString();
+			Platform.addChatMessage(Component.literal("<" + name + "> hello from the game test"));
+			String hidden = chatMessages(minecraft).getFirst().getString();
 			check(!hidden.contains(name) && hidden.contains(nickHider.alias()), "Nick Hider produced \"" + hidden + "\"");
 		});
 		context.waitTicks(5);
@@ -186,15 +210,15 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			check(only.overlay() == null && only.message().equals("🔥"), "An emoji-only message did not fall back to Unicode");
 			minecraft.player.connection.sendChat("gg :fire: nice :sob:");
 		});
-		for (int i = 0; i < 60 && !context.computeOnClient(minecraft -> chatMessages(minecraft).getFirst().content().getString().contains("nice")); i++) {
+		for (int i = 0; i < 60 && !context.computeOnClient(minecraft -> chatMessages(minecraft).getFirst().getString().contains("nice")); i++) {
 			context.waitTick();
 		}
 		context.runOnClient(minecraft -> {
-			String shown = chatMessages(minecraft).getFirst().content().getString();
+			String shown = chatMessages(minecraft).getFirst().getString();
 			check(shown.contains(new String(Character.toChars(fire))) && shown.contains(new String(Character.toChars(sob))),
 				"Own chat message did not get its emoji back: \"" + shown + "\"");
-			Platform.chat().addClientSystemMessage(Component.literal("Unicode emoji 😭 and :thumbsup: work"));
-			String unicode = chatMessages(minecraft).getFirst().content().getString();
+			Platform.addChatMessage(Component.literal("Unicode emoji 😭 and :thumbsup: work"));
+			String unicode = chatMessages(minecraft).getFirst().getString();
 			check(unicode.contains(new String(Character.toChars(sob))) && !unicode.contains(":thumbsup:"), "Incoming emoji were not rendered: \"" + unicode + "\"");
 		});
 		context.setScreen(() -> new ChatScreen(":smi", false));
@@ -322,7 +346,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			settings.cape.set("catalog:pretupid");
 			minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 		});
-		context.getInput().lookAt(180f, 10f);
+		look(context, 180f, 10f);
 		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> PretupidClient.get().cosmetics().ownCapeTexture() != null
 			&& PretupidClient.get().cosmetics().capes().get(PretupidClient.get().cosmetics().ownCapeTexture()) != null); i++) {
 			context.waitTick();
@@ -438,7 +462,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		check(holding, "Dead pose ended before sneaking");
 		context.takeScreenshot("pretupid-dead-pose-front");
 		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-		context.getInput().lookAt(180f, 40f);
+		look(context, 180f, 40f);
 		context.waitTicks(5);
 		context.takeScreenshot("pretupid-dead-pose-side");
 		context.getInput().holdKey(options -> options.keyUp);

@@ -8,6 +8,9 @@ LOOM = Path.home() / ".gradle" / "caches" / "fabric-loom"
 
 
 def classpath(version):
+    mapped = sorted((LOOM / "minecraftMaven" / "net" / "minecraft" / "minecraft-merged").glob(f"{version}-loom.mappings.*/*.jar"))
+    if mapped:
+        return [mapped[0]]
     base = LOOM / version
     split = [base / "minecraft-client-only.jar", base / "minecraft-common.jar"]
     if all(path.exists() for path in split):
@@ -87,12 +90,14 @@ def resolve_import(source, simple):
     return None
 
 
-def check(version, roots):
+def check(version, roots, renames=()):
     cache = {}
     problems = []
     for root in roots:
         for path in sorted(root.rglob("*Mixin.java")):
             source = path.read_text(encoding="utf-8")
+            for pattern, replacement in renames:
+                source = re.sub(pattern, replacement.replace("$", "\\"), source)
             target_match = re.search(r"@Mixin\((?:value\s*=\s*)?\{?\s*([\w.]+)\.class", source)
             if not target_match:
                 continue
@@ -105,7 +110,10 @@ def check(version, roots):
                 problems.append(f"{path.name}: class {target} missing")
                 continue
             for method in re.finditer(r'method\s*=\s*(\{[^}]*\}|"[^"]*")', source):
-                for name in re.findall(r'"([^"]+)"', method.group(1)):
+                names = re.findall(r'"([^"]+)"', method.group(1))
+                if len(names) > 1 and any(name.split("(")[0] in available for name in names):
+                    names = [name for name in names if name.split("(")[0] in available]
+                for name in names:
                     bare = name.split("(")[0]
                     descriptor = name[len(bare):]
                     if bare not in available:
@@ -166,7 +174,18 @@ def main():
         )
         roots = [CLIENT / "src" / "main" / "java" / "net" / "pretupid" / "client" / "mixin"]
         roots += [CLIENT / "bridges" / name.strip() / "java" for name in properties["bridge"].split(",")]
-        problems = check(properties["minecraft_version"], roots)
+        renames = []
+        for rule in properties.get("renames", "").replace("\\\\", "\\").split(";"):
+            if "=>" in rule:
+                pattern, replacement = rule.split("=>", 1)
+                renames.append((pattern, replacement))
+        seen = set()
+        unique_roots = []
+        for root in roots:
+            if root not in seen:
+                seen.add(root)
+                unique_roots.append(root)
+        problems = check(properties["minecraft_version"], unique_roots, renames)
         print(f"{version}: {'ok' if not problems else str(len(problems)) + ' problems'}")
         for problem in problems:
             print("  " + problem)

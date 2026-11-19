@@ -2,7 +2,7 @@ package net.pretupid.client.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.state.level.CameraRenderState;
+
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.module.visual.NoHurtCamModule;
 import net.pretupid.client.module.visual.ZoomModule;

@@ -44,10 +44,29 @@ dependencies {
 	}
 }
 
+def javaSources = [new File(clientRoot, "src/main/java")] + bridgeDirs.collect { new File(it, "java") }
+def renameRules = (target.renames ?: "").split(";").findAll { it.contains("=>") }.collect { rule ->
+	def parts = rule.split("=>", 2)
+	[parts[0].trim(), parts[1].trim()]
+}
+
+def renamedSources = tasks.register("renameSources", Sync) {
+	from(javaSources)
+	into(layout.buildDirectory.dir("generated/renamed-sources"))
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	def rules = renameRules
+	inputs.property("renames", rules.collect { it.join("=>") }.join(";"))
+	filter { String line ->
+		def result = line
+		rules.each { rule -> result = result.replaceAll(rule[0], rule[1]) }
+		result
+	}
+}
+
 sourceSets {
 	main {
 		java {
-			srcDirs = [new File(clientRoot, "src/main/java")] + bridgeDirs.collect { new File(it, "java") }
+			srcDirs = renameRules.isEmpty() ? javaSources : [renamedSources]
 		}
 		resources {
 			srcDirs = [new File(clientRoot, "src/main/resources")] + bridgeDirs.collect { new File(it, "resources") }
@@ -137,6 +156,7 @@ def generateBranding = tasks.register("generateBranding", GenerateBranding) {
 sourceSets.main.resources.srcDir(generateBranding)
 
 processResources {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	def props = [
 		version          : project.version,
 		minecraft_version: target.minecraft_version,

@@ -233,7 +233,7 @@ public final class FpsBenchmark {
 
 	private static void message(Minecraft minecraft, Component text) {
 		if (minecraft.player != null) {
-			minecraft.player.sendSystemMessage(text);
+			Platform.showMessage(text);
 		}
 	}
 }
