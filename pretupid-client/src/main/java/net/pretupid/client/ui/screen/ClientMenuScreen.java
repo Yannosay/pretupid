@@ -155,23 +155,36 @@ public final class ClientMenuScreen extends PretupidScreen {
 		Draw.textShadow(g, font, Component.literal("Pretupid").withStyle(style -> style.withBold(true)), x + 32, y + 9, Theme.TEXT);
 		Draw.text(g, font, Draw.ellipsize(font, PretupidInfo.displayVersion(), SIDEBAR - 36), x + 32, y + 19, Theme.TEXT_DIM);
 		int itemY = y + 36;
-		int step = 22;
-		int navBottom = itemY + Tab.values().length * step;
-		int editHeight = inWorld() ? 24 : 0;
-		boolean showStatus = navBottom + editHeight + 28 <= y + h;
-		if (navBottom + editHeight > y + h - 4) {
-			step = 20;
-		}
+		int count = Tab.values().length;
+		int bottom = y + h - 4;
+		boolean world = inWorld();
+		boolean compactEdit = world && itemY + count * 20 + 24 > bottom;
+		int editHeight = world && !compactEdit ? 24 : 0;
+		int step = itemY + count * 22 + editHeight <= bottom ? 22 : 20;
+		boolean showStatus = itemY + count * step + editHeight + 28 <= y + h;
 		for (Tab entry : Tab.values()) {
 			drawNavItem(ui, entry, x + 5, itemY, SIDEBAR - 9);
 			itemY += step;
 		}
-		if (inWorld()) {
+		if (compactEdit) {
+			drawHudEditorIcon(ui, x + SIDEBAR - 23, y + 18);
+		} else if (world) {
 			int editY = showStatus ? y + h - 52 : y + h - 24;
 			drawHudEditorItem(ui, x + 5, Math.max(itemY + 2, editY), SIDEBAR - 9);
 		}
 		if (showStatus) {
 			drawStatus(ui, x + 8, y + h - 24, SIDEBAR - 14);
+		}
+	}
+
+	private void drawHudEditorIcon(UiContext ui, int x, int y) {
+		var g = ui.g();
+		boolean hover = ui.interactive(x, y, 18, 18, UiContext.Handler.onClick(this::openHudEditor));
+		float t = ui.animate("nav.hud", hover ? 1f : 0f, 16f);
+		Draw.chamfer(g, x, y, 18, 18, Colors.lerp(Theme.accent(170), Theme.accent(235), t));
+		HUD_EDITOR_ICON.draw(g, x + 1, y + 1);
+		if (hover) {
+			ui.tooltip(Component.translatable("pretupid.menu.edit_hud"));
 		}
 	}
 

@@ -1,7 +1,6 @@
 package net.pretupid.client.module.hud;
 
 import net.pretupid.client.platform.Gfx;
-import net.pretupid.client.platform.Platform;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -114,7 +113,7 @@ public final class PotionHud extends HudModule {
 			}
 			int nameArgb = effectColors.enabled() ? Colors.brighten(0xFF000000 | effect.getEffect().value().getColor(), 0.25f) : nameColor.resolve();
 			if (showIcons.enabled()) {
-				graphics.blitSprite(Platform.mobEffectSprite(effect.getEffect()), p, y, ICON, ICON, Colors.withAlpha(0xFFFFFF, Math.round(alpha * 255)));
+				graphics.mobEffect(effect.getEffect(), p, y, ICON, ICON, Colors.withAlpha(0xFFFFFF, Math.round(alpha * 255)));
 				int textX = p + ICON + 3;
 				graphics.text(font, name(effect), textX, y + 1, Colors.multiplyAlpha(nameArgb, alpha), shadow);
 				graphics.text(font, duration(effect), textX, y + 10, Colors.multiplyAlpha(durationColor.resolve(), alpha), shadow);

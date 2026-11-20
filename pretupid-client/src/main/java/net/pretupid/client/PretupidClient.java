@@ -213,7 +213,9 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new NoHurtCamModule());
 		modules.register(new LowFireModule());
 		modules.register(new ClearWeatherModule());
-		modules.register(new MotionBlurModule());
+		if (Platform.MOTION_BLUR) {
+			modules.register(new MotionBlurModule());
+		}
 		modules.register(new FullbrightModule());
 		modules.register(new CrosshairModule());
 		modules.register(new BlockOutlineModule());

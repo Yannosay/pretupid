@@ -90,6 +90,40 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitForScreen(TitleScreen.class);
 		context.waitTicks(20);
 		context.takeScreenshot("pretupid-title-screen");
+		testTitleScreenEntrance(context);
+	}
+
+	private static float widgetAlpha(net.minecraft.client.gui.components.AbstractWidget widget) {
+		try {
+			Field field = net.minecraft.client.gui.components.AbstractWidget.class.getDeclaredField("alpha");
+			field.setAccessible(true);
+			return field.getFloat(widget);
+		} catch (ReflectiveOperationException exception) {
+			return -1f;
+		}
+	}
+
+	private static void testTitleScreenEntrance(ClientGameTestContext context) {
+		boolean animations = context.computeOnClient(minecraft -> PretupidClient.get().settings().animations.enabled());
+		context.runOnClient(minecraft -> PretupidClient.get().settings().animations.set(true));
+		context.setScreen(() -> new net.minecraft.client.gui.screens.GenericMessageScreen(Component.literal("")));
+		context.waitTicks(40);
+		context.setScreen(() -> new TitleScreen(true));
+		context.waitTick();
+		int[] first = context.computeOnClient(minecraft -> titleButton());
+		context.takeScreenshot("pretupid-title-entering");
+		context.waitTicks(30);
+		int[] last = context.computeOnClient(minecraft -> titleButton());
+		check(first[0] > last[0], "The title screen buttons did not slide in (" + first[0] + " then " + last[0] + ")");
+		check(first[1] < 100 && last[1] == 100, "The title screen buttons did not fade in (" + first[1] + "% then " + last[1] + "%)");
+		context.takeScreenshot("pretupid-title-entered");
+		context.runOnClient(minecraft -> PretupidClient.get().settings().animations.set(animations));
+	}
+
+	private static int[] titleButton() {
+		var widgets = Platform.widgets(Platform.screen());
+		var widget = widgets.stream().max(java.util.Comparator.comparingInt(net.minecraft.client.gui.components.AbstractWidget::getY)).orElseThrow();
+		return new int[] {widget.getY(), Math.round(widgetAlpha(widget) * 100f)};
 	}
 
 	private static void waitForChunks(TestSingleplayerContext world) {
@@ -228,7 +262,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			String unicode = chatMessages(minecraft).getFirst().getString();
 			check(unicode.contains(new String(Character.toChars(sob))) && !unicode.contains(":thumbsup:"), "Incoming emoji were not rendered: \"" + unicode + "\"");
 		});
-		context.setScreen(() -> new ChatScreen(":smi", false));
+		context.setScreen(() -> Platform.chatScreen(":smi"));
 		context.waitTicks(5);
 		context.runOnClient(minecraft -> {
 			try {
@@ -282,7 +316,35 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(120);
 		context.runOnClient(minecraft -> check(!PretupidClient.get().cinematic().playing(), "The shot did not finish"));
 		context.setScreen(() -> null);
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> PretupidClient.get().cinematic().addTemplate(net.pretupid.client.cinematic.ShotTemplate.ORBIT, minecraft));
+		context.setScreen(CinematicEditorScreen::new);
+		context.runOnClient(minecraft -> PretupidClient.get().cinematic().preview(4.5));
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-cinematic-orbit");
+		java.nio.file.Path[] renderFolder = new java.nio.file.Path[1];
 		context.runOnClient(minecraft -> {
+			var director = PretupidClient.get().cinematic();
+			director.current().keyframes().removeIf(keyframe -> keyframe.time() > 1.6);
+			check(director.startRender(20, 1, result -> renderFolder[0] = result.folder()), "The render did not start");
+		});
+		for (int i = 0; i < 400 && context.computeOnClient(minecraft -> PretupidClient.get().cinematic().rendering()); i++) {
+			context.waitTick();
+		}
+		context.waitTicks(20);
+		context.runOnClient(minecraft -> {
+			check(renderFolder[0] != null, "The render did not finish");
+			try (var files = java.nio.file.Files.list(renderFolder[0])) {
+				long count = files.filter(path -> path.getFileName().toString().endsWith(".png")).count();
+				check(count >= 30, "Only " + count + " frames were rendered");
+			} catch (java.io.IOException exception) {
+				throw new AssertionError("The render folder cannot be read", exception);
+			}
+		});
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().cinematic().deleteShot();
 			PretupidClient.get().cinematic().deleteShot();
 			PretupidClient.get().modules().get(CinematicModule.class).setEnabled(false);
 		});
@@ -307,7 +369,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> {
 			var after = minecraft.player.position();
 			check(after.distanceTo(before) < 0.2, "The player moved while Freecam was active");
-			var camera = Platform.camera().position();
+			var camera = Platform.cameraPosition();
 			check(camera.distanceTo(minecraft.player.getEyePosition()) > 3, "The Freecam camera did not fly away");
 		});
 		context.takeScreenshot("pretupid-freecam");
@@ -359,15 +421,52 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				sourceField.setAccessible(true);
 				java.awt.image.BufferedImage source = (java.awt.image.BufferedImage) sourceField.get(studio);
 				check(source.getWidth() == windowWidth * 2, "The screenie is " + source.getWidth() + " wide instead of " + windowWidth * 2);
-				var apply = ScreenieScreen.class.getDeclaredMethod("applyTemplate", MemeTemplate.class, MemeTemplate.Phrase.class);
-				apply.setAccessible(true);
-				apply.invoke(studio, MemeTemplate.CLASSIC, MemeTemplate.CLASSIC.phrases().getFirst());
 			} catch (ReflectiveOperationException exception) {
 				throw new AssertionError("The screenie studio is not reachable", exception);
 			}
 		});
 		context.waitTicks(30);
 		context.takeScreenshot("pretupid-screenie-studio");
+		context.setScreen(() -> null);
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().requestMeme());
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> {
+			check(Platform.screen() instanceof ScreenieScreen, "The meme editor did not open");
+			fillMeme((ScreenieScreen) Platform.screen(), "Top text test", "Bottom text test");
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-meme-editor");
+		for (String shot : new String[] {"FACE", "WORM", "DUTCH"}) {
+			context.runOnClient(minecraft -> {
+				try {
+					var retake = ScreenieScreen.class.getDeclaredMethod("retake", net.pretupid.client.screenie.MemeShot.class);
+					retake.setAccessible(true);
+					retake.invoke(Platform.screen(), net.pretupid.client.screenie.MemeShot.valueOf(shot));
+				} catch (ReflectiveOperationException exception) {
+					throw new AssertionError("The meme editor cannot retake shots", exception);
+				}
+			});
+			context.waitTicks(2);
+			for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+				context.waitTick();
+			}
+			context.runOnClient(minecraft -> {
+				check(Platform.screen() instanceof ScreenieScreen, "The meme editor did not come back after a retake");
+				try {
+					Field field = ScreenieScreen.class.getDeclaredField("slotInputs");
+					field.setAccessible(true);
+					var inputs = (java.util.List<?>) field.get(Platform.screen());
+					check("Top text test".equals(((net.pretupid.client.ui.TextInput) inputs.get(0)).value()), "The meme text was lost after a retake");
+				} catch (ReflectiveOperationException exception) {
+					throw new AssertionError("The meme editor is not reachable", exception);
+				}
+			});
+			context.waitTicks(20);
+			context.takeScreenshot("pretupid-meme-" + shot.toLowerCase(java.util.Locale.ROOT));
+		}
 		long before = context.computeOnClient(minecraft -> countScreenies());
 		context.runOnClient(minecraft -> {
 			try {
@@ -376,7 +475,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				sourceField.setAccessible(true);
 				java.awt.image.BufferedImage source = (java.awt.image.BufferedImage) sourceField.get(studio);
 				PretupidClient.get().screenies().save(source, net.pretupid.client.screenie.ScreenieLook.NATURAL.withFilter(net.pretupid.client.screenie.ScreenieLook.Filter.VIVID),
-					MemeTemplate.CLASSIC.layers(MemeTemplate.CLASSIC.phrases().getFirst()), MemeTemplate.CLASSIC);
+					MemeTemplate.CLASSIC.layers(java.util.List.of("Top text test", "Bottom text test")), MemeTemplate.CLASSIC);
 			} catch (ReflectiveOperationException exception) {
 				throw new AssertionError("The screenie studio is not reachable", exception);
 			}
@@ -387,6 +486,20 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		check(context.computeOnClient(minecraft -> countScreenies()) > before, "The screenie was not saved");
 		context.setScreen(() -> null);
 		context.waitTicks(5);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void fillMeme(ScreenieScreen screen, String top, String bottom) {
+		try {
+			Field field = ScreenieScreen.class.getDeclaredField("slotInputs");
+			field.setAccessible(true);
+			java.util.List<net.pretupid.client.ui.TextInput> inputs = (java.util.List<net.pretupid.client.ui.TextInput>) field.get(screen);
+			check(inputs.size() == 2, "The meme editor has " + inputs.size() + " text fields instead of 2");
+			inputs.get(0).setValue(top);
+			inputs.get(1).setValue(bottom);
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError("The meme editor is not reachable", exception);
+		}
 	}
 
 	private static long countScreenies() {
@@ -661,7 +774,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		calm(context);
 		context.takeScreenshot("showcase-ingame");
 		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
-		context.setScreen(() -> new ChatScreen("on my way :running:", false));
+		context.setScreen(() -> Platform.chatScreen("on my way :running:"));
 		context.waitTicks(5);
 		context.runOnClient(minecraft -> {
 			Platform.chat().clearMessages(false);
@@ -673,19 +786,11 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.takeScreenshot("showcase-emoji");
 		context.setScreen(() -> null);
 		calm(context);
-		context.runOnClient(minecraft -> PretupidClient.get().screenies().request());
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().requestMeme());
 		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
 			context.waitTick();
 		}
-		context.runOnClient(minecraft -> {
-			try {
-				var apply = ScreenieScreen.class.getDeclaredMethod("applyTemplate", MemeTemplate.class, MemeTemplate.Phrase.class);
-				apply.setAccessible(true);
-				apply.invoke(Platform.screen(), MemeTemplate.CLASSIC, MemeTemplate.CLASSIC.phrases().get(1));
-			} catch (ReflectiveOperationException exception) {
-				throw new AssertionError("The screenie studio is not reachable", exception);
-			}
-		});
+		context.runOnClient(minecraft -> fillMeme((ScreenieScreen) Platform.screen(), "One more block", "they said"));
 		context.waitTicks(40);
 		calm(context);
 		context.takeScreenshot("showcase-screenie");

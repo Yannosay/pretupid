@@ -27,7 +27,11 @@ public final class CinematicDirector {
 	public enum State {
 		IDLE,
 		PREVIEW,
-		PLAYING
+		PLAYING,
+		RENDERING
+	}
+
+	public record RenderResult(Path folder, int frames, boolean failed) {
 	}
 
 	private static final int MAX_SHOTS = 32;
@@ -41,6 +45,20 @@ public final class CinematicDirector {
 	private double playStartedFrom;
 	private boolean dirty;
 	private long nextSave;
+	private int renderFrame;
+	private int renderFrames;
+	private int renderFps;
+	private int renderScale;
+	private double renderBudget;
+	private Path renderFolder;
+	private final java.util.concurrent.atomic.AtomicInteger pendingWrites = new java.util.concurrent.atomic.AtomicInteger();
+	private final java.util.concurrent.atomic.AtomicBoolean renderFailed = new java.util.concurrent.atomic.AtomicBoolean();
+	private java.util.function.Consumer<RenderResult> renderDone;
+	private static final java.util.concurrent.ExecutorService WRITER = java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
+		Thread thread = new Thread(runnable, "Pretupid Cinematic Render");
+		thread.setDaemon(true);
+		return thread;
+	});
 
 	public State state() {
 		return state;
@@ -52,6 +70,122 @@ public final class CinematicDirector {
 
 	public boolean controlsCamera() {
 		return state != State.IDLE && current() != null && !current().keyframes().isEmpty();
+	}
+
+	public boolean rendering() {
+		return state == State.RENDERING;
+	}
+
+	public float renderProgress() {
+		return renderFrames <= 0 ? 0f : Math.min(1f, renderFrame / (float) renderFrames);
+	}
+
+	public void addTemplate(ShotTemplate template, Minecraft minecraft) {
+		ensureLoaded();
+		if (minecraft.player == null || shots.size() >= MAX_SHOTS) {
+			return;
+		}
+		String label = template.name().charAt(0) + template.name().substring(1).toLowerCase(Locale.ROOT).replace('_', ' ');
+		shots.add(template.create(minecraft.player, label + " " + (shots.size() + 1)));
+		selected = shots.size() - 1;
+		playhead = 0;
+		stop();
+		markDirty();
+	}
+
+	public int duplicateKeyframe(int index) {
+		Shot shot = current();
+		if (shot == null || index < 0 || index >= shot.keyframes().size()) {
+			return -1;
+		}
+		CameraKeyframe source = shot.keyframes().get(index);
+		double nextTime = index + 1 < shot.keyframes().size() ? (source.time() + shot.keyframes().get(index + 1).time()) / 2.0 : source.time() + 1.0;
+		int added = shot.add(source.withTime(nextTime));
+		if (added >= 0) {
+			markDirty();
+		}
+		return added;
+	}
+
+	public boolean startRender(int fps, int scale, java.util.function.Consumer<RenderResult> done) {
+		Shot shot = current();
+		if (shot == null || shot.keyframes().size() < 2 || state == State.RENDERING) {
+			return false;
+		}
+		String stamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
+		String safe = shot.name().replaceAll("[^0-9A-Za-z_-]+", "_");
+		renderFolder = Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots").resolve("pretupid-cinematic").resolve(safe + "_" + stamp);
+		try {
+			java.nio.file.Files.createDirectories(renderFolder);
+		} catch (IOException exception) {
+			PretupidClient.LOGGER.warn("Could not create the render folder", exception);
+			return false;
+		}
+		renderFps = Math.clamp(fps, 10, 120);
+		renderScale = Math.clamp(scale, 1, 4);
+		renderFrame = 0;
+		renderFrames = Math.max(1, (int) Math.ceil(shot.duration() * renderFps)) + 1;
+		renderBudget = 0;
+		renderFailed.set(false);
+		renderDone = done;
+		playhead = 0;
+		state = State.RENDERING;
+		FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
+		if (freecam.active()) {
+			freecam.setHeld(Minecraft.getInstance(), false);
+		}
+		return true;
+	}
+
+	public void cancelRender() {
+		if (state == State.RENDERING) {
+			finishRender();
+		}
+	}
+
+	private void renderTick() {
+		renderBudget += renderFps / 20.0;
+		while (renderBudget >= 1 && renderFrame < renderFrames && state == State.RENDERING) {
+			renderBudget -= 1;
+			if (pendingWrites.get() > 12) {
+				return;
+			}
+			int frame = renderFrame++;
+			playhead = frame / (double) renderFps;
+			Path target = renderFolder.resolve(String.format(Locale.ROOT, "frame_%05d.png", frame + 1));
+			pendingWrites.incrementAndGet();
+			try {
+				Platform.captureScreenie(renderScale, image -> WRITER.execute(() -> {
+					try {
+						image.writeToFile(target);
+					} catch (IOException | RuntimeException exception) {
+						renderFailed.set(true);
+						PretupidClient.LOGGER.warn("Could not write render frame {}", target, exception);
+					} finally {
+						image.close();
+						pendingWrites.decrementAndGet();
+					}
+				}));
+			} catch (RuntimeException exception) {
+				pendingWrites.decrementAndGet();
+				renderFailed.set(true);
+				PretupidClient.LOGGER.warn("Could not render cinematic frame", exception);
+				finishRender();
+				return;
+			}
+		}
+		if (renderFrame >= renderFrames) {
+			finishRender();
+		}
+	}
+
+	private void finishRender() {
+		state = State.PREVIEW;
+		java.util.function.Consumer<RenderResult> done = renderDone;
+		renderDone = null;
+		if (done != null) {
+			done.accept(new RenderResult(renderFolder, renderFrame, renderFailed.get()));
+		}
 	}
 
 	public double playhead() {
@@ -131,7 +265,7 @@ public final class CinematicDirector {
 		float yaw = freecam.active() ? freecam.yaw() : Platform.cameraYaw(camera);
 		float pitch = freecam.active() ? freecam.pitch() : Platform.cameraPitch(camera);
 		float fov = minecraft.options.fov().get().floatValue();
-		int index = shot.add(new CameraKeyframe(time, position, yaw, pitch, 0f, fov, false));
+		int index = shot.add(new CameraKeyframe(time, position, yaw, pitch, 0f, fov, CameraKeyframe.Ease.SMOOTH));
 		if (index >= 0) {
 			playhead = time;
 			markDirty();
@@ -186,6 +320,9 @@ public final class CinematicDirector {
 	}
 
 	public void stop() {
+		if (state == State.RENDERING) {
+			finishRender();
+		}
 		state = State.IDLE;
 	}
 
@@ -210,7 +347,7 @@ public final class CinematicDirector {
 			return null;
 		}
 		if (state == State.PLAYING) {
-			double elapsed = (SmoothClock.millisLong() - playStartedAt) / 1000.0;
+			double elapsed = (SmoothClock.millisLong() - playStartedAt) / 1000.0 * shot.speed();
 			double duration = shot.duration();
 			double time = playStartedFrom + elapsed;
 			if (time >= duration) {
@@ -222,11 +359,31 @@ public final class CinematicDirector {
 			}
 			playhead = time;
 		}
-		return shot.sample(playhead);
+		Shot.View view = shot.sample(playhead);
+		return view != null && shot.lookAtPlayer() ? aimAtPlayer(view) : view;
+	}
+
+	private static Shot.View aimAtPlayer(Shot.View view) {
+		Minecraft minecraft = Minecraft.getInstance();
+		if (minecraft.player == null) {
+			return view;
+		}
+		Vec3 target = minecraft.player.getEyePosition(minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(true));
+		Vec3 delta = target.subtract(view.position());
+		double horizontal = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
+		if (horizontal < 1e-3 && Math.abs(delta.y) < 1e-3) {
+			return view;
+		}
+		float yaw = (float) Math.toDegrees(Math.atan2(-delta.x, delta.z));
+		float pitch = (float) -Math.toDegrees(Math.atan2(delta.y, horizontal));
+		return new Shot.View(view.position(), yaw, pitch, view.roll(), view.fov());
 	}
 
 	public void tick(Minecraft minecraft) {
 		if (minecraft.level == null || minecraft.player == null) {
+			if (state == State.RENDERING) {
+				finishRender();
+			}
 			if (state != State.IDLE) {
 				state = State.IDLE;
 			}
@@ -242,11 +399,17 @@ public final class CinematicDirector {
 		}
 		CinematicModule module = PretupidClient.get().modules().get(CinematicModule.class);
 		if (!module.isEnabled() && state != State.IDLE) {
+			if (state == State.RENDERING) {
+				finishRender();
+			}
 			state = State.IDLE;
 		}
 		Shot shot = current();
+		if (state == State.RENDERING) {
+			renderTick();
+		}
 		if (state == State.PLAYING && shot != null && !shot.loop() && playhead >= shot.duration() - 1e-4
-			&& (SmoothClock.millisLong() - playStartedAt) / 1000.0 + playStartedFrom >= shot.duration() + 0.6) {
+			&& (SmoothClock.millisLong() - playStartedAt) / 1000.0 * shot.speed() + playStartedFrom >= shot.duration() + 0.6) {
 			state = State.PREVIEW;
 		}
 		saveIfDirty(false);

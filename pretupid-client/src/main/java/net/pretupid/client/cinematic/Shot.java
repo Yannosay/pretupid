@@ -20,6 +20,8 @@ public final class Shot {
 	private final List<CameraKeyframe> keyframes = new ArrayList<>();
 	private boolean smooth = true;
 	private boolean loop;
+	private boolean lookAtPlayer;
+	private double speed = 1.0;
 
 	public Shot(String name) {
 		this.name = name;
@@ -53,6 +55,22 @@ public final class Shot {
 
 	public void setLoop(boolean value) {
 		loop = value;
+	}
+
+	public boolean lookAtPlayer() {
+		return lookAtPlayer;
+	}
+
+	public void setLookAtPlayer(boolean value) {
+		lookAtPlayer = value;
+	}
+
+	public double speed() {
+		return speed;
+	}
+
+	public void setSpeed(double value) {
+		speed = Math.clamp(value, 0.25, 4.0);
 	}
 
 	public double duration() {
@@ -106,10 +124,16 @@ public final class Shot {
 		double span = Math.max(1e-4, b.time() - a.time());
 		double t = Math.clamp((time - a.time()) / span, 0.0, 1.0);
 		float[] yaws = unwrappedYaws();
-		if (!smooth || a.linear()) {
-			double eased = a.linear() ? t : t * t * (3 - 2 * t);
+		if (a.ease() == CameraKeyframe.Ease.HOLD) {
+			return view(a);
+		}
+		if (!smooth) {
+			double eased = a.ease().apply(t);
 			return new View(a.position().lerp(b.position(), eased), (float) Mth.lerp(eased, yaws[index], yaws[index + 1]),
 				(float) Mth.lerp(eased, a.pitch(), b.pitch()), (float) Mth.lerp(eased, a.roll(), b.roll()), (float) Mth.lerp(eased, a.fov(), b.fov()));
+		}
+		if (a.ease() != CameraKeyframe.Ease.SMOOTH) {
+			t = a.ease().apply(t);
 		}
 		double x = hermite(index, t, span, k -> keyframes.get(k).position().x);
 		double y = hermite(index, t, span, k -> keyframes.get(k).position().y);
@@ -168,6 +192,8 @@ public final class Shot {
 		object.addProperty("name", name);
 		object.addProperty("smooth", smooth);
 		object.addProperty("loop", loop);
+		object.addProperty("lookAtPlayer", lookAtPlayer);
+		object.addProperty("speed", speed);
 		JsonArray array = new JsonArray();
 		for (CameraKeyframe keyframe : keyframes) {
 			array.add(keyframe.toJson());
@@ -181,6 +207,8 @@ public final class Shot {
 		Shot shot = new Shot(name == null || name.isBlank() ? "Shot" : name);
 		shot.smooth = Json.bool(object, "smooth", true);
 		shot.loop = Json.bool(object, "loop", false);
+		shot.lookAtPlayer = Json.bool(object, "lookAtPlayer", false);
+		shot.setSpeed(Json.decimal(object, "speed", 1.0));
 		for (JsonElement element : Json.array(object, "keyframes")) {
 			if (element.isJsonObject() && shot.keyframes.size() < MAX_KEYFRAMES) {
 				CameraKeyframe keyframe = CameraKeyframe.fromJson(element.getAsJsonObject());

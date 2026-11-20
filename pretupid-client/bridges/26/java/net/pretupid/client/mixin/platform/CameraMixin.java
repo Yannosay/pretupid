@@ -57,7 +57,7 @@ public abstract class CameraMixin {
 
 	@Inject(method = "isDetached", at = @At("HEAD"), cancellable = true)
 	private void pretupid$freecamDetached(CallbackInfoReturnable<Boolean> cir) {
-		if (pretupid$freecam() != null || pretupid$cinematicActive()) {
+		if (pretupid$freecam() != null || pretupid$cinematicActive() || pretupid$staged() != null) {
 			cir.setReturnValue(true);
 		}
 	}
@@ -68,7 +68,16 @@ public abstract class CameraMixin {
 	}
 
 	private static Shot.View pretupid$shot() {
+		Shot.View staged = pretupid$staged();
+		if (staged != null) {
+			return staged;
+		}
 		return pretupid$cinematicActive() ? PretupidClient.get().cinematic().view() : null;
+	}
+
+	private static Shot.View pretupid$staged() {
+		PretupidClient client = PretupidClient.getOrNull();
+		return client == null ? null : client.screenies().stagedView();
 	}
 
 	private static FreecamModule pretupid$freecam() {
@@ -104,6 +113,11 @@ public abstract class CameraMixin {
 	private void pretupid$applyZoom(CallbackInfoReturnable<Float> cir) {
 		PretupidClient client = PretupidClient.getOrNull();
 		if (client == null) {
+			return;
+		}
+		Shot.View staged = client.screenies().stagedView();
+		if (staged != null) {
+			cir.setReturnValue(staged.fov());
 			return;
 		}
 		if (pretupid$cinematicActive()) {

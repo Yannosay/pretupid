@@ -48,6 +48,7 @@ import net.minecraft.world.level.GameType;
 
 public final class Platform {
 	public static final String MINECRAFT = "26.2";
+	public static final boolean MOTION_BLUR = true;
 	public static final boolean SDL_INPUT = false;
 
 	private Platform() {
@@ -199,7 +200,7 @@ public final class Platform {
 		int width = window.getWidth();
 		int height = window.getHeight();
 		int factor = Math.max(1, Math.min(scale, Math.min(MAX_SCREENIE_SIZE / Math.max(1, width), MAX_SCREENIE_SIZE / Math.max(1, height))));
-		if (factor <= 1 || minecraft.level == null) {
+		if (minecraft.level == null) {
 			net.minecraft.client.Screenshot.takeScreenshot(target, done);
 			return;
 		}
@@ -218,5 +219,13 @@ public final class Platform {
 			window.setHeight(height);
 			target.resize(width, height);
 		}
+	}
+
+	public static Screen chatScreen(String text) {
+		return new net.minecraft.client.gui.screens.ChatScreen(text, false);
+	}
+
+	public static net.minecraft.world.phys.Vec3 cameraPosition() {
+		return camera().position();
 	}
 }

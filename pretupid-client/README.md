@@ -1,6 +1,6 @@
 # Pretupid Client
 
-A Fabric client mod for Minecraft 1.21.9, 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3, built from one codebase.
+A Fabric client mod for Minecraft 1.21.2 up to 26.3 (1.21.2, 1.21.3, 1.21.4, 1.21.5, 1.21.6, 1.21.7, 1.21.8, 1.21.9, 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2 and 26.3), built from one codebase. Motion Blur needs Minecraft 1.21.6 or newer.
 
 ## Install
 

@@ -161,7 +161,7 @@ export const featureGroups: FeatureGroup[] = [
   {
     id: 'client',
     title: 'Pretupid Client',
-    subtitle: 'A free Fabric mod for Minecraft 1.21.9 to 26.3 that you add to any instance in one click.',
+    subtitle: 'A free Fabric mod for Minecraft 1.21.2 to 26.3 that you add to any instance in one click.',
     features: [
       {
         icon: 'bolt',

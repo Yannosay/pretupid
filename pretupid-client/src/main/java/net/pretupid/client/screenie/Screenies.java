@@ -34,12 +34,35 @@ public final class Screenies {
 	});
 
 	private boolean captureRequested;
+	private boolean memeRequested;
+	private MemeShot shot = MemeShot.NORMAL;
+	private MemeTemplate memeTemplate = MemeTemplate.CLASSIC;
+	private List<String> memeTexts = List.of();
+	private net.pretupid.client.cinematic.Shot.View staged;
+	private int stageTicks;
 	private boolean capturing;
 	private int previewGeneration;
 	private Identifier previewTexture;
 
 	public void request() {
 		captureRequested = true;
+		memeRequested = false;
+	}
+
+	public void requestMeme() {
+		requestMeme(MemeShot.NORMAL, MemeTemplate.CLASSIC, List.of());
+	}
+
+	public void requestMeme(MemeShot nextShot, MemeTemplate template, List<String> texts) {
+		captureRequested = true;
+		memeRequested = true;
+		shot = nextShot;
+		memeTemplate = template;
+		memeTexts = List.copyOf(texts);
+	}
+
+	public net.pretupid.client.cinematic.Shot.View stagedView() {
+		return staged;
 	}
 
 	public boolean busy() {
@@ -50,8 +73,24 @@ public final class Screenies {
 		if (!captureRequested) {
 			return;
 		}
+		if (minecraft.level == null || minecraft.player == null) {
+			captureRequested = false;
+			staged = null;
+			return;
+		}
+		if (memeRequested && shot != MemeShot.NORMAL && staged == null) {
+			staged = shot.view(minecraft.player);
+			stageTicks = 3;
+			return;
+		}
+		if (staged != null && --stageTicks > 0) {
+			return;
+		}
 		captureRequested = false;
-		if (capturing || minecraft.level == null || minecraft.player == null) {
+		boolean meme = memeRequested;
+		memeRequested = false;
+		if (capturing) {
+			staged = null;
 			return;
 		}
 		ScreeniesModule module = PretupidClient.get().modules().get(ScreeniesModule.class);
@@ -72,19 +111,23 @@ public final class Screenies {
 					if (result == null) {
 						notify(Component.translatable("pretupid.screenie.failed"), true);
 					} else {
-						onCaptured(minecraft, result, module);
+						onCaptured(result, module, meme);
 					}
 				});
 			}));
 		} catch (RuntimeException exception) {
 			capturing = false;
+			staged = null;
 			PretupidClient.LOGGER.warn("Could not capture a screenie", exception);
 			notify(Component.translatable("pretupid.screenie.failed"), true);
 		}
 	}
 
-	private void onCaptured(Minecraft minecraft, BufferedImage image, ScreeniesModule module) {
-		if (module.opensEditor()) {
+	private void onCaptured(BufferedImage image, ScreeniesModule module, boolean meme) {
+		staged = null;
+		if (meme) {
+			Platform.setScreen(new ScreenieScreen(Platform.screen(), image, shot, memeTemplate, memeTexts));
+		} else if (module.opensEditor()) {
 			Platform.setScreen(new ScreenieScreen(Platform.screen(), image));
 		} else {
 			save(image, ScreenieLook.NATURAL, List.of(), MemeTemplate.NONE);

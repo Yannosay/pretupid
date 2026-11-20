@@ -16,7 +16,8 @@
 		"MouseHandlerMixin",
 		"ParticleEngineMixin",
 		"PlayerListMixin",
-		"PlayerModelMixin"
+		"PlayerModelMixin",
+		"TitleScreenAccess"
 	],
 	"injectors": {
 		"defaultRequire": 1

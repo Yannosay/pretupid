@@ -18,6 +18,7 @@ import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.PretupidInfo;
+import net.pretupid.client.mixin.TitleScreenAccess;
 import net.pretupid.client.network.AuthSession;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.Easing;
@@ -28,7 +29,7 @@ import net.pretupid.client.util.Colors;
 public final class TitleScreenEnhancer {
 	private static final long STAGGER_MS = 45L;
 	private static final long ENTER_MS = 420L;
-	private static final int SLIDE = 14;
+	private static final int SLIDE = 24;
 
 	private final List<Entry> entries = new ArrayList<>();
 	private final TitleScreenPanels panels = new TitleScreenPanels();
@@ -50,6 +51,7 @@ public final class TitleScreenEnhancer {
 			addTopRightButtons(screen, width);
 			entries.clear();
 			if (client.settings().enhancedTitleScreen.enabled() && client.settings().animations.enabled()) {
+				((TitleScreenAccess) screen).pretupid$setFading(false);
 				List<AbstractWidget> widgets = new ArrayList<>(Platform.widgets(screen));
 				widgets.sort(Comparator.comparingInt(AbstractWidget::getY).thenComparingInt(AbstractWidget::getX));
 				for (int i = 0; i < widgets.size(); i++) {
@@ -142,10 +144,12 @@ public final class TitleScreenEnhancer {
 		int width = screen.width;
 		int height = screen.height;
 		float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 2400.0);
-		Draw.verticalGradient(graphics, 0, 0, width, height / 3, 0x50000000, 0x00000000);
-		Draw.verticalGradient(graphics, 0, height * 2 / 3, width, height - height * 2 / 3, 0x00000000, 0x70000000);
-		int glow = Colors.withAlpha(Theme.accent(), Math.round(18 + 14 * pulse));
-		Draw.verticalGradient(graphics, 0, height - 60, width, 60, 0x00000000, glow);
+		boolean animated = PretupidClient.get().settings().animations.enabled();
+		float fade = animated ? Easing.outCubic(Math.clamp((System.currentTimeMillis() - animationStart) / 900f, 0f, 1f)) : 1f;
+		Draw.verticalGradient(graphics, 0, 0, width, height / 3, Colors.withAlpha(0x000000, Math.round(0x90 * fade)), 0x00000000);
+		Draw.verticalGradient(graphics, 0, height / 2, width, height - height / 2, 0x00000000, Colors.withAlpha(0x000000, Math.round(0xB0 * fade)));
+		int glow = Colors.withAlpha(Theme.accent(), Math.round((50 + 40 * pulse) * fade));
+		Draw.verticalGradient(graphics, 0, height - 90, width, 90, 0x00000000, glow);
 	}
 
 	private void drawOverlay(Gfx graphics, Screen screen) {

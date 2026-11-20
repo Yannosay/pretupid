@@ -128,7 +128,7 @@ const faqItems = [
   {
     question: 'What does Pretupid Client add?',
     answer:
-      'Performance tweaks, a movable HUD, zoom, Freecam, cosmetics and a nametag style other players can see, emotes, chat emoji, screenies and memes, a camera path editor, friends with chat and invites, and an in-game skin library. It runs on Minecraft 1.21.9 up to 26.3. Install it from any Fabric instance in the launcher.'
+      'Performance tweaks, a movable HUD, zoom, Freecam, cosmetics and a nametag style other players can see, emotes, chat emoji, screenies and memes, a camera path editor, friends with chat and invites, and an in-game skin library. It runs on Minecraft 1.21.2 up to 26.3. Install it from any Fabric instance in the launcher.'
   },
   {
     question: 'Will Pretupid Client get me banned on servers?',

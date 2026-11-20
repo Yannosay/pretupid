@@ -27,6 +27,11 @@ public abstract class GameRendererMixin {
 		if (client == null) {
 			return;
 		}
+		if (client.cinematic().controlsCamera() || client.screenies().stagedView() != null
+			|| client.modules().get(net.pretupid.client.module.visual.FreecamModule.class).active()) {
+			ci.cancel();
+			return;
+		}
 		ZoomModule zoom = client.modules().get(ZoomModule.class);
 		if (zoom.isEnabled() && zoom.hideHand()) {
 			ci.cancel();

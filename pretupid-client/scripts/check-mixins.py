@@ -93,8 +93,12 @@ def resolve_import(source, simple):
 def check(version, roots, renames=()):
     cache = {}
     problems = []
+    claimed = set()
     for root in roots:
         for path in sorted(root.rglob("*Mixin.java")):
+            if path.name in claimed:
+                continue
+            claimed.add(path.name)
             source = path.read_text(encoding="utf-8")
             for pattern, replacement in renames:
                 source = re.sub(pattern, replacement.replace("$", "\\"), source)
@@ -172,13 +176,14 @@ def main():
         properties = dict(
             line.split("=", 1) for line in (CLIENT / "targets" / version / "target.properties").read_text().splitlines() if "=" in line
         )
-        roots = [CLIENT / "src" / "main" / "java" / "net" / "pretupid" / "client" / "mixin"]
-        roots += [CLIENT / "bridges" / name.strip() / "java" for name in properties["bridge"].split(",")]
+        roots = [CLIENT / "bridges" / name.strip() / "java" for name in properties["bridge"].split(",")]
+        roots += [CLIENT / "src" / "main" / "java" / "net" / "pretupid" / "client" / "mixin"]
         renames = []
-        for rule in properties.get("renames", "").replace("\\\\", "\\").split(";"):
+        for rule in re.split(r";(?![;=])", properties.get("renames", "").replace("\\\\", "\\")):
             if "=>" in rule:
                 pattern, replacement = rule.split("=>", 1)
-                renames.append((pattern, replacement))
+                if pattern:
+                    renames.append((pattern, replacement))
         seen = set()
         unique_roots = []
         for root in roots:

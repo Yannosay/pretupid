@@ -1,0 +1,28 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "net.pretupid.client.mixin.platform",
+	"compatibilityLevel": "JAVA_${java_version}",
+	"client": [
+		"CameraMixin",
+		"CapeLayerMixin",
+		"ChatComponentMixin",
+		"ChatScreenMixin",
+		"EntityRendererMixin",
+		"FontPreparedTextBuilderMixin",
+		"GameRendererAccess",
+		"GameRendererFovMixin",
+		"GuiGraphicsInvoker",
+		"HudMixin",
+		"LevelRendererMixin",
+		"LightTextureMixin",
+		"LivingEntityRendererMixin",
+		"PlayerTabOverlayMixin",
+		"ScreenBackgroundMixin",
+		"ScreenEffectRendererMixin",
+		"TitleScreenBackgroundMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

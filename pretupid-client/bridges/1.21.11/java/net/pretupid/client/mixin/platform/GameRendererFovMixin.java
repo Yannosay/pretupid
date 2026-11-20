@@ -18,6 +18,11 @@ public abstract class GameRendererFovMixin {
 		if (client == null) {
 			return;
 		}
+		Shot.View staged = client.screenies().stagedView();
+		if (staged != null) {
+			cir.setReturnValue(staged.fov());
+			return;
+		}
 		if (pretupid$cinematicActive()) {
 			Shot.View view = client.cinematic().view();
 			if (view != null) {

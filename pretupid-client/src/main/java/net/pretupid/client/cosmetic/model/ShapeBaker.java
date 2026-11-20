@@ -15,6 +15,7 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
 public final class ShapeBaker {
 	private static final int MAX_TEXTURE_SIZE = 512;
 	private static final int PADDING = 1;
+	private static final int DENSITY = 2;
 
 	private ShapeBaker() {
 	}
@@ -55,7 +56,8 @@ public final class ShapeBaker {
 		for (Shape.Node node : shape.nodes()) {
 			addNode(anchor, node, layout);
 		}
-		NativeImage texture = new NativeImage(width, height, true);
+		int density = uploaded == null ? DENSITY : 1;
+		NativeImage texture = new NativeImage(width * density, height * density, true);
 		if (uploaded != null) {
 			for (int y = 0; y < baseHeight; y++) {
 				for (int x = 0; x < baseWidth; x++) {
@@ -65,7 +67,7 @@ public final class ShapeBaker {
 		}
 		for (Shape.Box box : painted) {
 			int[] uv = layout.get(box);
-			paint(texture, uv[0], uv[1], box);
+			paint(texture, uv[0], uv[1], box, density);
 		}
 		return new Baked(LayerDefinition.create(mesh, width, height).bakeRoot(), texture);
 	}
@@ -153,36 +155,49 @@ public final class ShapeBaker {
 		return layout;
 	}
 
-	private static void paint(NativeImage image, int u, int v, Shape.Box box) {
+	private static void paint(NativeImage image, int u, int v, Shape.Box box, int density) {
 		int w = Shape.Box.ceil(box.width());
 		int h = Shape.Box.ceil(box.height());
 		int d = Shape.Box.ceil(box.depth());
-		paintFace(image, box, Pattern.Face.TOP, u + d, v, w, d);
-		paintFace(image, box, Pattern.Face.BOTTOM, u + d + w, v, w, d);
-		paintFace(image, box, Pattern.Face.EAST, u, v + d, d, h);
-		paintFace(image, box, Pattern.Face.NORTH, u + d, v + d, w, h);
-		paintFace(image, box, Pattern.Face.WEST, u + d + w, v + d, d, h);
-		paintFace(image, box, Pattern.Face.SOUTH, u + 2 * d + w, v + d, w, h);
+		paintFace(image, box, Pattern.Face.TOP, u + d, v, w, d, density);
+		paintFace(image, box, Pattern.Face.BOTTOM, u + d + w, v, w, d, density);
+		paintFace(image, box, Pattern.Face.EAST, u, v + d, d, h, density);
+		paintFace(image, box, Pattern.Face.NORTH, u + d, v + d, w, h, density);
+		paintFace(image, box, Pattern.Face.WEST, u + d + w, v + d, d, h, density);
+		paintFace(image, box, Pattern.Face.SOUTH, u + 2 * d + w, v + d, w, h, density);
 	}
 
-	private static void paintFace(NativeImage image, Shape.Box box, Pattern.Face face, int left, int top, int width, int height) {
+	private static void paintFace(NativeImage image, Shape.Box box, Pattern.Face face, int left, int top, int width, int height, int density) {
 		Pattern pattern = box.pattern();
-		for (int fy = 0; fy < height; fy++) {
-			for (int fx = 0; fx < width; fx++) {
-				int px = left + fx;
-				int py = top + fy;
+		int texelsWide = width * density;
+		int texelsHigh = height * density;
+		boolean outlined = density > 1 && width >= 2 && height >= 2 && pattern != Pattern.RIM && pattern != Pattern.GLOW;
+		for (int ty = 0; ty < texelsHigh; ty++) {
+			for (int tx = 0; tx < texelsWide; tx++) {
+				int px = left * density + tx;
+				int py = top * density + ty;
 				if (px >= image.getWidth() || py >= image.getHeight()) {
 					continue;
 				}
+				int fx = tx / density;
+				int fy = ty / density;
 				int hash = hash(px, py);
-				int color = pattern.useAccent(face, fx, fy, width, height, hash) ? box.accent() : box.color();
+				int color = pattern.useAccent(face, fx, fy, width, height, hash(left + fx, top + fy)) ? box.accent() : box.color();
 				if (pattern.shaded()) {
 					float light = face.light;
-					boolean edge = width > 2 && height > 2 && (fx == 0 || fy == 0 || fx == width - 1 || fy == height - 1);
-					if (edge && pattern != Pattern.RIM) {
+					if (face.vertical() && texelsHigh > 1) {
+						light *= 1.07f - 0.16f * ty / (texelsHigh - 1f);
+					}
+					if (face == Pattern.Face.TOP && (tx == 0 || ty == 0) && density > 1) {
+						light *= 1.08f;
+					}
+					boolean edge = tx == 0 || ty == 0 || tx == texelsWide - 1 || ty == texelsHigh - 1;
+					if (outlined && edge) {
+						light *= 0.78f;
+					} else if (!outlined && density == 1 && width > 2 && height > 2 && edge && pattern != Pattern.RIM) {
 						light *= 0.88f;
 					}
-					light *= 1f + ((hash & 7) - 3.5f) * 0.008f;
+					light *= 1f + ((hash & 7) - 3.5f) * 0.012f;
 					color = scale(color, light);
 				}
 				image.setPixel(px, py, color);

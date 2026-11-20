@@ -44,7 +44,7 @@ dependencies {
 	}
 }
 
-def javaSources = [new File(clientRoot, "src/main/java")] + bridgeDirs.collect { new File(it, "java") }
+def javaSources = bridgeDirs.collect { new File(it, "java") } + [new File(clientRoot, "src/main/java")]
 def renameRules = (target.renames ?: "").split(/;(?![;=])/).findAll { it.contains("=>") }.collect { rule ->
 	def parts = rule.split("=>", 2)
 	[parts[0].trim(), parts[1].trim()]
@@ -69,7 +69,7 @@ sourceSets {
 			srcDirs = renameRules.isEmpty() ? javaSources : [renamedSources]
 		}
 		resources {
-			srcDirs = [new File(clientRoot, "src/main/resources")] + bridgeDirs.collect { new File(it, "resources") }
+			srcDirs = bridgeDirs.collect { new File(it, "resources") } + [new File(clientRoot, "src/main/resources")]
 		}
 	}
 }
@@ -157,6 +157,9 @@ sourceSets.main.resources.srcDir(generateBranding)
 
 processResources {
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	if (target.exclude_resources) {
+		exclude(target.exclude_resources.split(",").collect { it.trim() })
+	}
 	def props = [
 		version          : project.version,
 		minecraft_version: target.minecraft_version,
@@ -175,6 +178,10 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.release = javaVersion
 	it.options.encoding = "UTF-8"
 	it.options.compilerArgs.addAll(["-Xlint:deprecation", "-Xlint:unchecked"])
+}
+
+tasks.matching { it.name == "sourcesJar" }.configureEach {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 java {

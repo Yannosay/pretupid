@@ -48,10 +48,10 @@ public final class PetFollower {
 		double rightX = -forwardZ;
 		double rightZ = forwardX;
 		float scale = state.scale;
-		double height = (state.isCrouching ? 1.25 : 1.55) * scale;
-		double targetX = state.x + (rightX * 0.85 - forwardX * 0.3) * scale;
+		double height = (state.isCrouching ? 1.4 : 1.72) * scale;
+		double targetX = state.x + (rightX * 0.72 - forwardX * 0.12) * scale;
 		double targetY = state.y + height;
-		double targetZ = state.z + (rightZ * 0.85 - forwardZ * 0.3) * scale;
+		double targetZ = state.z + (rightZ * 0.72 - forwardZ * 0.12) * scale;
 		Follower follower = FOLLOWERS.get(state.id);
 		boolean snap = follower == null || now - follower.updatedAt > STALE_NANOS
 			|| Mth.lengthSquared(follower.x - targetX, follower.y - targetY, follower.z - targetZ) > SNAP_DISTANCE_SQR;

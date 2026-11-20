@@ -5,9 +5,11 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
@@ -123,5 +125,9 @@ public final class Gfx {
 			case RESIZE_EW -> CursorTypes.RESIZE_EW;
 			case RESIZE_ALL -> CursorTypes.RESIZE_ALL;
 		});
+	}
+
+	public void mobEffect(Holder<MobEffect> effect, int x, int y, int width, int height, int color) {
+		blitSprite(Platform.mobEffectSprite(effect), x, y, width, height, color);
 	}
 }

@@ -18,6 +18,8 @@ public final class CinematicModule extends Module {
 	private final BooleanSetting letterbox = add(new BooleanSetting("letterbox", true));
 	private final BooleanSetting hideHud = add(new BooleanSetting("hide_hud", true));
 	private final BooleanSetting showPath = add(new BooleanSetting("show_path", true));
+	private final NumberSetting renderFps = add(new NumberSetting("render_fps", 30, 20, 60, 10, " fps"));
+	private final NumberSetting renderScale = add(new NumberSetting("render_scale", 1, 1, 3, 1, "×"));
 
 	public CinematicModule() {
 		super("cinematic", Category.VISUAL, "spyglass", false);
@@ -37,6 +39,14 @@ public final class CinematicModule extends Module {
 
 	public boolean hidesHud() {
 		return hideHud.enabled();
+	}
+
+	public int renderFps() {
+		return (int) Math.round(renderFps.get());
+	}
+
+	public int renderScale() {
+		return (int) Math.round(renderScale.get());
 	}
 
 	public boolean showsPath() {

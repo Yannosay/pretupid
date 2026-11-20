@@ -32,6 +32,7 @@ public final class Keybinds {
 	private KeyMapping freecam;
 	private KeyMapping waypoints;
 	private KeyMapping screenie;
+	private KeyMapping meme;
 	private KeyMapping cinematicEditor;
 	private KeyMapping cinematicKeyframe;
 	private KeyMapping quickMenu;
@@ -58,6 +59,7 @@ public final class Keybinds {
 		freelook = Platform.registerKey(new KeyMapping("key.pretupid.freelook", Platform.keyboard(), InputConstants.KEY_LALT, category));
 		freecam = Platform.registerKey(new KeyMapping("key.pretupid.freecam", Platform.keyboard(), InputConstants.KEY_F6, category));
 		screenie = Platform.registerKey(new KeyMapping("key.pretupid.screenie", Platform.keyboard(), InputConstants.KEY_F4, category));
+		meme = Platform.registerKey(new KeyMapping("key.pretupid.meme", Platform.keyboard(), InputConstants.KEY_F7, category));
 		waypoints = Platform.registerKey(new KeyMapping("key.pretupid.waypoints", Platform.keyboard(), InputConstants.KEY_N, category));
 		cinematicEditor = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_editor", Platform.keyboard(), InputConstants.KEY_J, category));
 		cinematicKeyframe = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_keyframe", Platform.keyboard(), InputConstants.KEY_K, category));
@@ -153,6 +155,12 @@ public final class Keybinds {
 			var module = client.modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
 			if (module.isEnabled() && minecraft.level != null && !(Platform.screen() instanceof net.pretupid.client.ui.screen.ScreenieScreen)) {
 				client.screenies().request();
+			}
+		}
+		while (meme.consumeClick()) {
+			var module = client.modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
+			if (module.isEnabled() && minecraft.level != null && !(Platform.screen() instanceof net.pretupid.client.ui.screen.ScreenieScreen)) {
+				client.screenies().requestMeme();
 			}
 		}
 		while (waypoints.consumeClick()) {
