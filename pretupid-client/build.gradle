@@ -44,7 +44,7 @@ def buildAllVersions = tasks.register("buildAllVersions") {
 	dependsOn "assemble"
 	otherTargets.each { dependsOn ":${it}:assemble" }
 	def output = layout.buildDirectory.dir("all-versions")
-	def modVersion = property("mod_version")
+	def modVersion = project.property("mod_version")
 	def ids = [targetId] + otherTargets
 	def jars = ids.collect { id -> id == targetId ? layout.buildDirectory.dir("libs") : layout.projectDirectory.dir("targets/${id}/build/libs") }
 	def minecraftVersions = ids.collect { id ->
@@ -62,7 +62,7 @@ def buildAllVersions = tasks.register("buildAllVersions") {
 		def builds = []
 		jars.eachWithIndex { dir, index ->
 			def minecraft = minecraftVersions[index]
-			def jar = dir.get().asFile.listFiles().find { it.name.endsWith("+mc${minecraft}.jar") }
+			def jar = (dir instanceof Provider ? dir.get() : dir).asFile.listFiles().find { it.name.endsWith("-${modVersion}+mc${minecraft}.jar") }
 			if (jar == null) {
 				throw new GradleException("No jar for Minecraft ${minecraft}")
 			}

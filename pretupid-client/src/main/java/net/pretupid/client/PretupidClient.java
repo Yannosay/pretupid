@@ -131,6 +131,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private final SocialService social = new SocialService(api, session);
 	private final ChatEmojis chatEmojis = new ChatEmojis();
 	private final CinematicDirector cinematic = new CinematicDirector();
+	private final net.pretupid.client.screenie.Screenies screenies = new net.pretupid.client.screenie.Screenies();
 	private final LocalHosting hosting = new LocalHosting();
 	private final ModIcons modIcons = new ModIcons();
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
@@ -143,6 +144,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private Nametags nametags;
 	private ModCatalog modCatalog;
 	private boolean openMenuNextTick;
+	private boolean openWaypointsNextTick;
 
 	public static PretupidClient get() {
 		if (instance == null) {
@@ -207,6 +209,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new FreelookModule());
 		modules.register(new FreecamModule());
 		modules.register(new CinematicModule());
+		modules.register(new net.pretupid.client.module.utility.ScreeniesModule());
 		modules.register(new NoHurtCamModule());
 		modules.register(new LowFireModule());
 		modules.register(new ClearWeatherModule());
@@ -309,6 +312,10 @@ public final class PretupidClient implements ClientModInitializer {
 						return 1;
 					}))
 				.then(Platform.literal("waypoint")
+					.executes(context -> {
+						openWaypointsNextTick = true;
+						return 1;
+					})
 					.then(Platform.literal("add")
 						.then(Platform.argument("name", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
 							.executes(context -> waypointFeedback(context.getSource(), waypoints().add(Minecraft.getInstance(),
@@ -323,6 +330,13 @@ public final class PretupidClient implements ClientModInitializer {
 								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
 					.then(Platform.literal("list")
 						.executes(context -> waypointFeedback(context.getSource(), waypoints().list(Minecraft.getInstance())))))
+				.then(Platform.literal("serverrules")
+					.executes(context -> {
+						for (net.minecraft.network.chat.Component line : net.pretupid.client.network.ServerRulesGuide.lines(modules)) {
+							context.getSource().sendFeedback(line);
+						}
+						return 1;
+					}))
 				.then(Platform.literal("reportcape")
 					.then(Platform.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
 						.executes(context -> reportCape(context.getSource(), com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player")))))
@@ -355,6 +369,12 @@ public final class PretupidClient implements ClientModInitializer {
 	}
 
 	private void tick(Minecraft minecraft) {
+		if (openWaypointsNextTick) {
+			openWaypointsNextTick = false;
+			if (minecraft.level != null) {
+				Platform.setScreen(new net.pretupid.client.ui.screen.WaypointsScreen(null));
+			}
+		}
 		if (openMenuNextTick) {
 			openMenuNextTick = false;
 			Platform.setScreen(new ClientMenuScreen(null));
@@ -373,6 +393,7 @@ public final class PretupidClient implements ClientModInitializer {
 		cosmetics.tick(minecraft);
 		emotes.tick(minecraft);
 		cinematic.tick(minecraft);
+		screenies.tick(minecraft);
 		trails.tick(minecraft);
 		social.tick(minecraft);
 		news.tick();
@@ -469,6 +490,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public UpdateService updates() {
 		return updates;
+	}
+
+	public net.pretupid.client.screenie.Screenies screenies() {
+		return screenies;
 	}
 
 	public CinematicDirector cinematic() {

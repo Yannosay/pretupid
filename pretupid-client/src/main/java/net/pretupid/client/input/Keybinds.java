@@ -18,6 +18,7 @@ import net.pretupid.client.ui.screen.ClientMenuScreen;
 import net.pretupid.client.ui.screen.EmoteWheelScreen;
 import net.pretupid.client.ui.screen.HudEditorScreen;
 import net.pretupid.client.ui.screen.QuickMenuScreen;
+import net.pretupid.client.ui.screen.WaypointsScreen;
 
 public final class Keybinds {
 	private final PretupidClient client;
@@ -29,6 +30,8 @@ public final class Keybinds {
 	private KeyMapping emoteWheel;
 	private KeyMapping freelook;
 	private KeyMapping freecam;
+	private KeyMapping waypoints;
+	private KeyMapping screenie;
 	private KeyMapping cinematicEditor;
 	private KeyMapping cinematicKeyframe;
 	private KeyMapping quickMenu;
@@ -54,6 +57,8 @@ public final class Keybinds {
 		quickMenu = Platform.registerKey(new KeyMapping("key.pretupid.quick_menu", Platform.keyboard(), InputConstants.KEY_G, category));
 		freelook = Platform.registerKey(new KeyMapping("key.pretupid.freelook", Platform.keyboard(), InputConstants.KEY_LALT, category));
 		freecam = Platform.registerKey(new KeyMapping("key.pretupid.freecam", Platform.keyboard(), InputConstants.KEY_F6, category));
+		screenie = Platform.registerKey(new KeyMapping("key.pretupid.screenie", Platform.keyboard(), InputConstants.KEY_F4, category));
+		waypoints = Platform.registerKey(new KeyMapping("key.pretupid.waypoints", Platform.keyboard(), InputConstants.KEY_N, category));
 		cinematicEditor = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_editor", Platform.keyboard(), InputConstants.KEY_J, category));
 		cinematicKeyframe = Platform.registerKey(new KeyMapping("key.pretupid.cinematic_keyframe", Platform.keyboard(), InputConstants.KEY_K, category));
 	}
@@ -142,6 +147,17 @@ public final class Keybinds {
 						freecamModule.toggleActive(minecraft);
 					}
 				}
+			}
+		}
+		while (screenie.consumeClick()) {
+			var module = client.modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
+			if (module.isEnabled() && minecraft.level != null && !(Platform.screen() instanceof net.pretupid.client.ui.screen.ScreenieScreen)) {
+				client.screenies().request();
+			}
+		}
+		while (waypoints.consumeClick()) {
+			if (Platform.screen() == null && minecraft.level != null) {
+				Platform.setScreen(new WaypointsScreen(null));
 			}
 		}
 		CinematicModule cinematicModule = client.modules().get(CinematicModule.class);

@@ -61,6 +61,30 @@ public final class ApiClient {
 		return http.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofByteArray()).thenApply(ApiClient::parse);
 	}
 
+	public CompletableFuture<byte[]> fetchBytes(String path, String bearer, int maxBytes) {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(PretupidInfo.apiBase() + path))
+			.timeout(Duration.ofSeconds(60))
+			.header("User-Agent", PretupidInfo.userAgent())
+			.GET();
+		if (bearer != null) {
+			builder.header("Authorization", "Bearer " + bearer);
+		}
+		return http.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofInputStream()).thenApply(response -> {
+			if (response.statusCode() != 200) {
+				throw new HttpStatusException(response.statusCode(), "Download failed");
+			}
+			try (var input = response.body()) {
+				byte[] bytes = input.readNBytes(maxBytes + 1);
+				if (bytes.length > maxBytes) {
+					throw new IllegalStateException("Download is larger than expected");
+				}
+				return bytes;
+			} catch (java.io.IOException exception) {
+				throw new CompletionException(exception);
+			}
+		});
+	}
+
 	public CompletableFuture<byte[]> download(URI uri, int maxBytes) {
 		if (!isTrustedContentHost(uri)) {
 			return CompletableFuture.failedFuture(new IllegalArgumentException("Refusing to download from " + uri.getHost()));

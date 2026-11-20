@@ -306,6 +306,8 @@ public final class FriendsPage implements MenuPage {
 			boolean mine = entry.mine(self);
 			if (entry.invite() != null) {
 				drawInvite(ui, entry, mine, friend, x, rowY, w - 6, height);
+			} else if (entry.screenie() != null) {
+				drawScreenie(ui, entry, mine, friend, x, rowY, w - 6, height);
 			} else {
 				List<FormattedCharSequence> lines = font.split(Component.literal(entry.text()), bubbleWidth - 10);
 				int textWidth = 0;
@@ -347,8 +349,45 @@ public final class FriendsPage implements MenuPage {
 		}
 	}
 
+	private void drawScreenie(UiContext ui, SocialService.Message entry, boolean mine, SocialService.Friend friend, int x, int y, int w, int height) {
+		var g = ui.g();
+		var font = ui.font();
+		Draw.chamfer(g, x, y, w, height, 0x30C084FC);
+		Draw.border(g, x, y, w, height, 0x80C084FC);
+		Component title = mine ? Component.translatable("pretupid.screenie.sent") : Component.translatable("pretupid.screenie.received", friend.name());
+		Draw.text(g, font, Draw.ellipsize(font, title, w - 70), x + 6, y + 4, Theme.TEXT);
+		Draw.text(g, font, Component.literal(entry.screenie().width() + " × " + entry.screenie().height()), x + 6, y + 15, Theme.TEXT_MUTED);
+		Widgets.button(ui, "friends.screenie.view." + entry.id(), x + w - 58, y + 5, 52, 16, Component.translatable("pretupid.screenie.view"), Widgets.ButtonStyle.PRIMARY,
+			() -> openScreenie(entry.screenie()));
+	}
+
+	private void openScreenie(SocialService.Screenie screenie) {
+		show(Component.translatable("pretupid.screenie.downloading"), false);
+		social().downloadScreenie(screenie).whenComplete((bytes, error) -> Minecraft.getInstance().execute(() -> {
+			java.awt.image.BufferedImage image = null;
+			if (error == null) {
+				try {
+					java.awt.image.BufferedImage read = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+					if (read != null) {
+						image = new java.awt.image.BufferedImage(read.getWidth(), read.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+						var graphics = image.createGraphics();
+						graphics.drawImage(read, 0, 0, null);
+						graphics.dispose();
+					}
+				} catch (java.io.IOException exception) {
+					image = null;
+				}
+			}
+			if (image == null) {
+				show(Component.translatable("pretupid.screenie.download_failed"), true);
+				return;
+			}
+			Platform.setScreen(new net.pretupid.client.ui.screen.ScreenieScreen(screen, image));
+		}));
+	}
+
 	private static int messageHeight(net.minecraft.client.gui.Font font, SocialService.Message message, int bubbleWidth) {
-		if (message.invite() != null) {
+		if (message.invite() != null || message.screenie() != null) {
 			return 26;
 		}
 		return font.split(Component.literal(message.text()), bubbleWidth - 10).size() * 10 + 6;

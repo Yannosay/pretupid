@@ -45,7 +45,7 @@ dependencies {
 }
 
 def javaSources = [new File(clientRoot, "src/main/java")] + bridgeDirs.collect { new File(it, "java") }
-def renameRules = (target.renames ?: "").split(";").findAll { it.contains("=>") }.collect { rule ->
+def renameRules = (target.renames ?: "").split(/;(?![;=])/).findAll { it.contains("=>") }.collect { rule ->
 	def parts = rule.split("=>", 2)
 	[parts[0].trim(), parts[1].trim()]
 }

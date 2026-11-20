@@ -51,7 +51,10 @@ public final class SocialService {
 	public record Invite(String address, String label, boolean lan, String minecraft) {
 	}
 
-	public record Message(long id, UUID from, UUID to, String text, Invite invite, long at) {
+	public record Screenie(String id, int width, int height) {
+	}
+
+	public record Message(long id, UUID from, UUID to, String text, Invite invite, Screenie screenie, long at) {
 		public boolean mine(UUID self) {
 			return from.equals(self);
 		}
@@ -213,6 +216,8 @@ public final class SocialService {
 				String sender = friend(other).map(Friend::name).orElse("?");
 				if (message.invite() != null) {
 					notify(Component.translatable("pretupid.friends.toast_invite", sender), Component.literal(message.invite().label().isEmpty() ? message.invite().address() : message.invite().label()), Icon.item("filled_map"));
+				} else if (message.screenie() != null) {
+					notify(Component.literal(sender), Component.translatable("pretupid.screenie.toast"), Icon.item("painting"));
 				} else {
 					notify(Component.literal(sender), Component.literal(message.text()), Icon.item("writable_book"));
 				}
@@ -309,6 +314,19 @@ public final class SocialService {
 		return post(friend, body);
 	}
 
+	public CompletableFuture<Void> sendScreenie(UUID friend, byte[] png) {
+		return session.withToken(token -> api.send("POST", "/social/screenies/" + friend, png, "image/png", token)).thenAccept(response -> {
+			Message message = message(response.get("message"));
+			if (message != null) {
+				Minecraft.getInstance().execute(() -> store(friend, message));
+			}
+		});
+	}
+
+	public CompletableFuture<byte[]> downloadScreenie(Screenie screenie) {
+		return session.withToken(token -> api.fetchBytes("/social/screenie/" + screenie.id(), token, 16 * 1024 * 1024));
+	}
+
 	private CompletableFuture<Void> post(UUID friend, JsonObject body) {
 		return session.withToken(token -> api.json("POST", "/social/messages/" + friend, body, token)).thenAccept(response -> {
 			Message message = message(response.get("message"));
@@ -350,13 +368,21 @@ public final class SocialService {
 				return null;
 			}
 			String label = Json.string(invite, "label", 48);
-			return new Message(id, from, to, "", new Invite(address, label == null ? "" : label, Json.bool(invite, "lan", false), Json.string(invite, "minecraft", 16)), at);
+			return new Message(id, from, to, "", new Invite(address, label == null ? "" : label, Json.bool(invite, "lan", false), Json.string(invite, "minecraft", 16)), null, at);
+		}
+		if ("screenie".equals(Json.string(object, "kind"))) {
+			JsonObject screenie = Json.object(object, "body");
+			String screenieId = Json.string(screenie, "id", 32);
+			if (screenieId == null || !screenieId.matches("[0-9a-f]{32}")) {
+				return null;
+			}
+			return new Message(id, from, to, "", null, new Screenie(screenieId, (int) Json.number(screenie, "width", 0L), (int) Json.number(screenie, "height", 0L)), at);
 		}
 		String text = Json.string(object, "body", 300);
 		if (text == null) {
 			return null;
 		}
-		return new Message(id, from, to, sanitize(text), null, at);
+		return new Message(id, from, to, sanitize(text), null, null, at);
 	}
 
 	public static String sanitize(String text) {

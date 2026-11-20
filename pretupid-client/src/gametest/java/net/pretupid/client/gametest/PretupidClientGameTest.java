@@ -30,6 +30,9 @@ import net.pretupid.client.module.Module;
 import net.pretupid.client.module.visual.CinematicModule;
 import net.pretupid.client.module.visual.FreecamModule;
 import net.pretupid.client.ui.screen.CinematicEditorScreen;
+import net.pretupid.client.ui.screen.ScreenieScreen;
+import net.pretupid.client.ui.screen.WaypointsScreen;
+import net.pretupid.client.screenie.MemeTemplate;
 import net.pretupid.client.module.hud.BiomeHud;
 import net.pretupid.client.module.hud.DayHud;
 import net.pretupid.client.module.hud.LookAtHud;
@@ -66,6 +69,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testFreecam(context, world, feet);
 			testCinematic(context, world, feet);
 			testWaypoints(context, world, feet);
+			testScreenies(context);
 			testTexturedWearable(context);
 			testCosmetics(context);
 			testEmotes(context);
@@ -75,6 +79,9 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testMenuPages(context);
 			testHudEditor(context);
 			testHosting(context);
+			if (System.getenv("PRETUPID_SHOWCASE") != null) {
+				showcase(context, world, feet);
+			}
 			context.setScreen(() -> new PauseScreen(true));
 			context.waitTicks(5);
 			context.takeScreenshot("pretupid-pause-screen");
@@ -320,8 +327,14 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			check(waypoints.names(minecraft).contains("Game test base"), "Waypoint was not saved");
 		});
 		world.getServer().runCommand("tp @a " + (feet.getX() + 40) + " " + feet.getY() + " " + (feet.getZ() + 25));
-		context.waitTicks(20);
+		context.waitTicks(10);
+		lookAt(context, feet.offset(0, 1, 0));
+		context.waitTicks(10);
 		context.takeScreenshot("pretupid-waypoints");
+		context.setScreen(() -> new WaypointsScreen(null));
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-waypoints-manager");
+		context.setScreen(() -> null);
 		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
 		context.runOnClient(minecraft -> {
 			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
@@ -329,6 +342,63 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			check(!waypoints.names(minecraft).contains("Game test base"), "Waypoint was not removed");
 		});
 		context.waitTicks(20);
+	}
+
+	private static void testScreenies(ClientGameTestContext context) {
+		int windowWidth = context.computeOnClient(minecraft -> minecraft.getWindow().getWidth());
+		calm(context);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().request());
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> {
+			check(Platform.screen() instanceof ScreenieScreen, "The screenie studio did not open");
+			try {
+				ScreenieScreen studio = (ScreenieScreen) Platform.screen();
+				Field sourceField = ScreenieScreen.class.getDeclaredField("source");
+				sourceField.setAccessible(true);
+				java.awt.image.BufferedImage source = (java.awt.image.BufferedImage) sourceField.get(studio);
+				check(source.getWidth() == windowWidth * 2, "The screenie is " + source.getWidth() + " wide instead of " + windowWidth * 2);
+				var apply = ScreenieScreen.class.getDeclaredMethod("applyTemplate", MemeTemplate.class, MemeTemplate.Phrase.class);
+				apply.setAccessible(true);
+				apply.invoke(studio, MemeTemplate.CLASSIC, MemeTemplate.CLASSIC.phrases().getFirst());
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("The screenie studio is not reachable", exception);
+			}
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-screenie-studio");
+		long before = context.computeOnClient(minecraft -> countScreenies());
+		context.runOnClient(minecraft -> {
+			try {
+				ScreenieScreen studio = (ScreenieScreen) Platform.screen();
+				Field sourceField = ScreenieScreen.class.getDeclaredField("source");
+				sourceField.setAccessible(true);
+				java.awt.image.BufferedImage source = (java.awt.image.BufferedImage) sourceField.get(studio);
+				PretupidClient.get().screenies().save(source, net.pretupid.client.screenie.ScreenieLook.NATURAL.withFilter(net.pretupid.client.screenie.ScreenieLook.Filter.VIVID),
+					MemeTemplate.CLASSIC.layers(MemeTemplate.CLASSIC.phrases().getFirst()), MemeTemplate.CLASSIC);
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("The screenie studio is not reachable", exception);
+			}
+		});
+		for (int i = 0; i < 200 && context.computeOnClient(minecraft -> countScreenies()) <= before; i++) {
+			context.waitTick();
+		}
+		check(context.computeOnClient(minecraft -> countScreenies()) > before, "The screenie was not saved");
+		context.setScreen(() -> null);
+		context.waitTicks(5);
+	}
+
+	private static long countScreenies() {
+		java.nio.file.Path folder = net.pretupid.client.screenie.Screenies.folder();
+		if (!java.nio.file.Files.isDirectory(folder)) {
+			return 0;
+		}
+		try (var files = java.nio.file.Files.list(folder)) {
+			return files.filter(path -> path.toString().endsWith(".png")).count();
+		} catch (java.io.IOException exception) {
+			return 0;
+		}
 	}
 
 	private static void testCosmetics(ClientGameTestContext context) {
@@ -555,6 +625,139 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			context.waitTicks(20);
 		}
 		context.takeScreenshot("pretupid-quick-alerts");
+	}
+
+	private static void showcase(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		context.runOnClient(minecraft -> minecraft.options.guiScale().set(3));
+		context.getInput().resizeWindow(1600, 900);
+		context.runOnClient(minecraft -> {
+			ClientSettings settings = PretupidClient.get().settings();
+			settings.hat.set("crown");
+			settings.back.set("angel_wings");
+			settings.pet.set("ghost");
+			settings.cape.set("catalog:pretupid");
+			settings.applyNametagStyle(NametagPresets.find("rainbow").orElseThrow().style());
+			enable(minecraft, OwnNametagModule.class);
+			List<Class<? extends Module>> shown = List.of(net.pretupid.client.module.hud.FpsHud.class, net.pretupid.client.module.hud.KeystrokesHud.class,
+				net.pretupid.client.module.hud.ArmorHud.class, net.pretupid.client.module.hud.DirectionHud.class);
+			for (Module module : PretupidClient.get().modules().all()) {
+				if (module instanceof net.pretupid.client.hud.HudModule hud) {
+					hud.position().reset();
+					hud.setScale(1.0);
+					hud.setEnabled(shown.contains(hud.getClass()));
+				}
+			}
+		});
+		world.getServer().runCommand("time set 11800");
+		world.getServer().runCommand("give @a minecraft:diamond_sword");
+		world.getServer().runCommand("item replace entity @a armor.chest with minecraft:diamond_chestplate");
+		world.getServer().runCommand("item replace entity @a armor.legs with minecraft:iron_leggings");
+		for (int i = 0; i < 6; i++) {
+			world.getServer().runCommand("place feature minecraft:oak " + (feet.getX() - 9 + i * 4) + " " + feet.getY() + " " + (feet.getZ() - 8 - (i % 2) * 3));
+		}
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 160 8");
+		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+		context.waitTicks(60);
+		calm(context);
+		context.takeScreenshot("showcase-ingame");
+		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+		context.setScreen(() -> new ChatScreen("on my way :running:", false));
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> {
+			Platform.chat().clearMessages(false);
+			Platform.addChatMessage(Component.literal("<Alex> who wants to go mining? :pick:"));
+			Platform.addChatMessage(Component.literal("<Player0> gg :fire: that base is insane :sob:"));
+			Platform.addChatMessage(Component.literal("<Steve> :joy: :joy: :100:"));
+		});
+		context.waitTicks(10);
+		context.takeScreenshot("showcase-emoji");
+		context.setScreen(() -> null);
+		calm(context);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().request());
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> {
+			try {
+				var apply = ScreenieScreen.class.getDeclaredMethod("applyTemplate", MemeTemplate.class, MemeTemplate.Phrase.class);
+				apply.setAccessible(true);
+				apply.invoke(Platform.screen(), MemeTemplate.CLASSIC, MemeTemplate.CLASSIC.phrases().get(1));
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("The screenie studio is not reachable", exception);
+			}
+		});
+		context.waitTicks(40);
+		calm(context);
+		context.takeScreenshot("showcase-screenie");
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(CinematicModule.class).setEnabled(true));
+		int[][] spots = {{-6, 3, -6, -45, 20}, {6, 5, -6, 45, 30}, {8, 2, 6, 135, 10}, {-4, 6, 8, -140, 35}};
+		for (int[] spot : spots) {
+			world.getServer().runCommand("tp @a " + (feet.getX() + spot[0]) + " " + (feet.getY() + spot[1]) + " " + (feet.getZ() + spot[2]) + " " + spot[3] + " " + spot[4]);
+			context.waitTicks(4);
+			context.runOnClient(minecraft -> PretupidClient.get().cinematic().addKeyframeAtCamera(minecraft, 2.0));
+		}
+		world.getServer().runCommand("gamemode spectator @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + (feet.getY() + 14) + " " + (feet.getZ() + 16) + " 180 38");
+		context.waitTicks(10);
+		context.setScreen(CinematicEditorScreen::new);
+		context.waitTicks(10);
+		calm(context);
+		context.takeScreenshot("showcase-cinematic");
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> PretupidClient.get().cinematic().deleteShot());
+		world.getServer().runCommand("gamemode survival @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 160 8");
+		world.getServer().runCommand("effect give @a minecraft:instant_health 1 10 true");
+		context.waitTicks(10);
+		context.setScreen(() -> {
+			ClientMenuScreen menu = new ClientMenuScreen(null);
+			menu.select(ClientMenuScreen.Tab.COSMETICS);
+			showSection(menu, "NAMETAG");
+			return menu;
+		});
+		context.waitTicks(30);
+		calm(context);
+		context.takeScreenshot("showcase-menu");
+		context.setScreen(() -> null);
+		world.getServer().runCommand("time set 4000");
+		context.runOnClient(minecraft -> {
+			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
+			waypoints.setEnabled(true);
+			for (String name : List.copyOf(waypoints.names(minecraft))) {
+				waypoints.remove(minecraft, name);
+			}
+			waypoints.add(minecraft, "Home");
+		});
+		world.getServer().runCommand("tp @a " + (feet.getX() - 6) + " " + (feet.getY() + 3) + " " + (feet.getZ() - 20));
+		context.waitTicks(4);
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, "Diamond mine"));
+		world.getServer().runCommand("tp @a " + (feet.getX() + 12) + " " + feet.getY() + " " + (feet.getZ() - 12));
+		context.waitTicks(4);
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, "Villager trades"));
+		world.getServer().runCommand("tp @a " + (feet.getX() + 4) + " " + (feet.getY() + 1) + " " + (feet.getZ() + 18) + " 175 12");
+		context.waitTicks(20);
+		calm(context);
+		context.takeScreenshot("showcase-waypoints");
+	}
+
+	private static void calm(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> {
+			clearToasts(minecraft);
+			Platform.chat().clearMessages(false);
+		});
+		context.waitTicks(2);
+	}
+
+	private static void clearToasts(Minecraft minecraft) {
+		for (Object[] route : new Object[][] {{minecraft.gui, "toastManager"}, {minecraft, "getToastManager"}}) {
+			try {
+				Object toasts = route[0].getClass().getMethod((String) route[1]).invoke(route[0]);
+				toasts.getClass().getMethod("clear").invoke(toasts);
+				return;
+			} catch (ReflectiveOperationException ignored) {
+			}
+		}
 	}
 
 	private static void testMenuPages(ClientGameTestContext context) {

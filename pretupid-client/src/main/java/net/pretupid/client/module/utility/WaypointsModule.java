@@ -1,11 +1,8 @@
 package net.pretupid.client.module.utility;
 
-import net.pretupid.client.platform.Gfx;
-import net.pretupid.client.platform.Platform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.blaze3d.platform.InputConstants;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -14,8 +11,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.multiplayer.ServerData;
@@ -24,28 +24,64 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.JsonFiles;
 import net.pretupid.client.hud.HudModule;
 import net.pretupid.client.hud.HudPosition;
+import net.pretupid.client.hud.OverlayRenderer;
 import net.pretupid.client.module.Category;
+import net.pretupid.client.platform.Gfx;
+import net.pretupid.client.platform.Platform;
 import net.pretupid.client.setting.BooleanSetting;
 import net.pretupid.client.setting.ColorSetting;
 import net.pretupid.client.setting.KeySetting;
 import net.pretupid.client.setting.NumberSetting;
+import net.pretupid.client.ui.Draw;
+import net.pretupid.client.ui.Icon;
+import net.pretupid.client.ui.Theme;
+import net.pretupid.client.util.Colors;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 
-public final class WaypointsModule extends HudModule {
+public final class WaypointsModule extends HudModule implements OverlayRenderer {
 	public static final int MAX_NAME_LENGTH = 24;
-	private static final int MAX_PER_WORLD = 64;
+	public static final int[] PALETTE = {0xFF5AB0FF, 0xFF4ADE80, 0xFFFACC15, 0xFFF97316, 0xFFF43F5E, 0xFFC084FC, 0xFF2DD4BF, 0xFFFFFFFF};
+	private static final int MAX_PER_WORLD = 96;
+	private static final int MAX_DEATHS = 3;
 	private static final int ROW_HEIGHT = 11;
-	private static final String DEATH_NAME = "Death";
+	private static final double ARRIVAL_DISTANCE = 3.0;
+	private static final String OVERWORLD = "minecraft:overworld";
+	private static final String NETHER = "minecraft:the_nether";
 	private static final String[] ARROWS = {"↑", "↗", "→", "↘", "↓", "↙", "←", "↖"};
 
-	public record Waypoint(String name, int x, int y, int z, String dimension) {
+	public record Waypoint(String name, int x, int y, int z, String dimension, int color, boolean visible, boolean death, long created) {
+		public Waypoint withName(String value) {
+			return new Waypoint(value, x, y, z, dimension, color, visible, death, created);
+		}
+
+		public Waypoint withColor(int value) {
+			return new Waypoint(name, x, y, z, dimension, value, visible, death, created);
+		}
+
+		public Waypoint withVisible(boolean value) {
+			return new Waypoint(name, x, y, z, dimension, color, value, death, created);
+		}
+
+		public String coordinates() {
+			return x + " " + y + " " + z;
+		}
+	}
+
+	public record Located(Waypoint waypoint, Vec3 position, double distance, boolean converted) {
 	}
 
 	private final NumberSetting maxShown = add(new NumberSetting("max_shown", 3, 1, 8, 1));
+	private final BooleanSetting worldMarkers = add(new BooleanSetting("world_markers", true));
+	private final NumberSetting markerRange = add(new NumberSetting("marker_range", 2000, 50, 10000, 50, " m"));
+	private final BooleanSetting netherConversion = add(new BooleanSetting("nether_conversion", true));
 	private final BooleanSetting deathWaypoint = add(new BooleanSetting("death_waypoint", true));
+	private final BooleanSetting clearDeathOnArrival = add(new BooleanSetting("clear_death_on_arrival", true));
 	private final BooleanSetting showCoordinates = add(new BooleanSetting("show_coordinates", false));
 	private final KeySetting addKey = add(new KeySetting("add_key", KeySetting.UNBOUND));
 	private final ColorSetting nameColor = add(new ColorSetting("name_color", 0xFF8FC4FF).followingModuleText());
@@ -59,6 +95,8 @@ public final class WaypointsModule extends HudModule {
 
 	public WaypointsModule() {
 		super("waypoints", Category.UTILITY, "compass_00", false, new HudPosition(HudPosition.Anchor.END, 4, HudPosition.Anchor.START, 40));
+		markerRange.visibleWhen(worldMarkers::enabled);
+		clearDeathOnArrival.visibleWhen(deathWaypoint::enabled);
 	}
 
 	@Override
@@ -71,13 +109,15 @@ public final class WaypointsModule extends HudModule {
 		}
 		boolean dead = player.isDeadOrDying();
 		if (dead && !wasDead && deathWaypoint.enabled()) {
-			put(minecraft, DEATH_NAME);
+			addDeath(minecraft);
 		}
 		wasDead = dead;
+		if (!dead && clearDeathOnArrival.enabled()) {
+			clearReachedDeaths(minecraft);
+		}
 		boolean keyDown = addKey.isBound() && Platform.screen() == null && Platform.isKeyDown(addKey.get());
 		if (keyDown && !addKeyHeld) {
-			Component result = add(minecraft, nextName(minecraft));
-			Platform.addChatMessage(result);
+			Platform.addChatMessage(add(minecraft, nextName(minecraft)));
 		}
 		addKeyHeld = keyDown;
 	}
@@ -91,13 +131,48 @@ public final class WaypointsModule extends HudModule {
 			return Component.translatable("pretupid.waypoints.no_world").withStyle(ChatFormatting.RED);
 		}
 		List<Waypoint> list = current(minecraft);
-		boolean replacing = list.stream().anyMatch(waypoint -> waypoint.name().equalsIgnoreCase(clean));
-		if (!replacing && list.size() >= MAX_PER_WORLD) {
+		Optional<Waypoint> existing = list.stream().filter(waypoint -> waypoint.name().equalsIgnoreCase(clean)).findFirst();
+		if (existing.isEmpty() && list.size() >= MAX_PER_WORLD) {
 			return Component.translatable("pretupid.waypoints.full", MAX_PER_WORLD).withStyle(ChatFormatting.RED);
 		}
-		Waypoint waypoint = put(minecraft, clean);
-		return Component.translatable("pretupid.waypoints.added", Component.literal(waypoint.name()).withStyle(ChatFormatting.AQUA),
-			waypoint.x() + " " + waypoint.y() + " " + waypoint.z()).withStyle(ChatFormatting.GRAY);
+		LocalPlayer player = minecraft.player;
+		int color = existing.map(Waypoint::color).orElse(PALETTE[Math.floorMod(list.size(), PALETTE.length)]);
+		Waypoint waypoint = new Waypoint(clean, player.getBlockX(), player.getBlockY(), player.getBlockZ(), dimension(minecraft), color, true, false, System.currentTimeMillis());
+		list.removeIf(entry -> entry.name().equalsIgnoreCase(clean));
+		list.add(0, waypoint);
+		persist();
+		return Component.translatable("pretupid.waypoints.added", Component.literal(waypoint.name()).withStyle(ChatFormatting.AQUA), waypoint.coordinates())
+			.withStyle(ChatFormatting.GRAY);
+	}
+
+	private void addDeath(Minecraft minecraft) {
+		LocalPlayer player = minecraft.player;
+		List<Waypoint> list = current(minecraft);
+		String name = I18n.get("pretupid.waypoints.death_name", java.time.LocalTime.now().withNano(0).withSecond(0).toString());
+		list.removeIf(entry -> entry.name().equalsIgnoreCase(name));
+		list.add(0, new Waypoint(sanitize(name), player.getBlockX(), player.getBlockY(), player.getBlockZ(), dimension(minecraft), 0xFFF43F5E, true, true, System.currentTimeMillis()));
+		List<Waypoint> deaths = list.stream().filter(Waypoint::death).sorted(Comparator.comparingLong(Waypoint::created).reversed()).toList();
+		for (int i = MAX_DEATHS; i < deaths.size(); i++) {
+			list.remove(deaths.get(i));
+		}
+		while (list.size() > MAX_PER_WORLD) {
+			list.removeLast();
+		}
+		persist();
+	}
+
+	private void clearReachedDeaths(Minecraft minecraft) {
+		LocalPlayer player = minecraft.player;
+		String dimension = dimension(minecraft);
+		List<Waypoint> list = current(minecraft);
+		boolean removed = list.removeIf(waypoint -> waypoint.death() && waypoint.dimension().equals(dimension)
+			&& player.position().distanceTo(new Vec3(waypoint.x() + 0.5, waypoint.y(), waypoint.z() + 0.5)) < ARRIVAL_DISTANCE
+			&& System.currentTimeMillis() - waypoint.created() > 5000L);
+		if (removed) {
+			persist();
+			PretupidClient.get().notifications().push(Component.translatable("pretupid.module.waypoints.name"), Component.translatable("pretupid.waypoints.death_reached"),
+				Icon.item("recovery_compass"), null, Theme.SUCCESS, 3000L);
+		}
 	}
 
 	public Component remove(Minecraft minecraft, String name) {
@@ -123,8 +198,8 @@ public final class WaypointsModule extends HudModule {
 		var message = Component.translatable("pretupid.waypoints.list_header", list.size()).withStyle(ChatFormatting.GRAY);
 		for (Waypoint waypoint : list) {
 			message.append(Component.literal("\n • ").withStyle(ChatFormatting.DARK_GRAY))
-				.append(Component.literal(waypoint.name()).withStyle(ChatFormatting.AQUA))
-				.append(Component.literal(" " + waypoint.x() + " " + waypoint.y() + " " + waypoint.z() + " ").withStyle(ChatFormatting.WHITE))
+				.append(Component.literal(waypoint.name()).withStyle(style -> style.withColor(waypoint.color() & 0xFFFFFF)))
+				.append(Component.literal(" " + waypoint.coordinates() + " ").withStyle(ChatFormatting.WHITE))
 				.append(Component.literal(shortDimension(waypoint.dimension())).withStyle(ChatFormatting.DARK_GRAY));
 		}
 		return message;
@@ -137,17 +212,42 @@ public final class WaypointsModule extends HudModule {
 		return current(minecraft).stream().map(Waypoint::name).toList();
 	}
 
-	private Waypoint put(Minecraft minecraft, String name) {
-		LocalPlayer player = minecraft.player;
-		Waypoint waypoint = new Waypoint(name, player.getBlockX(), player.getBlockY(), player.getBlockZ(), minecraft.level.dimension().identifier().toString());
-		List<Waypoint> list = current(minecraft);
-		list.removeIf(existing -> existing.name().equalsIgnoreCase(name));
-		list.add(0, waypoint);
-		persist();
-		return waypoint;
+	public List<Waypoint> waypoints(Minecraft minecraft) {
+		if (minecraft.level == null) {
+			return List.of();
+		}
+		return List.copyOf(current(minecraft));
 	}
 
-	private String nextName(Minecraft minecraft) {
+	public boolean replace(Minecraft minecraft, Waypoint previous, Waypoint updated) {
+		if (minecraft.level == null) {
+			return false;
+		}
+		String clean = sanitize(updated.name());
+		if (clean.isEmpty()) {
+			return false;
+		}
+		List<Waypoint> list = current(minecraft);
+		int index = list.indexOf(previous);
+		if (index < 0) {
+			return false;
+		}
+		boolean taken = list.stream().anyMatch(entry -> entry != previous && entry.name().equalsIgnoreCase(clean));
+		if (taken) {
+			return false;
+		}
+		list.set(index, updated.withName(clean));
+		persist();
+		return true;
+	}
+
+	public void delete(Minecraft minecraft, Waypoint waypoint) {
+		if (minecraft.level != null && current(minecraft).remove(waypoint)) {
+			persist();
+		}
+	}
+
+	public String nextName(Minecraft minecraft) {
 		List<Waypoint> list = current(minecraft);
 		for (int index = list.size() + 1; ; index++) {
 			String candidate = I18n.get("pretupid.waypoints.default_name", index);
@@ -157,7 +257,7 @@ public final class WaypointsModule extends HudModule {
 		}
 	}
 
-	private static String sanitize(String name) {
+	public static String sanitize(String name) {
 		StringBuilder builder = new StringBuilder();
 		name.trim().codePoints()
 			.filter(cp -> cp >= 0x20 && cp != 0x7F && cp != 0xA7)
@@ -166,9 +266,41 @@ public final class WaypointsModule extends HudModule {
 		return builder.toString().trim();
 	}
 
-	private static String shortDimension(String dimension) {
+	public static String shortDimension(String dimension) {
 		int colon = dimension.indexOf(':');
 		return colon >= 0 && dimension.startsWith("minecraft:") ? dimension.substring(colon + 1) : dimension;
+	}
+
+	public static String dimension(Minecraft minecraft) {
+		return minecraft.level == null ? "" : minecraft.level.dimension().identifier().toString();
+	}
+
+	public Optional<Located> locate(Minecraft minecraft, Waypoint waypoint) {
+		LocalPlayer player = minecraft.player;
+		if (player == null || minecraft.level == null) {
+			return Optional.empty();
+		}
+		String here = dimension(minecraft);
+		double x = waypoint.x() + 0.5;
+		double z = waypoint.z() + 0.5;
+		boolean converted = false;
+		if (!waypoint.dimension().equals(here)) {
+			if (!netherConversion.enabled()) {
+				return Optional.empty();
+			}
+			if (waypoint.dimension().equals(OVERWORLD) && here.equals(NETHER)) {
+				x /= 8.0;
+				z /= 8.0;
+			} else if (waypoint.dimension().equals(NETHER) && here.equals(OVERWORLD)) {
+				x *= 8.0;
+				z *= 8.0;
+			} else {
+				return Optional.empty();
+			}
+			converted = true;
+		}
+		Vec3 position = new Vec3(x, waypoint.y(), z);
+		return Optional.of(new Located(waypoint, position, position.distanceTo(player.position()), converted));
 	}
 
 	private static String worldKey(Minecraft minecraft) {
@@ -196,8 +328,9 @@ public final class WaypointsModule extends HudModule {
 					continue;
 				}
 				List<Waypoint> list = new ArrayList<>();
+				int index = 0;
 				for (JsonElement element : entry.getValue().getAsJsonArray()) {
-					parse(element).ifPresent(list::add);
+					parse(element, index++).ifPresent(list::add);
 					if (list.size() >= MAX_PER_WORLD) {
 						break;
 					}
@@ -207,20 +340,25 @@ public final class WaypointsModule extends HudModule {
 		});
 	}
 
-	private static java.util.Optional<Waypoint> parse(JsonElement element) {
+	private static Optional<Waypoint> parse(JsonElement element, int index) {
 		if (!element.isJsonObject()) {
-			return java.util.Optional.empty();
+			return Optional.empty();
 		}
 		JsonObject object = element.getAsJsonObject();
 		try {
 			String name = sanitize(object.get("name").getAsString());
 			String dimension = object.get("dimension").getAsString();
 			if (name.isEmpty() || dimension.length() > 128) {
-				return java.util.Optional.empty();
+				return Optional.empty();
 			}
-			return java.util.Optional.of(new Waypoint(name, object.get("x").getAsInt(), object.get("y").getAsInt(), object.get("z").getAsInt(), dimension));
+			boolean death = object.has("death") ? object.get("death").getAsBoolean() : name.equals("Death");
+			int color = object.has("color") ? Colors.parseHex(object.get("color").getAsString(), PALETTE[index % PALETTE.length]) | 0xFF000000
+				: (death ? 0xFFF43F5E : PALETTE[index % PALETTE.length]);
+			boolean visible = !object.has("visible") || object.get("visible").getAsBoolean();
+			long created = object.has("created") ? object.get("created").getAsLong() : 0L;
+			return Optional.of(new Waypoint(name, object.get("x").getAsInt(), object.get("y").getAsInt(), object.get("z").getAsInt(), dimension, color, visible, death, created));
 		} catch (RuntimeException exception) {
-			return java.util.Optional.empty();
+			return Optional.empty();
 		}
 	}
 
@@ -238,6 +376,10 @@ public final class WaypointsModule extends HudModule {
 				object.addProperty("y", waypoint.y());
 				object.addProperty("z", waypoint.z());
 				object.addProperty("dimension", waypoint.dimension());
+				object.addProperty("color", Colors.toRgbHex(waypoint.color()));
+				object.addProperty("visible", waypoint.visible());
+				object.addProperty("death", waypoint.death());
+				object.addProperty("created", waypoint.created());
 				array.add(object);
 			}
 			root.add(entry.getKey(), array);
@@ -255,33 +397,37 @@ public final class WaypointsModule extends HudModule {
 	private List<Shown> shown(Minecraft minecraft, boolean preview) {
 		LocalPlayer player = minecraft.player;
 		if (preview && (player == null || minecraft.level == null || current(minecraft).isEmpty())) {
-			return List.of(new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_home"), 0, 64, 0, ""), 128, ARROWS[1]),
-				new Shown(new Waypoint(DEATH_NAME, 0, 12, 0, ""), 412, ARROWS[5]));
+			return List.of(new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_home"), 0, 64, 0, "", PALETTE[0], true, false, 0L), 128, ARROWS[1]),
+				new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_death"), 0, 12, 0, "", 0xFFF43F5E, true, true, 0L), 412, ARROWS[5]));
 		}
 		if (player == null || minecraft.level == null) {
 			return List.of();
 		}
-		String dimension = minecraft.level.dimension().identifier().toString();
-		return current(minecraft).stream()
-			.filter(waypoint -> waypoint.dimension().equals(dimension))
-			.map(waypoint -> {
-				double dx = waypoint.x() + 0.5 - player.getX();
-				double dz = waypoint.z() + 0.5 - player.getZ();
-				double distance = Math.sqrt(dx * dx + dz * dz + Math.pow(waypoint.y() - player.getY(), 2));
+		List<Shown> rows = new ArrayList<>();
+		for (Waypoint waypoint : current(minecraft)) {
+			if (!waypoint.visible()) {
+				continue;
+			}
+			locate(minecraft, waypoint).ifPresent(located -> {
+				double dx = located.position().x - player.getX();
+				double dz = located.position().z - player.getZ();
 				float bearing = (float) Math.toDegrees(Math.atan2(-dx, dz));
 				float relative = Mth.wrapDegrees(bearing - player.getYRot());
 				int sector = Math.floorMod(Math.round(relative / 45f), 8);
-				return new Shown(waypoint, distance, ARROWS[sector]);
-			})
-			.sorted(Comparator.comparingDouble(Shown::distance))
-			.limit(maxShown.intValue())
-			.toList();
+				rows.add(new Shown(waypoint, located.distance(), ARROWS[sector]));
+			});
+		}
+		rows.sort(Comparator.comparingDouble(Shown::distance));
+		return rows.size() > maxShown.intValue() ? rows.subList(0, maxShown.intValue()) : rows;
+	}
+
+	public static String distanceText(double distance) {
+		return distance >= 1000 ? String.format(Locale.ROOT, "%.1f km", distance / 1000.0) : Math.round(distance) + " m";
 	}
 
 	private String line(Shown shown) {
-		String distance = shown.distance() >= 1000 ? String.format(Locale.ROOT, "%.1f km", shown.distance() / 1000.0) : Math.round(shown.distance()) + " m";
 		String coordinates = showCoordinates.enabled() ? " (" + shown.waypoint().x() + ", " + shown.waypoint().y() + ", " + shown.waypoint().z() + ")" : "";
-		return shown.arrow() + " " + shown.waypoint().name() + "  " + distance + coordinates;
+		return shown.arrow() + " " + shown.waypoint().name() + "  " + distanceText(shown.distance()) + coordinates;
 	}
 
 	@Override
@@ -293,7 +439,7 @@ public final class WaypointsModule extends HudModule {
 	public int width(Font font, Minecraft minecraft, boolean preview) {
 		int width = 40;
 		for (Shown shown : shown(minecraft, preview)) {
-			width = Math.max(width, font.width(line(shown)));
+			width = Math.max(width, font.width(line(shown)) + 6);
 		}
 		return width + padding() * 2;
 	}
@@ -310,10 +456,83 @@ public final class WaypointsModule extends HudModule {
 		int y = padding();
 		boolean shadow = textShadow.enabled();
 		for (Shown shown : rows) {
+			Draw.rect(graphics, padding(), y + 1, 3, 7, shown.waypoint().color());
 			String prefix = shown.arrow() + " " + shown.waypoint().name() + "  ";
-			graphics.text(font, prefix, padding(), y, nameColor.resolve(), shadow);
-			graphics.text(font, line(shown).substring(prefix.length()), padding() + font.width(prefix), y, distanceColor.resolve(), shadow);
+			int x = padding() + 6;
+			graphics.text(font, prefix, x, y, nameColor.resolve(), shadow);
+			graphics.text(font, line(shown).substring(prefix.length()), x + font.width(prefix), y, distanceColor.resolve(), shadow);
 			y += ROW_HEIGHT;
+		}
+	}
+
+	@Override
+	public void renderOverlay(Gfx graphics, Minecraft minecraft, DeltaTracker deltaTracker) {
+		if (!worldMarkers.enabled() || minecraft.player == null || minecraft.level == null || Platform.hudHidden()) {
+			return;
+		}
+		Camera camera = Platform.camera();
+		if (camera == null || !camera.isInitialized()) {
+			return;
+		}
+		Matrix4f matrix = Platform.viewProjection(camera);
+		Vec3 eye = camera.position();
+		int width = graphics.guiWidth();
+		int height = graphics.guiHeight();
+		Font font = minecraft.font;
+		double range = markerRange.get();
+		for (Waypoint waypoint : current(minecraft)) {
+			if (!waypoint.visible()) {
+				continue;
+			}
+			Optional<Located> located = locate(minecraft, waypoint);
+			if (located.isEmpty() || located.get().distance() > range) {
+				continue;
+			}
+			drawMarker(graphics, font, matrix, eye, located.get(), width, height);
+		}
+	}
+
+	private void drawMarker(Gfx graphics, Font font, Matrix4f matrix, Vec3 eye, Located located, int width, int height) {
+		Vec3 target = located.position().add(0, 1.2, 0);
+		Vec3 relative = target.subtract(eye);
+		Vector4f clip = matrix.transform(new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1f));
+		boolean behind = clip.w <= 0.05f;
+		float nx = behind ? -clip.x : clip.x / clip.w;
+		float ny = behind ? -clip.y : clip.y / clip.w;
+		if (behind) {
+			float length = Math.max(1e-3f, Math.max(Math.abs(nx), Math.abs(ny)));
+			nx /= length;
+			ny /= length;
+		}
+		boolean offScreen = behind || Math.abs(nx) > 0.95f || Math.abs(ny) > 0.95f;
+		nx = Math.clamp(nx, -0.95f, 0.95f);
+		ny = Math.clamp(ny, -0.9f, 0.9f);
+		int sx = Math.round((nx * 0.5f + 0.5f) * width);
+		int sy = Math.round((1f - (ny * 0.5f + 0.5f)) * height);
+		double distance = located.distance();
+		float fade = (float) Math.clamp((distance - 2.0) / 6.0, 0.25, 1.0);
+		int color = located.waypoint().color();
+		int alpha = Math.round(255 * fade);
+		diamond(graphics, sx, sy, 4, Colors.withAlpha(0x000000, Math.round(alpha * 0.6f)));
+		diamond(graphics, sx, sy, 3, Colors.withAlpha(color, alpha));
+		if (offScreen) {
+			return;
+		}
+		String name = located.waypoint().name() + (located.converted() ? " ⇄" : "");
+		String meters = distanceText(distance);
+		int nameWidth = font.width(name);
+		int box = Math.max(nameWidth, font.width(meters)) + 6;
+		int top = sy - 26;
+		Draw.rect(graphics, sx - box / 2, top, box, 20, Colors.withAlpha(0x000000, Math.round(110 * fade)));
+		Draw.rect(graphics, sx - box / 2, top, box, 1, Colors.withAlpha(color, alpha));
+		graphics.text(font, name, sx - nameWidth / 2, top + 2, Colors.withAlpha(0xFFFFFF, alpha), false);
+		graphics.text(font, meters, sx - font.width(meters) / 2, top + 11, Colors.withAlpha(0xC8D0DC, alpha), false);
+	}
+
+	private static void diamond(Gfx graphics, int cx, int cy, int radius, int color) {
+		for (int dy = -radius; dy <= radius; dy++) {
+			int half = radius - Math.abs(dy);
+			graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, color);
 		}
 	}
 }

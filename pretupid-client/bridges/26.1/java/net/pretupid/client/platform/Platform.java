@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.components.ChatComponent;
@@ -186,5 +187,35 @@ public final class Platform {
 
 	public static float cameraPitch(Camera camera) {
 		return camera.xRot();
+	}
+
+	public static final int MAX_SCREENIE_SIZE = 7680;
+
+	public static void captureScreenie(int scale, java.util.function.Consumer<com.mojang.blaze3d.platform.NativeImage> done) {
+		Minecraft minecraft = Minecraft.getInstance();
+		com.mojang.blaze3d.pipeline.RenderTarget target = minecraft.getMainRenderTarget();
+		com.mojang.blaze3d.platform.Window window = minecraft.getWindow();
+		int width = window.getWidth();
+		int height = window.getHeight();
+		int factor = Math.max(1, Math.min(scale, Math.min(MAX_SCREENIE_SIZE / Math.max(1, width), MAX_SCREENIE_SIZE / Math.max(1, height))));
+		if (factor <= 1 || minecraft.level == null) {
+			net.minecraft.client.Screenshot.takeScreenshot(target, done);
+			return;
+		}
+		minecraft.gameRenderer.setRenderBlockOutline(false);
+		try {
+			window.setWidth(width * factor);
+			window.setHeight(height * factor);
+			target.resize(width * factor, height * factor);
+			minecraft.gameRenderer.update(DeltaTracker.ONE, true);
+			minecraft.gameRenderer.extract(DeltaTracker.ONE, true);
+			minecraft.gameRenderer.renderLevel(DeltaTracker.ONE);
+			net.minecraft.client.Screenshot.takeScreenshot(target, done);
+		} finally {
+			minecraft.gameRenderer.setRenderBlockOutline(true);
+			window.setWidth(width);
+			window.setHeight(height);
+			target.resize(width, height);
+		}
 	}
 }
