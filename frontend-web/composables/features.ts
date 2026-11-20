@@ -161,7 +161,7 @@ export const featureGroups: FeatureGroup[] = [
   {
     id: 'client',
     title: 'Pretupid Client',
-    subtitle: 'A free Fabric mod you add to any instance in one click.',
+    subtitle: 'A free Fabric mod for Minecraft 1.21.9 to 26.3 that you add to any instance in one click.',
     features: [
       {
         icon: 'bolt',
@@ -176,12 +176,12 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'palette',
         title: 'Cosmetics',
-        description: 'Capes, hats, animated wings and back items, floating pets, nametag colours and effects, and emotes. Other Pretupid players see them too.'
+        description: 'Capes, hats, animated wings and back items, floating pets, emotes like the Dead Pose, and a nametag you style yourself: colour animation, motion, two colours, speed and bold. Other Pretupid players see all of it.'
       },
       {
         icon: 'folder',
         title: 'Waypoints',
-        description: 'Save places per world with /pretupid waypoint add or a hotkey, get a waypoint where you die, and follow the arrows back.'
+        description: 'Press N to manage waypoints per world. Coloured markers float in the world with their distance, death points clear themselves when you get back, and Nether and Overworld coordinates convert for you.'
       },
       {
         icon: 'eye-off',
@@ -192,6 +192,21 @@ export const featureGroups: FeatureGroup[] = [
         icon: 'key',
         title: 'Quick menu and Freelook',
         description: 'Hold G to toggle your favourite modules or jump to the HUD editor. Hold Left Alt to look around without turning.'
+      },
+      {
+        icon: 'sparkle',
+        title: 'Screenies and memes',
+        description: 'Press F4 for a screenshot without the HUD at up to three times your screen size. Add filters, text and meme layouts, save it or send it to a friend.'
+      },
+      {
+        icon: 'eye-off',
+        title: 'Freecam and Cinematic Studio',
+        description: 'Fly the camera away from your player, then place camera keyframes on a timeline and play smooth shots with cinema bars for your videos.'
+      },
+      {
+        icon: 'users',
+        title: 'Chat emoji',
+        description: 'Type :sob: or use the emoji button in chat. Pretupid players see real emoji, everyone else sees your message without the codes.'
       },
       {
         icon: 'toggle',
@@ -206,7 +221,7 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'shield',
         title: 'Respects server rules',
-        description: 'Modules a server does not allow pause on their own and turn back on when you leave.'
+        description: 'Modules a server does not allow pause on their own and turn back on when you leave. Server owners can list every module ID in game with /pretupid serverrules. Freecam is always allowed in singleplayer.'
       },
       {
         icon: 'copy',

@@ -128,12 +128,12 @@ const faqItems = [
   {
     question: 'What does Pretupid Client add?',
     answer:
-      'Performance tweaks, a movable HUD, zoom, cosmetics other players can see, emotes, friends with chat and invites, and an in-game skin library. Install it from any Fabric instance in the launcher.'
+      'Performance tweaks, a movable HUD, zoom, Freecam, cosmetics and a nametag style other players can see, emotes, chat emoji, screenies and memes, a camera path editor, friends with chat and invites, and an in-game skin library. It runs on Minecraft 1.21.9 up to 26.3. Install it from any Fabric instance in the launcher.'
   },
   {
     question: 'Will Pretupid Client get me banned on servers?',
     answer:
-      'The Pretupid Client has no cheats. Modules a server does not allow pause automatically while you play there, and server owners can ask us to add rules for their server. Not all servers may turn off modules, so check the rules before joining a server with Pretupid Client.'
+      'The Pretupid Client has no cheats. Modules a server does not allow pause automatically while you play there, and server owners can turn them off themselves (the module IDs are listed in game with /pretupid serverrules) or ask us to add rules for their server. Not all servers may turn off modules, so check the rules before joining a server with Pretupid Client.'
   },
   {
     question: 'Which systems are supported?',

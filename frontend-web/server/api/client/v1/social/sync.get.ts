@@ -13,7 +13,7 @@ interface MessageRow {
   id: number
   from_uuid: string
   to_uuid: string
-  kind: 'text' | 'invite'
+  kind: 'text' | 'invite' | 'screenie'
   body: string
   created_at: number
   read_at: number | null
@@ -76,7 +76,7 @@ export default defineEventHandler(async (event) => {
       from: row.from_uuid,
       to: row.to_uuid,
       kind: row.kind,
-      body: row.kind === 'invite' ? parseJsonColumn(row.body, null) : row.body,
+      body: row.kind === 'text' ? row.body : parseJsonColumn(row.body, null),
       at: row.created_at,
       read: row.read_at !== null
     }))

@@ -16,7 +16,7 @@
 
       <p class="hero__subtitle">
         Fabric, Quilt, Forge and NeoForge in one launcher - Pretupid! Modrinth mods and modpacks install with their dependencies,
-        and the ad-free Pretupid Client charges your newest Minecraft version with Client Modules, cosmetics, friends and more!
+        and the ad-free Pretupid Client brings modules, cosmetics, emoji, screenies and friends to Minecraft 1.21.9 up to 26.3!
       </p>
 
       <div class="hero__actions">

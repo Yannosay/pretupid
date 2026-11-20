@@ -111,8 +111,10 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+const CLIENT_VERSIONS = new Set(['1.21.9', '1.21.10', '1.21.11', '26.1', '26.1.1', '26.1.2', '26.2', '26.3'])
+
 function clientSupports(loader: Instance['mod_loader'], version: string): boolean {
-  return (loader === 'fabric' || loader === 'quilt') && version === '26.3'
+  return (loader === 'fabric' || loader === 'quilt') && CLIENT_VERSIONS.has(version)
 }
 
 function mockMod(instanceId: string, projectId: string, title: string, version: string): InstanceMod {
@@ -230,7 +232,7 @@ async function handle(cmd: string, args: Args): Promise<unknown> {
       }
     }
     case 'pretupid_client_available':
-      return args.minecraftVersion === '26.3'
+      return CLIENT_VERSIONS.has(String(args.minecraftVersion))
     case 'install_pretupid_client': {
       await delay(1800)
       const entry = mockMod(String(args.instanceId), 'pretupid-client', 'Pretupid Client', MOCK_CLIENT_VERSION)

@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
       Promise.all([
         pruneRateLimits(event),
         db(event).prepare('DELETE FROM messages WHERE created_at < ?').bind(now - 30 * 86_400).run(),
+        pruneScreenies(event, now - 30 * 86_400),
         db(event).prepare('UPDATE players SET online = 0 WHERE online = 1 AND last_seen < ?').bind(now - PRESENCE_TTL_SECONDS).run()
       ]).catch(() => undefined)
     )

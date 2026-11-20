@@ -28,6 +28,8 @@
         <li>Capes you upload, until you delete them or they are removed by moderation.</li>
         <li>Your friends, friend requests, blocked players and the messages and invites you send to friends.
           Messages are deleted after 30 days. Messages are not end-to-end encrypted.</li>
+        <li>Screenies you send to a friend. Only you and that friend can open them, and they are deleted after 30 days.</li>
+        <li>The Minecraft version you play, so friends can see which version they need to join you.</li>
         <li>The server address you are playing on, only if you turn on sharing it with friends.</li>
       </ul>
       <p>
