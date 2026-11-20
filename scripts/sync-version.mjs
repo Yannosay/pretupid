@@ -62,24 +62,6 @@ function writeTauriConfVersion(relativePath, version) {
   console.log(`  set  ${relativePath} -> ${version}`)
 }
 
-function writeGradleVersion(relativePath, version) {
-  const full = resolve(root, relativePath)
-  if (!existsSync(full)) {
-    console.log(`  skip ${relativePath} (not present)`)
-    return
-  }
-
-  const raw = readFileSync(full, 'utf8')
-  const next = raw.replace(/^mod_version=.*$/m, `mod_version=${version}`)
-  if (next === raw) {
-    console.log(`  ok   ${relativePath} already at ${version}`)
-    return
-  }
-
-  writeFileSync(full, next, 'utf8')
-  console.log(`  set  ${relativePath} -> ${version}`)
-}
-
 const version = readWorkspaceVersion()
 console.log(`workspace version: ${version}`)
 
