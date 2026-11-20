@@ -172,8 +172,19 @@ onBeforeUnmount(() => {
 const { data: info } = useFetch<DownloadInfo>('/api/download/info', { lazy: true, server: false })
 const versions = computed(() => {
   const list = info.value?.client?.minecraftVersions
-  return list && list.length > 0 ? list : ['1.21.9', '1.21.10', '1.21.11', '26.1', '26.1.1', '26.1.2', '26.2', '26.3']
+  const shown = list && list.length > 0 ? [...list] : ['1.21.9', '1.21.10', '1.21.11', '26.1', '26.1.1', '26.1.2', '26.2', '26.3']
+  return shown.sort(compareVersions)
 })
+
+function compareVersions(a: string, b: string): number {
+  const left = a.split('.').map(Number)
+  const right = b.split('.').map(Number)
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const difference = (left[i] ?? 0) - (right[i] ?? 0)
+    if (difference !== 0) return difference
+  }
+  return 0
+}
 </script>
 
 <style scoped lang="scss">
