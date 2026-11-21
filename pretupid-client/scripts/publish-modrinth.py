@@ -123,9 +123,13 @@ def publish(args):
             project = project_info["id"]
             existing = {entry["version_number"] for entry in request("GET", f"/project/{quoted}/version", token or None)}
         newest = builds[-1]["minecraft"]
-        created = skipped = 0
+        groups = {}
         for build in builds:
-            minecraft = build["minecraft"]
+            groups.setdefault(build["file"], {**build, "versions": []})["versions"].append(build["minecraft"])
+        created = skipped = 0
+        for build in groups.values():
+            versions = build["versions"]
+            minecraft = versions[0] if len(versions) == 1 else f"{versions[0]}-{versions[-1]}"
             number = f"{version}+mc{minecraft}"
             if number in existing:
                 skipped += 1
@@ -142,8 +146,9 @@ def publish(args):
                 "changelog": notes,
                 "version_type": "release",
                 "loaders": ["fabric"],
-                "game_versions": [minecraft],
-                "featured": minecraft == newest,
+                "game_versions": versions,
+                "environment": "client_only",
+                "featured": newest in versions,
                 "status": "listed",
                 "dependencies": [{"project_id": fabric_api, "dependency_type": "required"}],
                 "file_parts": ["jar"],
@@ -154,7 +159,7 @@ def publish(args):
             created += 1
             print(f"created {number}")
     action = "would upload" if args.dry_run else "uploaded"
-    print(f"{action} {created}, skipped {skipped}, of {len(builds)} builds")
+    print(f"{action} {created}, skipped {skipped}, of {len(groups)} files for {len(builds)} Minecraft versions")
 
 
 def main():
