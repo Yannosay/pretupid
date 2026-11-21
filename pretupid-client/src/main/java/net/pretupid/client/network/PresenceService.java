@@ -112,7 +112,7 @@ public final class PresenceService {
 		if (session.online() && now >= nextHeartbeat && !heartbeatInFlight) {
 			heartbeat(settings, server);
 		}
-		if (settings.showOtherBadges.enabled() && minecraft.level != null && now >= nextLookup && !lookupInFlight) {
+		if (settings.sharePresence.enabled() && settings.showOtherBadges.enabled() && minecraft.level != null && now >= nextLookup && !lookupInFlight) {
 			lookupVisible(minecraft, now);
 		}
 	}

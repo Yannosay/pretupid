@@ -178,7 +178,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer,
 		if (removed) {
 			persist();
 			PretupidClient.get().notifications().push(Component.translatable("pretupid.module.waypoints.name"), Component.translatable("pretupid.waypoints.death_reached"),
-				Icon.item("recovery_compass"), null, Theme.SUCCESS, 3000L);
+				Icon.item("recovery_compass_00"), null, Theme.SUCCESS, 3000L);
 		}
 	}
 
@@ -713,7 +713,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer,
 		}
 	}
 
-	static void triangle(Gfx graphics, float x1, float y1, float x2, float y2, float x3, float y3, int color) {
+	private static void triangle(Gfx graphics, float x1, float y1, float x2, float y2, float x3, float y3, int color) {
 		int minY = (int) Math.floor(Math.min(y1, Math.min(y2, y3)));
 		int maxY = (int) Math.ceil(Math.max(y1, Math.max(y2, y3)));
 		float[][] edges = {{x1, y1, x2, y2}, {x2, y2, x3, y3}, {x3, y3, x1, y1}};

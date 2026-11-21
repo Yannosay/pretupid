@@ -19,6 +19,8 @@
 		"ParticleEngineMixin",
 		"PlayerListMixin",
 		"PlayerModelMixin",
+		"ScreenieEntityFilterMixin",
+		"ScreenieNameFilterMixin",
 		"TitleScreenAccess"
 	],
 	"injectors": {

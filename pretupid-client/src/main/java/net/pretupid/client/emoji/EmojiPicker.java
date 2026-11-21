@@ -290,7 +290,7 @@ public final class EmojiPicker {
 	}
 
 	public boolean mouseClicked(double mouseX, double mouseY, int button, int screenWidth) {
-		if (button != 0) {
+		if (button != InputConstants.MOUSE_BUTTON_LEFT) {
 			return open && insidePanel(mouseX, mouseY, screenWidth);
 		}
 		if (!suggestions.isEmpty()) {

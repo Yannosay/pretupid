@@ -13,7 +13,7 @@ public final class LightLevelHud extends TextHudModule {
 	private final BooleanSetting warnSpawnable = add(new BooleanSetting("warn_spawnable", true));
 
 	public LightLevelHud() {
-		super("light_level", "torch", false, new HudPosition(HudPosition.Anchor.START, 4, HudPosition.Anchor.START, 172));
+		super("light_level", "glowstone_dust", false, new HudPosition(HudPosition.Anchor.START, 4, HudPosition.Anchor.START, 172));
 	}
 
 	private int blockLight(Minecraft minecraft) {

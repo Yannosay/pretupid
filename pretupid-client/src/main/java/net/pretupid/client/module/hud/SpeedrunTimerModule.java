@@ -78,7 +78,7 @@ public final class SpeedrunTimerModule extends HudModule {
 	private boolean resetHeld;
 
 	public SpeedrunTimerModule() {
-		super("speedrun", Category.HUD, "clock", false, new HudPosition(HudPosition.Anchor.END, 4, HudPosition.Anchor.START, 84));
+		super("speedrun", Category.HUD, "clock_00", false, new HudPosition(HudPosition.Anchor.END, 4, HudPosition.Anchor.START, 84));
 	}
 
 	@Override
@@ -246,7 +246,7 @@ public final class SpeedrunTimerModule extends HudModule {
 		persist();
 		PretupidClient.get().notifications().push(name(),
 			Component.translatable(record ? "pretupid.speedrun.new_best" : "pretupid.speedrun.finished", format(total, true)),
-			Icon.item("clock"), null, record ? Theme.SUCCESS : Theme.accent(), 6000L);
+			Icon.item("clock_00"), null, record ? Theme.SUCCESS : Theme.accent(), 6000L);
 	}
 
 	public Component commandStart(Minecraft minecraft) {
@@ -384,7 +384,7 @@ public final class SpeedrunTimerModule extends HudModule {
 	}
 
 	private String delta(long value, long best) {
-		if (value < 0L || best < 0L) {
+		if (value < 0L || best < 0L || value == best) {
 			return "";
 		}
 		long difference = value - best;

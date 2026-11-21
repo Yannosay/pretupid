@@ -53,6 +53,9 @@ def buildAllVersions = tasks.register("buildAllVersions") {
 		descriptor.minecraft_version
 	}
 	def primaryMinecraft = targetProperties.minecraft_version
+	def baseName = project.property("archives_base_name")
+	def mergeGroups = project.property("merged_versions").split(";").collect { group -> group.split(",").collect { it.trim() } }
+	inputs.property("mergedVersions", mergeGroups.collect { it.join(",") }.join(";"))
 	inputs.files(jars)
 	outputs.dir(output)
 	doLast {
@@ -60,14 +63,65 @@ def buildAllVersions = tasks.register("buildAllVersions") {
 		out.deleteDir()
 		out.mkdirs()
 		def builds = []
+		def sources = [:]
 		jars.eachWithIndex { dir, index ->
 			def minecraft = minecraftVersions[index]
 			def jar = (dir instanceof Provider ? dir.get() : dir).asFile.listFiles().find { it.name.endsWith("-${modVersion}+mc${minecraft}.jar") }
 			if (jar == null) {
 				throw new GradleException("No jar for Minecraft ${minecraft}")
 			}
-			def copy = new File(out, jar.name)
-			copy.bytes = jar.bytes
+			sources[minecraft] = jar
+		}
+		def fingerprint = { File file ->
+			def digest = java.security.MessageDigest.getInstance("SHA-256")
+			new java.util.zip.ZipFile(file).withCloseable { zip ->
+				zip.entries().toList().findAll { !it.directory && it.name != "fabric.mod.json" && it.name != "META-INF/MANIFEST.MF" }.sort { it.name }.each { entry ->
+					digest.update(entry.name.getBytes("UTF-8"))
+					digest.update(zip.getInputStream(entry).bytes)
+				}
+			}
+			digest.digest().encodeHex().toString()
+		}
+		def groupOf = [:]
+		mergeGroups.each { group ->
+			def known = group.every { sources.containsKey(it) }
+			if (known && group.collect { fingerprint(sources[it]) }.unique().size() == 1) {
+				group.each { groupOf[it] = group }
+			} else {
+				logger.warn("Keeping ${group.join(', ')} as separate jars because their code differs")
+			}
+		}
+		def writeMerged = { List<String> group, File target ->
+			new java.util.zip.ZipFile(sources[group.first()]).withCloseable { zip ->
+				target.withOutputStream { stream ->
+					new java.util.zip.ZipOutputStream(stream).withCloseable { archive ->
+						zip.entries().each { entry ->
+							def next = new java.util.zip.ZipEntry(entry.name)
+							next.time = entry.time
+							archive.putNextEntry(next)
+							if (entry.name == "fabric.mod.json") {
+								def metadata = new groovy.json.JsonSlurper().parse(zip.getInputStream(entry), "UTF-8")
+								metadata.version = "${modVersion}+mc${group.first()}-${group.last()}".toString()
+								metadata.depends.minecraft = group
+								archive.write(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(metadata)).getBytes("UTF-8"))
+							} else if (!entry.directory) {
+								archive.write(zip.getInputStream(entry).bytes)
+							}
+							archive.closeEntry()
+						}
+					}
+				}
+			}
+		}
+		minecraftVersions.each { minecraft ->
+			def jar = sources[minecraft]
+			def group = groupOf[minecraft]
+			def copy = group == null ? new File(out, jar.name) : new File(out, "${baseName}-${modVersion}+mc${group.first()}-${group.last()}.jar")
+			if (group == null) {
+				copy.bytes = jar.bytes
+			} else if (!copy.exists()) {
+				writeMerged(group, copy)
+			}
 			def digest = { String algorithm -> java.security.MessageDigest.getInstance(algorithm).digest(copy.bytes).encodeHex().toString() }
 			builds << [minecraft: minecraft, file: copy.name, sha256: digest("SHA-256"), sha1: digest("SHA-1"), sha512: digest("SHA-512"), size: copy.length()]
 		}

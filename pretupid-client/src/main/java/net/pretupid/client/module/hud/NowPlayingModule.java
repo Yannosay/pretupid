@@ -43,7 +43,7 @@ public final class NowPlayingModule extends HudModule implements ManagedModule {
 	private boolean skipHeld;
 
 	public NowPlayingModule() {
-		super("now_playing", Category.HUD, "jukebox", false, new HudPosition(HudPosition.Anchor.CENTER, 0, HudPosition.Anchor.START, 48));
+		super("now_playing", Category.HUD, "music_disc_cat", false, new HudPosition(HudPosition.Anchor.CENTER, 0, HudPosition.Anchor.START, 48));
 		displaySeconds.visibleWhen(() -> !alwaysShow.enabled());
 	}
 

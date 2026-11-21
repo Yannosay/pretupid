@@ -35,6 +35,8 @@ public final class Screenies {
 
 	private boolean captureRequested;
 	private boolean memeRequested;
+	private boolean retakeInPlace;
+	private boolean filtering;
 	private MemeShot shot = MemeShot.NORMAL;
 	private MemeTemplate memeTemplate = MemeTemplate.CLASSIC;
 	private List<String> memeTexts = List.of();
@@ -47,6 +49,7 @@ public final class Screenies {
 	public void request() {
 		captureRequested = true;
 		memeRequested = false;
+		retakeInPlace = false;
 	}
 
 	public void requestMeme() {
@@ -59,6 +62,26 @@ public final class Screenies {
 		shot = nextShot;
 		memeTemplate = template;
 		memeTexts = List.copyOf(texts);
+		retakeInPlace = false;
+	}
+
+	public void requestRetake(MemeShot nextShot) {
+		captureRequested = true;
+		memeRequested = true;
+		shot = nextShot;
+		retakeInPlace = true;
+	}
+
+	public boolean hidesNames() {
+		return filtering && !PretupidClient.get().modules().get(ScreeniesModule.class).showNametags().enabled();
+	}
+
+	public boolean hidesEntity(net.minecraft.world.entity.Entity entity) {
+		if (!filtering || entity == Minecraft.getInstance().player) {
+			return false;
+		}
+		ScreeniesModule module = PretupidClient.get().modules().get(ScreeniesModule.class);
+		return entity instanceof net.minecraft.world.entity.player.Player ? !module.showPlayers().enabled() : !module.showEntities().enabled();
 	}
 
 	public net.pretupid.client.cinematic.Shot.View stagedView() {
@@ -76,6 +99,7 @@ public final class Screenies {
 		if (minecraft.level == null || minecraft.player == null) {
 			captureRequested = false;
 			staged = null;
+			finishRetake(null);
 			return;
 		}
 		if (memeRequested && shot != MemeShot.NORMAL && staged == null) {
@@ -91,10 +115,12 @@ public final class Screenies {
 		memeRequested = false;
 		if (capturing) {
 			staged = null;
+			finishRetake(null);
 			return;
 		}
 		ScreeniesModule module = PretupidClient.get().modules().get(ScreeniesModule.class);
 		capturing = true;
+		filtering = true;
 		try {
 			Platform.captureScreenie(module.scale(), image -> WORKER.execute(() -> {
 				BufferedImage captured = null;
@@ -109,6 +135,8 @@ public final class Screenies {
 				minecraft.execute(() -> {
 					capturing = false;
 					if (result == null) {
+						staged = null;
+						finishRetake(null);
 						notify(Component.translatable("pretupid.screenie.failed"), true);
 					} else {
 						onCaptured(result, module, meme);
@@ -118,13 +146,30 @@ public final class Screenies {
 		} catch (RuntimeException exception) {
 			capturing = false;
 			staged = null;
+			finishRetake(null);
 			PretupidClient.LOGGER.warn("Could not capture a screenie", exception);
 			notify(Component.translatable("pretupid.screenie.failed"), true);
+		} finally {
+			filtering = false;
+		}
+	}
+
+	private void finishRetake(BufferedImage image) {
+		if (!retakeInPlace) {
+			return;
+		}
+		retakeInPlace = false;
+		if (Platform.screen() instanceof ScreenieScreen open) {
+			open.onRetaken(image, shot);
 		}
 	}
 
 	private void onCaptured(BufferedImage image, ScreeniesModule module, boolean meme) {
 		staged = null;
+		if (retakeInPlace) {
+			finishRetake(image);
+			return;
+		}
 		if (meme) {
 			net.minecraft.client.gui.screens.Screen parent = Platform.screen() instanceof ScreenieScreen open ? open.parentScreen() : Platform.screen();
 			Platform.setScreen(new ScreenieScreen(parent, image, shot, memeTemplate, memeTexts));

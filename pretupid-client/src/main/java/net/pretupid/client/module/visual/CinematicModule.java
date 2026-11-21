@@ -22,7 +22,7 @@ public final class CinematicModule extends Module {
 	private final NumberSetting renderScale = add(new NumberSetting("render_scale", 1, 1, 3, 1, "×"));
 
 	public CinematicModule() {
-		super("cinematic", Category.VISUAL, "spyglass", false);
+		super("cinematic", Category.VISUAL, "spyglass", true);
 	}
 
 	public double spacing() {

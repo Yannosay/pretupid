@@ -69,24 +69,19 @@ public final class ScreeniesModule extends Module {
 			this.height = height;
 		}
 
-		public java.awt.image.BufferedImage apply(java.awt.image.BufferedImage image) {
-			if (width <= 0) {
-				return image;
-			}
-			double target = width / (double) height;
+		public java.awt.image.BufferedImage crop(java.awt.image.BufferedImage image, double zoom, double focusX, double focusY) {
 			double current = image.getWidth() / (double) image.getHeight();
-			if (Math.abs(target - current) < 1e-3) {
+			double target = width > 0 ? width / (double) height : current;
+			double baseWidth = current > target ? image.getHeight() * target : image.getWidth();
+			double baseHeight = current > target ? image.getHeight() : image.getWidth() / target;
+			int cropWidth = Math.clamp(Math.round(baseWidth / zoom), 1, image.getWidth());
+			int cropHeight = Math.clamp(Math.round(baseHeight / zoom), 1, image.getHeight());
+			if (cropWidth == image.getWidth() && cropHeight == image.getHeight()) {
 				return image;
 			}
-			int cropWidth = current > target ? (int) Math.round(image.getHeight() * target) : image.getWidth();
-			int cropHeight = current > target ? image.getHeight() : (int) Math.round(image.getWidth() / target);
-			int x = (image.getWidth() - cropWidth) / 2;
-			int y = (image.getHeight() - cropHeight) / 2;
-			java.awt.image.BufferedImage cropped = new java.awt.image.BufferedImage(cropWidth, cropHeight, java.awt.image.BufferedImage.TYPE_INT_ARGB);
-			var g = cropped.createGraphics();
-			g.drawImage(image, -x, -y, null);
-			g.dispose();
-			return cropped;
+			int x = (int) Math.round((image.getWidth() - cropWidth) * Math.clamp(focusX, 0.0, 1.0));
+			int y = (int) Math.round((image.getHeight() - cropHeight) * Math.clamp(focusY, 0.0, 1.0));
+			return image.getSubimage(x, y, cropWidth, cropHeight);
 		}
 	}
 
@@ -94,6 +89,9 @@ public final class ScreeniesModule extends Module {
 	private final EnumSetting<ExportSize> exportSize = add(new EnumSetting<>("export_size", ExportSize.K1));
 	private final EnumSetting<ExportAspect> exportAspect = add(new EnumSetting<>("export_aspect", ExportAspect.ORIGINAL));
 	private final BooleanSetting openEditor = add(new BooleanSetting("open_editor", true));
+	private final BooleanSetting showNametags = add(new BooleanSetting("show_nametags", true));
+	private final BooleanSetting showPlayers = add(new BooleanSetting("show_players", true));
+	private final BooleanSetting showEntities = add(new BooleanSetting("show_entities", true));
 
 	public ScreeniesModule() {
 		super("screenies", Category.UTILITY, "painting", true);
@@ -109,6 +107,18 @@ public final class ScreeniesModule extends Module {
 
 	public EnumSetting<ExportAspect> exportAspect() {
 		return exportAspect;
+	}
+
+	public BooleanSetting showNametags() {
+		return showNametags;
+	}
+
+	public BooleanSetting showPlayers() {
+		return showPlayers;
+	}
+
+	public BooleanSetting showEntities() {
+		return showEntities;
 	}
 
 	public boolean opensEditor() {

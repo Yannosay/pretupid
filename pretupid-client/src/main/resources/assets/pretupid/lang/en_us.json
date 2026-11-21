@@ -1000,5 +1000,14 @@
 	"pretupid.module.minimap.show_waypoints": "Show waypoints",
 	"pretupid.module.minimap.show_north": "Show north",
 	"pretupid.enum.minimapshape.square": "Square",
-	"pretupid.enum.minimapshape.circle": "Circle"
+	"pretupid.enum.minimapshape.circle": "Circle",
+	"pretupid.module.freecam.free_move": "Free move",
+	"pretupid.module.freecam.free_move.tooltip": "Fly in the direction you are looking, including up and down.",
+	"pretupid.module.screenies.show_nametags": "Show nametags",
+	"pretupid.module.screenies.show_players": "Show other players",
+	"pretupid.module.screenies.show_entities": "Show other entities",
+	"pretupid.screenie.tab.frame": "Frame",
+	"pretupid.screenie.zoom": "Zoom",
+	"pretupid.screenie.angle": "Angle",
+	"pretupid.screenie.placeholder": "Text %s"
 }

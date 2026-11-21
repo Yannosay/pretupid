@@ -39,11 +39,6 @@ public final class TitleScreenEnhancer {
 	private Button updateButton;
 	private float parallaxX;
 	private float parallaxY;
-	private float markerX;
-	private float markerY;
-	private float markerWidth;
-	private float markerOpacity;
-	private long markerAt = System.nanoTime();
 
 	private record Entry(AbstractWidget widget, int baseY, int order) {
 	}
@@ -200,40 +195,6 @@ public final class TitleScreenEnhancer {
 		}
 	}
 
-	private void drawHoverMarker(Gfx graphics, Screen screen, int alpha, boolean animated) {
-		AbstractWidget target = null;
-		for (AbstractWidget widget : Platform.widgets(screen)) {
-			if (widget.visible && widget.active && widget.isHovered() && widget.getWidth() >= 60 && widget.getHeight() >= 18) {
-				target = widget;
-				break;
-			}
-		}
-		long now = System.nanoTime();
-		float delta = Math.clamp((now - markerAt) / 1_000_000_000f, 0f, 0.1f);
-		markerAt = now;
-		float rate = animated ? 1f - (float) Math.exp(-delta * 18f) : 1f;
-		if (target != null) {
-			float x = target.getX() + 2;
-			float y = target.getY() + target.getHeight() - 3;
-			float width = target.getWidth() - 4;
-			if (markerOpacity < 0.02f) {
-				markerX = x;
-				markerY = y;
-				markerWidth = width;
-			} else {
-				markerX += (x - markerX) * rate;
-				markerY += (y - markerY) * rate;
-				markerWidth += (width - markerWidth) * rate;
-			}
-			markerOpacity += (1f - markerOpacity) * rate;
-		} else {
-			markerOpacity -= markerOpacity * rate;
-		}
-		if (markerOpacity >= 0.02f) {
-			Draw.rect(graphics, Math.round(markerX), Math.round(markerY), Math.round(markerWidth), 1, Colors.withAlpha(Theme.accent(), Math.round(alpha * markerOpacity)));
-		}
-	}
-
 	private void drawOverlay(Gfx graphics, Screen screen) {
 		PretupidClient client = PretupidClient.get();
 		if (!client.settings().enhancedTitleScreen.enabled()) {
@@ -246,7 +207,6 @@ public final class TitleScreenEnhancer {
 		if (alpha < 8) {
 			return;
 		}
-		drawHoverMarker(graphics, screen, alpha, client.settings().animations.enabled());
 		Component brand = Component.literal("Pretupid Client " + PretupidInfo.displayVersion());
 		int y = screen.height - 20;
 		Draw.text(graphics, font, brand, 2, y, Colors.withAlpha(0xFFFFFF, Math.round(alpha * 0.85f)));

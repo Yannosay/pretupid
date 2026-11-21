@@ -22,6 +22,7 @@ public final class FreecamModule extends Module {
 
 	private final BooleanSetting hold = add(new BooleanSetting("hold", false));
 	private final NumberSetting speed = add(new NumberSetting("speed", 1.0, 0.1, 5.0, 0.1, "x"));
+	private final BooleanSetting freeMove = add(new BooleanSetting("free_move", false));
 	private boolean active;
 	private Vec3 position = Vec3.ZERO;
 	private Vec3 previousPosition = Vec3.ZERO;
@@ -132,7 +133,14 @@ public final class FreecamModule extends Module {
 		double radians = Math.toRadians(yaw);
 		double sin = Math.sin(radians);
 		double cos = Math.cos(radians);
-		Vec3 wish = new Vec3(strafe * cos - forward * sin, vertical, forward * cos + strafe * sin);
+		Vec3 wish;
+		if (freeMove.enabled()) {
+			double pitchRadians = Math.toRadians(pitch);
+			double level = Math.cos(pitchRadians);
+			wish = new Vec3(strafe * cos - forward * sin * level, vertical - forward * Math.sin(pitchRadians), forward * cos * level + strafe * sin);
+		} else {
+			wish = new Vec3(strafe * cos - forward * sin, vertical, forward * cos + strafe * sin);
+		}
 		if (wish.lengthSqr() > 1.0) {
 			wish = wish.normalize();
 		}

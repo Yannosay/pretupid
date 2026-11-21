@@ -83,6 +83,27 @@ public final class ScreenieComposer {
 		return bounds(lines, layer, canvasWidth, canvasHeight);
 	}
 
+	public static Rectangle rotatedBounds(TextLayer layer, int canvasWidth, int canvasHeight) {
+		Rectangle box = textBounds(layer, canvasWidth, canvasHeight);
+		if (layer.angle() == 0f) {
+			return box;
+		}
+		return rotation(layer, canvasWidth, canvasHeight).createTransformedShape(box).getBounds();
+	}
+
+	public static boolean hits(TextLayer layer, int canvasWidth, int canvasHeight, double x, double y, int margin) {
+		Rectangle box = textBounds(layer, canvasWidth, canvasHeight);
+		box.grow(margin, margin);
+		if (layer.angle() == 0f) {
+			return box.contains(x, y);
+		}
+		return rotation(layer, canvasWidth, canvasHeight).createTransformedShape(box).contains(x, y);
+	}
+
+	private static AffineTransform rotation(TextLayer layer, int canvasWidth, int canvasHeight) {
+		return AffineTransform.getRotateInstance(Math.toRadians(layer.angle()), layer.x() * canvasWidth, layer.y() * canvasHeight);
+	}
+
 	private static Rectangle bounds(List<TextLayout> lines, TextLayer layer, int canvasWidth, int canvasHeight) {
 		float lineHeight = lineHeight(layer, canvasHeight);
 		int width = 0;
@@ -146,6 +167,8 @@ public final class ScreenieComposer {
 		float lineHeight = lineHeight(layer, canvasHeight);
 		float y = box.y;
 		Color fill = new Color(layer.color(), true);
+		AffineTransform saved = g.getTransform();
+		g.transform(rotation(layer, canvasWidth, canvasHeight));
 		for (TextLayout line : lines) {
 			float x = layer.x() * canvasWidth - line.getAdvance() / 2f;
 			float baseline = y + (lineHeight + line.getAscent() - line.getDescent()) / 2f;
@@ -172,5 +195,6 @@ public final class ScreenieComposer {
 			}
 			y += lineHeight;
 		}
+		g.setTransform(saved);
 	}
 }

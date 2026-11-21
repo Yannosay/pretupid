@@ -7,6 +7,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.material.MapColor;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.hud.HudModule;
@@ -18,7 +19,6 @@ import net.pretupid.client.setting.BooleanSetting;
 import net.pretupid.client.setting.EnumSetting;
 import net.pretupid.client.setting.NumberSetting;
 import net.pretupid.client.ui.Draw;
-import net.pretupid.client.util.Colors;
 
 public final class MinimapModule extends HudModule {
 	public enum MinimapShape {
@@ -30,6 +30,20 @@ public final class MinimapModule extends HudModule {
 	private static final long COMPOSE_INTERVAL_NANOS = 33_000_000L;
 	private static final int BORDER = 0xFF2A303B;
 	private static final int[] PALETTE = buildPalette();
+	private static final int SPRITE_OUTLINE = 0xFF14161C;
+	private static final String[][] PLAYER = {
+		{"....O....", "...OFO...", "..OFFFO..", "..OFFFO..", ".OFFFFFO.", ".OFFFFFO.", "OFFFOFFFO", "OFFO.OFFO", "OOO...OOO"},
+		{"......OOO", "....OOFFO", "..OOFFFFO", "OOFFFFFO.", "OFFFFFFO.", ".OOOFFO..", "...OFFO..", "...OFO...", "....OO..."},
+		{"OOO......", "OFFOO....", "OFFFFOO..", ".OFFFFFO.", "..OFFFFFO", ".OFFFFFO.", "OFFFFOO..", "OFFOO....", "OOO......"},
+		{"....OO...", "...OFO...", "...OFFO..", ".OOOFFO..", "OFFFFFFO.", "OOFFFFFO.", "..OOFFFFO", "....OOFFO", "......OOO"},
+		{"OOO...OOO", "OFFO.OFFO", "OFFFOFFFO", ".OFFFFFO.", ".OFFFFFO.", "..OFFFO..", "..OFFFO..", "...OFO...", "....O...."},
+		{"...OO....", "...OFO...", "..OFFO...", "..OFFOOO.", ".OFFFFFFO", ".OFFFFFOO", "OFFFFOO..", "OFFOO....", "OOO......"},
+		{"......OOO", "....OOFFO", "..OOFFFFO", ".OFFFFFO.", "OFFFFFO..", ".OFFFFFO.", "..OOFFFFO", "....OOFFO", "......OOO"},
+		{"OOO......", "OFFOO....", "OFFFFOO..", ".OFFFFFOO", ".OFFFFFFO", "..OFFOOO.", "..OFFO...", "...OFO...", "...OO...."},
+	};
+	private static final String[] WAYPOINT_PIN = {"..OOO..", ".OFFFO.", "OFFWFFO", "OFWWWFO", "OFFWFFO", ".OFFFO.", "..OFO..", "...O..."};
+	private static final String[] EDGE_MARKER = {"..O..", ".OFO.", "OFFFO", ".OFO.", "..O.."};
+	private static final String[] NORTH = {"OOOOOOO", "OWOOOWO", "OWWOOWO", "OWOWOWO", "OWOOWWO", "OWOOOWO", "OOOOOOO"};
 
 	private final NumberSetting size = add(new NumberSetting("size", 96, 64, 192, 8, " px"));
 	private final NumberSetting zoom = add(new NumberSetting("zoom", 1.0, 0.5, 4.0, 0.25, "x"));
@@ -212,39 +226,42 @@ public final class MinimapModule extends HudModule {
 		if (!circle) {
 			Draw.border(graphics, 0, 0, side, side, BORDER);
 		}
-		float yaw = rotate.enabled() ? player.getYRot() : 0f;
-		double radians = Math.toRadians(yaw);
+		boolean turning = rotate.enabled();
+		double radians = Math.toRadians(turning ? player.getYRot() : 0f);
 		double forwardX = -Math.sin(radians);
 		double forwardZ = Math.cos(radians);
 		double rightX = -forwardZ;
 		double rightZ = forwardX;
-		float half = side / 2f;
+		float hud = scale();
+		int pixel = Math.max(1, Math.round(hud));
+		float half = side * hud / 2f;
+		graphics.pose().pushMatrix();
+		graphics.pose().scale(1f / hud, 1f / hud);
 		if (showNorth.enabled()) {
-			float nx = rotate.enabled() ? (float) (rightX * 0 + rightZ * -1) : 0f;
-			float ny = rotate.enabled() ? (float) (forwardZ) : -1f;
-			float reach = half - 7f;
-			int labelX = Math.round(half + nx * reach);
-			int labelY = Math.round(half + ny * reach);
-			graphics.text(font, "N", labelX - font.width("N") / 2, labelY - 4, 0xFFFFFFFF, true);
+			float nx = turning ? (float) -rightZ : 0f;
+			float ny = turning ? (float) forwardZ : -1f;
+			float reach = half - 6f * pixel;
+			drawSprite(graphics, NORTH, Math.round(half + nx * reach) - 3 * pixel, Math.round(half + ny * reach) - 3 * pixel, pixel, 0xFFFFFFFF);
 		}
 		if (showWaypoints.enabled()) {
 			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
 			if (waypoints.isEnabled()) {
-				List<WaypointsModule.Located> located = waypoints.locatedHere(minecraft);
-				for (WaypointsModule.Located entry : located) {
+				for (WaypointsModule.Located entry : waypoints.locatedHere(minecraft)) {
 					double dx = entry.position().x - player.getX();
 					double dz = entry.position().z - player.getZ();
-					double sx = rotate.enabled() ? dx * rightX + dz * rightZ : dx;
-					double sy = rotate.enabled() ? -(dx * forwardX + dz * forwardZ) : dz;
-					drawWaypoint(graphics, (float) (sx / zoom.get()), (float) (sy / zoom.get()), half, circle, entry.waypoint().color());
+					double sx = turning ? dx * rightX + dz * rightZ : dx;
+					double sy = turning ? -(dx * forwardX + dz * forwardZ) : dz;
+					drawWaypoint(graphics, (float) (sx / zoom.get() * hud), (float) (sy / zoom.get() * hud), half, circle, pixel, entry.waypoint().color());
 				}
 			}
 		}
-		drawPlayer(graphics, half, rotate.enabled(), player.getYRot());
+		int direction = turning ? 0 : Math.floorMod(Math.round(Mth.wrapDegrees(player.getYRot()) / 45f) + 4, 8);
+		drawSprite(graphics, PLAYER[direction], Math.round(half) - 4 * pixel, Math.round(half) - 4 * pixel, pixel, 0xFFFFFFFF);
+		graphics.pose().popMatrix();
 	}
 
-	private static void drawWaypoint(Gfx graphics, float sx, float sy, float half, boolean circle, int color) {
-		float limit = half - 5f;
+	private static void drawWaypoint(Gfx graphics, float sx, float sy, float half, boolean circle, int pixel, int color) {
+		float limit = half - 5f * pixel;
 		boolean clamped;
 		if (circle) {
 			float length = (float) Math.hypot(sx, sy);
@@ -260,18 +277,30 @@ public final class MinimapModule extends HudModule {
 		}
 		int x = Math.round(half + sx);
 		int y = Math.round(half + sy);
-		int radius = clamped ? 1 : 2;
-		graphics.fill(x - radius - 1, y - radius - 1, x + radius + 2, y + radius + 2, Colors.withAlpha(0x000000, 190));
-		graphics.fill(x - radius, y - radius, x + radius + 1, y + radius + 1, color | 0xFF000000);
+		int fill = color | 0xFF000000;
+		if (clamped) {
+			drawSprite(graphics, EDGE_MARKER, x - 2 * pixel, y - 2 * pixel, pixel, fill);
+		} else {
+			drawSprite(graphics, WAYPOINT_PIN, x - 3 * pixel, y - 7 * pixel, pixel, fill);
+		}
 	}
 
-	private static void drawPlayer(Gfx graphics, float half, boolean turning, float yaw) {
-		double radians = Math.toRadians(yaw);
-		float fx = turning ? 0f : (float) -Math.sin(radians);
-		float fy = turning ? -1f : (float) Math.cos(radians);
-		float nx = -fy;
-		float ny = fx;
-		WaypointsModule.triangle(graphics, half + fx * 7, half + fy * 7, half - fx * 5 + nx * 5.5f, half - fy * 5 + ny * 5.5f, half - fx * 5 - nx * 5.5f, half - fy * 5 - ny * 5.5f, 0xC0000000);
-		WaypointsModule.triangle(graphics, half + fx * 5, half + fy * 5, half - fx * 3.5f + nx * 4f, half - fy * 3.5f + ny * 4f, half - fx * 3.5f - nx * 4f, half - fy * 3.5f - ny * 4f, 0xFFFFFFFF);
+	private static void drawSprite(Gfx graphics, String[] rows, int x, int y, int pixel, int fill) {
+		for (int row = 0; row < rows.length; row++) {
+			String line = rows[row];
+			int column = 0;
+			while (column < line.length()) {
+				char cell = line.charAt(column);
+				int start = column;
+				while (column < line.length() && line.charAt(column) == cell) {
+					column++;
+				}
+				if (cell == '.') {
+					continue;
+				}
+				int color = cell == 'O' ? SPRITE_OUTLINE : cell == 'W' ? 0xFFFFFFFF : fill;
+				graphics.fill(x + start * pixel, y + row * pixel, x + column * pixel, y + (row + 1) * pixel, color);
+			}
+		}
 	}
 }

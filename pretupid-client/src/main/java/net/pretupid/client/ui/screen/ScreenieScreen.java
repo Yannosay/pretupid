@@ -31,13 +31,15 @@ import net.pretupid.client.util.PlatformOpener;
 public final class ScreenieScreen extends PretupidScreen {
 	private enum Tab {
 		LOOK,
-		TEXT
+		TEXT,
+		FRAME
 	}
 
 	private static final int PANEL_WIDTH = 176;
+	private static final int FRAME_HEIGHT = 112;
 	private static final int[] TEXT_COLORS = {0xFFFFFFFF, 0xFF111111, 0xFFFACC15, 0xFFF43F5E, 0xFF4ADE80, 0xFF5AB0FF, 0xFFC084FC, 0xFFF97316};
 
-	private final BufferedImage source;
+	private BufferedImage source;
 	private final Screenies screenies = PretupidClient.get().screenies();
 	private final ScrollState panelScroll = new ScrollState();
 	private final TextInput textInput = new TextInput(TextLayer.MAX_LENGTH);
@@ -47,11 +49,16 @@ public final class ScreenieScreen extends PretupidScreen {
 	private final NumberSetting warmth = new NumberSetting("warmth", 0, -1, 1, 0.05, "");
 	private final NumberSetting vignette = new NumberSetting("vignette", 0, 0, 1, 0.05, "");
 	private final NumberSetting textSize = new NumberSetting("text_size", 0.08, 0.03, 0.25, 0.01, "");
+	private final NumberSetting textAngle = new NumberSetting("text_angle", 0, -180, 180, 1, "°");
+	private final NumberSetting zoom = new NumberSetting("zoom", 1, 1, 4, 0.05, "x");
 	private final List<TextLayer> layers = new ArrayList<>();
 	private final List<TextInput> slotInputs = new ArrayList<>();
 	private final boolean meme;
 	private final net.pretupid.client.module.utility.ScreeniesModule module = PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
 	private net.pretupid.client.module.utility.ScreeniesModule.ExportAspect appliedAspect;
+	private double focusX = 0.5;
+	private double focusY = 0.5;
+	private boolean retakeQueued;
 	private BufferedImage cropped;
 	private boolean retaking;
 	private MemeShot shot = MemeShot.NORMAL;
@@ -94,7 +101,26 @@ public final class ScreenieScreen extends PretupidScreen {
 		if (meme) {
 			applyTemplate(MemeTemplate.CLASSIC);
 		}
-		textInput.onSubmit(this::addText);
+		textInput.onSubmit(() -> {
+			if (selected >= 0 && selected < layers.size()) {
+				select(-1);
+			} else {
+				addText();
+			}
+		});
+		textInput.onChange(value -> {
+			if (!syncing && selected >= 0 && selected < layers.size()) {
+				layers.set(selected, layers.get(selected).withText(value));
+				dirty = true;
+			}
+		});
+		textAngle.onChange(value -> {
+			if (!syncing && selected >= 0 && selected < layers.size()) {
+				layers.set(selected, layers.get(selected).withAngle(value.floatValue()));
+				dirty = true;
+			}
+		});
+		zoom.onChange(value -> invalidateCrop());
 		brightness.onChange(value -> updateLook(look.withBrightness(value.floatValue())));
 		contrast.onChange(value -> updateLook(look.withContrast(value.floatValue())));
 		saturation.onChange(value -> updateLook(look.withSaturation(value.floatValue())));
@@ -106,6 +132,37 @@ public final class ScreenieScreen extends PretupidScreen {
 				dirty = true;
 			}
 		});
+	}
+
+	private void invalidateCrop() {
+		cropped = null;
+		dirty = true;
+	}
+
+	private TextLayer displayLayer(int index) {
+		TextLayer layer = layers.get(index);
+		if (!layer.text().isBlank()) {
+			return layer;
+		}
+		String placeholder = Component.translatable("pretupid.screenie.placeholder", index + 1).getString();
+		return layer.withText(layer.style() == TextLayer.Style.MEME ? placeholder.toUpperCase(Locale.ROOT) : placeholder).withColor(layer.color() & 0xFFFFFF | 0xB0000000);
+	}
+
+	private List<TextLayer> displayLayers() {
+		List<TextLayer> result = new ArrayList<>(layers.size());
+		for (int i = 0; i < layers.size(); i++) {
+			result.add(displayLayer(i));
+		}
+		return result;
+	}
+
+	public void onRetaken(BufferedImage image, MemeShot next) {
+		retaking = false;
+		if (image != null) {
+			source = image;
+			shot = next;
+			invalidateCrop();
+		}
 	}
 
 	private void updateLook(ScreenieLook next) {
@@ -128,20 +185,22 @@ public final class ScreenieScreen extends PretupidScreen {
 			syncing = true;
 			try {
 				textSize.set((double) Math.round(layers.get(index).size() * 100f) / 100.0);
+				textAngle.set((double) Math.round(layers.get(index).angle()));
+				if (!meme) {
+					textInput.setValueSilently(layers.get(index).text());
+				}
 			} finally {
 				syncing = false;
 			}
+		} else if (!meme) {
+			textInput.setValueSilently("");
 		}
 	}
 
 	private void addText() {
-		String text = textInput.value().strip();
-		if (text.isEmpty()) {
-			return;
-		}
+		String text = selected >= 0 && selected < layers.size() ? "" : textInput.value().strip();
 		float y = layers.isEmpty() ? 0.12f : Math.min(0.88f, 0.12f + layers.size() * 0.12f);
 		layers.add(new TextLayer(text, 0.5f, y, 0.08f, 0xFFFFFFFF, template == MemeTemplate.NONE ? TextLayer.Style.CLEAN : TextLayer.Style.MEME));
-		textInput.setValue("");
 		select(layers.size() - 1);
 		dirty = true;
 	}
@@ -179,7 +238,7 @@ public final class ScreenieScreen extends PretupidScreen {
 		var aspect = module.exportAspect().get();
 		if (cropped == null || aspect != appliedAspect) {
 			appliedAspect = aspect;
-			cropped = aspect.apply(source);
+			cropped = aspect.crop(source, zoom.get(), focusX, focusY);
 			dirty = true;
 		}
 		return cropped;
@@ -213,10 +272,14 @@ public final class ScreenieScreen extends PretupidScreen {
 	protected void drawContent(UiContext ui) {
 		var g = ui.g();
 		BufferedImage current = working();
+		if (retakeQueued && !retaking && !screenies.busy()) {
+			retakeQueued = false;
+			retake(shot);
+		}
 		if (dirty && !rendering) {
 			dirty = false;
 			rendering = true;
-			screenies.preview(current, look, List.copyOf(layers), template).whenComplete((id, error) -> {
+			screenies.preview(current, look, displayLayers(), template).whenComplete((id, error) -> {
 				rendering = false;
 				if (id != null) {
 					texture = id;
@@ -260,13 +323,16 @@ public final class ScreenieScreen extends PretupidScreen {
 			Draw.centered(g, font, Component.translatable("pretupid.screenie.rendering"), x + w / 2, y + h / 2 - 4, Theme.TEXT_DIM);
 		}
 		for (int i = 0; i < layers.size(); i++) {
-			Rectangle bounds = ScreenieComposer.textBounds(layers.get(i), previewW, previewH);
-			if (i == selected && !layers.get(i).text().isBlank()) {
+			Rectangle bounds = ScreenieComposer.rotatedBounds(displayLayer(i), previewW, previewH);
+			if (i == selected) {
 				Draw.border(g, previewX + bounds.x - 2, previewY + bounds.y - 2, bounds.width + 4, bounds.height + 4, Theme.accent());
 			}
 		}
 		ui.interactive(previewX, previewY, previewW, previewH, new UiContext.Handler() {
 			private int dragging = -1;
+			private boolean panning;
+			private double lastX;
+			private double lastY;
 
 			@Override
 			public boolean click(double mouseX, double mouseY, int button) {
@@ -274,10 +340,9 @@ public final class ScreenieScreen extends PretupidScreen {
 					return false;
 				}
 				dragging = -1;
+				panning = false;
 				for (int i = layers.size() - 1; i >= 0; i--) {
-					Rectangle bounds = ScreenieComposer.textBounds(layers.get(i), previewW, previewH);
-					bounds.grow(4, 4);
-					if (!layers.get(i).text().isBlank() && bounds.contains(mouseX - previewX, mouseY - previewY)) {
+					if (ScreenieComposer.hits(displayLayer(i), previewW, previewH, mouseX - previewX, mouseY - previewY, 4)) {
 						dragging = i;
 						select(i);
 						tab = Tab.TEXT;
@@ -285,6 +350,15 @@ public final class ScreenieScreen extends PretupidScreen {
 					}
 				}
 				select(-1);
+				panning = true;
+				lastX = mouseX;
+				lastY = mouseY;
+				return true;
+			}
+
+			@Override
+			public boolean scroll(double amount) {
+				zoom.set(zoom.get() + Math.signum(amount) * 0.1);
 				return true;
 			}
 
@@ -293,6 +367,21 @@ public final class ScreenieScreen extends PretupidScreen {
 				if (dragging >= 0 && dragging < layers.size()) {
 					layers.set(dragging, layers.get(dragging).withPosition((float) ((mouseX - previewX) / previewW), (float) ((mouseY - previewY) / previewH)));
 					dirty = true;
+				} else if (panning) {
+					BufferedImage view = working();
+					int spareX = source.getWidth() - view.getWidth();
+					int spareY = source.getHeight() - view.getHeight();
+					if (spareX > 0) {
+						focusX = Math.clamp(focusX - (mouseX - lastX) / previewW * view.getWidth() / spareX, 0.0, 1.0);
+					}
+					if (spareY > 0) {
+						focusY = Math.clamp(focusY - (mouseY - lastY) / previewH * view.getHeight() / spareY, 0.0, 1.0);
+					}
+					lastX = mouseX;
+					lastY = mouseY;
+					if (spareX > 0 || spareY > 0) {
+						invalidateCrop();
+					}
 				}
 			}
 
@@ -310,7 +399,7 @@ public final class ScreenieScreen extends PretupidScreen {
 			int innerY = y + 4;
 			int innerH = h - 8;
 			int innerW = w - 8;
-			panelScroll.begin(ui, "screenie.panel", x + 4, innerY, innerW, innerH, 16 + 2 * 20 + 8 + slotInputs.size() * 22 + 16 + 4 * 20 + 70);
+			panelScroll.begin(ui, "screenie.panel", x + 4, innerY, innerW, innerH, 16 + 2 * 20 + 8 + slotInputs.size() * 22 + 16 + 4 * 20 + 96 + FRAME_HEIGHT);
 			drawMeme(ui, x + 4, innerY - panelScroll.offset(), innerW - 6);
 			panelScroll.end(ui, x + 4, innerY, innerW, innerH);
 			return;
@@ -324,6 +413,9 @@ public final class ScreenieScreen extends PretupidScreen {
 				entry == tab ? Widgets.ButtonStyle.PRIMARY : Widgets.ButtonStyle.GHOST, () -> {
 					tab = entry;
 					panelScroll.reset();
+					if (entry == Tab.TEXT && layers.isEmpty()) {
+						addText();
+					}
 				});
 		}
 		int innerY = y + 26;
@@ -331,13 +423,15 @@ public final class ScreenieScreen extends PretupidScreen {
 		int innerW = w - 8;
 		int content = switch (tab) {
 			case LOOK -> 4 * 20 + 6 + 5 * 26 + 24;
-			case TEXT -> 22 + layers.size() * 20 + 70;
+			case TEXT -> 22 + layers.size() * 20 + 96;
+			case FRAME -> FRAME_HEIGHT;
 		};
 		panelScroll.begin(ui, "screenie.panel", x + 4, innerY, innerW, innerH, content);
 		int top = innerY - panelScroll.offset();
 		switch (tab) {
 			case LOOK -> drawLook(ui, x + 4, top, innerW - 6);
 			case TEXT -> drawText(ui, x + 4, top, innerW - 6);
+			case FRAME -> drawFrame(ui, x + 4, top, innerW - 6);
 		}
 		panelScroll.end(ui, x + 4, innerY, innerW, innerH);
 	}
@@ -374,6 +468,28 @@ public final class ScreenieScreen extends PretupidScreen {
 		});
 	}
 
+	private void drawFrame(UiContext ui, int x, int y, int w) {
+		var g = ui.g();
+		Draw.text(g, font, Component.translatable("pretupid.screenie.zoom"), x, y, Theme.TEXT_MUTED);
+		Widgets.slider(ui, "screenie.frame.zoom", x, y + 10, w, zoom);
+		int rowY = y + 26;
+		Widgets.button(ui, "screenie.frame.reset", x, rowY, w, 16, Component.translatable("pretupid.ui.reset"), Widgets.ButtonStyle.GHOST, () -> {
+			focusX = 0.5;
+			focusY = 0.5;
+			zoom.set(1.0);
+			invalidateCrop();
+		});
+		rowY += 22;
+		for (var setting : List.of(module.showNametags(), module.showPlayers(), module.showEntities())) {
+			Draw.text(g, font, Draw.ellipsize(font, Component.translatable("pretupid.module.screenies." + setting.id()), w - 30), x, rowY + 4, Theme.TEXT_MUTED);
+			Widgets.toggle(ui, "screenie.frame." + setting.id(), x + w - 24, rowY, setting.enabled(), () -> {
+				setting.toggle();
+				retakeQueued = true;
+			});
+			rowY += 20;
+		}
+	}
+
 	private void drawText(UiContext ui, int x, int y, int w) {
 		var g = ui.g();
 		textInput.draw(ui, x, y, w - 36, 18, Component.translatable("pretupid.screenie.text_placeholder"));
@@ -386,7 +502,7 @@ public final class ScreenieScreen extends PretupidScreen {
 			boolean hover = ui.interactive(x, rowY, w - 22, 18, UiContext.Handler.onClick(() -> select(index)));
 			Draw.chamfer(g, x, rowY, w - 22, 18, active ? Theme.accent(90) : hover ? Theme.SURFACE_HOVER : Theme.SURFACE_ACTIVE);
 			Draw.rect(g, x + 3, rowY + 5, 8, 8, layer.color());
-			Draw.text(g, font, Draw.ellipsize(font, Component.literal(layer.text()), w - 40), x + 14, rowY + 5, Theme.TEXT);
+			Draw.text(g, font, Draw.ellipsize(font, Component.literal(displayLayer(index).text()), w - 40), x + 14, rowY + 5, layer.text().isBlank() ? Theme.TEXT_DIM : Theme.TEXT);
 			Widgets.button(ui, "screenie.text.remove." + i, x + w - 20, rowY + 1, 20, 16, Component.literal("×"), Widgets.ButtonStyle.DANGER, () -> {
 				layers.remove(index);
 				select(Math.min(selected, layers.size() - 1));
@@ -401,6 +517,9 @@ public final class ScreenieScreen extends PretupidScreen {
 		TextLayer layer = layers.get(selected);
 		Draw.text(g, font, Component.translatable("pretupid.screenie.size"), x, rowY, Theme.TEXT_MUTED);
 		Widgets.slider(ui, "screenie.text.size", x, rowY + 10, w, textSize);
+		rowY += 26;
+		Draw.text(g, font, Component.translatable("pretupid.screenie.angle"), x, rowY, Theme.TEXT_MUTED);
+		Widgets.slider(ui, "screenie.text.angle", x, rowY + 10, w, textAngle);
 		rowY += 26;
 		int swatch = (w - (TEXT_COLORS.length - 1) * 2) / TEXT_COLORS.length;
 		for (int i = 0; i < TEXT_COLORS.length; i++) {
@@ -454,31 +573,35 @@ public final class ScreenieScreen extends PretupidScreen {
 				shot == entry ? Widgets.ButtonStyle.PRIMARY : Widgets.ButtonStyle.SECONDARY, () -> retake(entry));
 		}
 		rowY += ((shots.length + 1) / 2) * 20 + 4;
-		if (selected < 0 || selected >= layers.size()) {
-			return;
+		if (selected >= 0 && selected < layers.size()) {
+			TextLayer layer = layers.get(selected);
+			Draw.text(g, font, Component.translatable("pretupid.screenie.size"), x, rowY, Theme.TEXT_MUTED);
+			Widgets.slider(ui, "screenie.text.size", x, rowY + 10, w, textSize);
+			rowY += 26;
+			Draw.text(g, font, Component.translatable("pretupid.screenie.angle"), x, rowY, Theme.TEXT_MUTED);
+			Widgets.slider(ui, "screenie.text.angle", x, rowY + 10, w, textAngle);
+			rowY += 26;
+			int swatch = (w - (TEXT_COLORS.length - 1) * 2) / TEXT_COLORS.length;
+			for (int i = 0; i < TEXT_COLORS.length; i++) {
+				int color = TEXT_COLORS[i];
+				int sx = x + i * (swatch + 2);
+				boolean hover = ui.interactive(sx, rowY, swatch, 12, UiContext.Handler.onClick(() -> {
+					layers.set(selected, layers.get(selected).withColor(color));
+					dirty = true;
+				}));
+				Draw.rect(g, sx, rowY, swatch, 12, color);
+				Draw.border(g, sx, rowY, swatch, 12, layer.color() == color ? Theme.accent() : hover ? 0xFFFFFFFF : 0x60000000);
+			}
+			rowY += 16;
 		}
-		TextLayer layer = layers.get(selected);
-		Draw.text(g, font, Component.translatable("pretupid.screenie.size"), x, rowY, Theme.TEXT_MUTED);
-		Widgets.slider(ui, "screenie.text.size", x, rowY + 10, w, textSize);
-		rowY += 26;
-		int swatch = (w - (TEXT_COLORS.length - 1) * 2) / TEXT_COLORS.length;
-		for (int i = 0; i < TEXT_COLORS.length; i++) {
-			int color = TEXT_COLORS[i];
-			int sx = x + i * (swatch + 2);
-			boolean hover = ui.interactive(sx, rowY, swatch, 12, UiContext.Handler.onClick(() -> {
-				layers.set(selected, layers.get(selected).withColor(color));
-				dirty = true;
-			}));
-			Draw.rect(g, sx, rowY, swatch, 12, color);
-			Draw.border(g, sx, rowY, swatch, 12, layer.color() == color ? Theme.accent() : hover ? 0xFFFFFFFF : 0x60000000);
-		}
+		drawFrame(ui, x, rowY + 2, w);
 	}
 
 	private void retake(MemeShot next) {
 		if (minecraft == null || minecraft.level == null || screenies.busy()) {
 			return;
 		}
-		screenies.requestMeme(next, template, slotInputs.stream().map(TextInput::value).toList());
+		screenies.requestRetake(next);
 		retaking = true;
 	}
 

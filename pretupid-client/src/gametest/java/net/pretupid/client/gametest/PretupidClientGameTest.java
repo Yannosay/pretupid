@@ -66,10 +66,20 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testAccentLabels(context);
 			testChatModules(context);
 			testChatEmojis(context);
+			testEmojiButtons(context);
 			testFreecam(context, world, feet);
 			testCinematic(context, world, feet);
 			testWaypoints(context, world, feet);
 			testNewModules(context, world, feet);
+			testModuleMarqueeHover(context);
+			testWaypointDeleteConfirm(context);
+			testSpeedrunFlow(context, world, feet);
+			testMusicFlow(context);
+			testPresenceSwitch(context);
+			testMinimapSprites(context, world, feet);
+			testEditorControls(context, world, feet);
+			testEditorMouse(context);
+			testFreeMoveAndDefaults(context, world, feet);
 			testScreenies(context);
 			testTexturedWearable(context);
 			testCosmetics(context);
@@ -153,6 +163,15 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		check(first[0] > last[0], "The title screen buttons did not slide in (" + first[0] + " then " + last[0] + ")");
 		check(first[1] < 100 && last[1] == 100, "The title screen buttons did not fade in (" + first[1] + "% then " + last[1] + "%)");
 		context.takeScreenshot("pretupid-title-entered");
+		double[] hover = context.computeOnClient(minecraft -> {
+			var widget = Platform.widgets(Platform.screen()).stream().filter(entry -> entry.getWidth() >= 150).min(java.util.Comparator.comparingInt(net.minecraft.client.gui.components.AbstractWidget::getY)).orElseThrow();
+			double scale = minecraft.getWindow().getGuiScale();
+			return new double[] {(widget.getX() + widget.getWidth() / 2.0) * scale, (widget.getY() + widget.getHeight() / 2.0) * scale};
+		});
+		context.getInput().setCursorPos(hover[0], hover[1]);
+		context.waitTicks(15);
+		context.takeScreenshot("pretupid-title-hover");
+		context.getInput().setCursorPos(4, 4);
 		context.runOnClient(minecraft -> PretupidClient.get().settings().animations.set(animations));
 	}
 
@@ -275,6 +294,98 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(5);
 		context.takeScreenshot("pretupid-chat-modules");
 		context.runOnClient(minecraft -> PretupidClient.get().modules().get(NickHiderModule.class).setEnabled(false));
+	}
+
+	private static EmojiPicker chatPicker() {
+		try {
+			for (Field field : ChatScreen.class.getDeclaredFields()) {
+				if (field.getType() == EmojiPicker.class) {
+					field.setAccessible(true);
+					return (EmojiPicker) field.get(Platform.screen());
+				}
+			}
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+		throw new AssertionError("Chat has no emoji picker");
+	}
+
+	private static Object pickerField(String name) {
+		try {
+			Field field = EmojiPicker.class.getDeclaredField(name);
+			field.setAccessible(true);
+			return field.get(chatPicker());
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static int pickerPosition(String name, Object... args) {
+		try {
+			var method = args.length == 0 ? EmojiPicker.class.getDeclaredMethod(name) : EmojiPicker.class.getDeclaredMethod(name, int.class);
+			method.setAccessible(true);
+			return (int) method.invoke(chatPicker(), args);
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static void clickGui(ClientGameTestContext context, double x, double y) {
+		double scale = context.computeOnClient(minecraft -> (double) minecraft.getWindow().getGuiScale());
+		context.getInput().setCursorPos(x * scale, y * scale);
+		context.waitTicks(2);
+		context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(2);
+	}
+
+	private static void testEmojiButtons(ClientGameTestContext context) {
+		context.setScreen(() -> Platform.chatScreen("hi"));
+		context.waitTicks(5);
+		int[] button = context.computeOnClient(minecraft -> new int[] {pickerPosition("buttonX"), pickerPosition("buttonY")});
+		clickGui(context, button[0] + 6, button[1] + 6);
+		context.runOnClient(minecraft -> check((boolean) pickerField("open"), "Clicking the emoji button did not open the picker"));
+		context.takeScreenshot("pretupid-emoji-open");
+		int[] panel = context.computeOnClient(minecraft -> new int[] {pickerPosition("panelX", Platform.screen().width), pickerPosition("panelY")});
+		String before = context.computeOnClient(minecraft -> (String) pickerField("category"));
+		int tabs = context.computeOnClient(minecraft -> 1 + EmojiIndex.get().categories().size());
+		int tabWidth = (9 * 14) / tabs;
+		clickGui(context, panel[0] + 4 + 3 * tabWidth + tabWidth / 2.0, panel[1] + 4 + 7);
+		context.runOnClient(minecraft -> check(!before.equals(pickerField("category")), "Clicking a category did not switch it"));
+		clickGui(context, panel[0] + 4 + 7, panel[1] + 4 + 14 + 2 + 7);
+		String inserted = context.computeOnClient(minecraft -> ((net.minecraft.client.gui.components.EditBox) pickerField("input")).getValue());
+		check(inserted.matches("hi :[^: ]+: "), "Clicking an emoji did not insert it: \"" + inserted + "\"");
+		context.takeScreenshot("pretupid-emoji-inserted");
+		clickGui(context, 4, 20);
+		context.runOnClient(minecraft -> check(!(boolean) pickerField("open"), "Clicking outside did not close the picker"));
+		clickGui(context, button[0] + 6, button[1] + 6);
+		context.runOnClient(minecraft -> check((boolean) pickerField("open"), "The emoji button did not reopen the picker"));
+		clickGui(context, button[0] + 6, button[1] + 6);
+		context.runOnClient(minecraft -> check(!(boolean) pickerField("open"), "The emoji button did not close the picker"));
+		context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+		context.waitTicks(10);
+		String shortcode = inserted.substring(inserted.indexOf(':') + 1, inserted.lastIndexOf(':'));
+		String glyph = new String(Character.toChars(EmojiIndex.get().byName(shortcode).orElseThrow().codepoint()));
+		context.runOnClient(minecraft -> {
+			check(Platform.screen() == null, "Enter did not send the message");
+			check(chatMessages(minecraft).getFirst().getString().contains(glyph), "The sent message has no emoji: \"" + chatMessages(minecraft).getFirst().getString() + "\"");
+		});
+		context.takeScreenshot("pretupid-emoji-sent");
+		context.setScreen(() -> Platform.chatScreen(":smi"));
+		context.waitTicks(5);
+		int[] row = context.computeOnClient(minecraft -> {
+			var input = (net.minecraft.client.gui.components.EditBox) pickerField("input");
+			int count = ((List<?>) pickerField("suggestions")).size();
+			check(count > 0, "No emoji suggestions");
+			return new int[] {Math.max(2, input.getScreenX(0) - 2) + 20, input.getY() - 4 - count * 12 + 6};
+		});
+		clickGui(context, row[0], row[1]);
+		context.runOnClient(minecraft -> {
+			String value = ((net.minecraft.client.gui.components.EditBox) pickerField("input")).getValue();
+			check(value.matches(":[^: ]+: "), "Clicking a suggestion did not complete it: \"" + value + "\"");
+		});
+		context.getInput().setCursorPos(4, 4);
+		context.setScreen(() -> null);
+		context.waitTicks(3);
 	}
 
 	private static void testChatEmojis(ClientGameTestContext context) {
@@ -532,6 +643,661 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(5);
 	}
 
+	private static void testModuleMarqueeHover(ClientGameTestContext context) {
+		context.setScreen(() -> {
+			ClientMenuScreen menu = new ClientMenuScreen(null);
+			menu.select(ClientMenuScreen.Tab.MODULES);
+			return menu;
+		});
+		context.getInput().setCursorPos(4, 4);
+		context.waitTicks(40);
+		java.nio.file.Path idleA = context.takeScreenshot("pretupid-marquee-idle-a");
+		context.waitTicks(70);
+		java.nio.file.Path idleB = context.takeScreenshot("pretupid-marquee-idle-b");
+		int idleChange = changedPixels(idleA, idleB, context.computeOnClient(minecraft -> minecraft.getWindow().getWidth()) * 0.44, context.computeOnClient(minecraft -> minecraft.getWindow().getHeight()) * 0.32, context.computeOnClient(minecraft -> minecraft.getWindow().getWidth()) * 0.77, context.computeOnClient(minecraft -> minecraft.getWindow().getHeight()) * 0.37);
+		check(idleChange < 60, "Module description moved without hover: " + idleChange);
+		int windowWidth = context.computeOnClient(minecraft -> minecraft.getWindow().getWidth());
+		int windowHeight = context.computeOnClient(minecraft -> minecraft.getWindow().getHeight());
+		context.getInput().setCursorPos(windowWidth * 0.62, windowHeight * 0.32);
+		context.waitTicks(16);
+		java.nio.file.Path hoverA = context.takeScreenshot("pretupid-marquee-hover-a");
+		context.waitTicks(10);
+		java.nio.file.Path hoverB = context.takeScreenshot("pretupid-marquee-hover-b");
+		int hoverChange = changedPixels(hoverA, hoverB, windowWidth * 0.44, windowHeight * 0.32, windowWidth * 0.77, windowHeight * 0.37);
+		check(hoverChange >= 60, "Module description did not scroll on hover: " + hoverChange);
+		context.getInput().setCursorPos(4, 4);
+		context.waitTicks(30);
+		java.nio.file.Path leftA = context.takeScreenshot("pretupid-marquee-left-a");
+		context.waitTicks(40);
+		java.nio.file.Path leftB = context.takeScreenshot("pretupid-marquee-left-b");
+		int leftChange = changedPixels(leftA, leftB, windowWidth * 0.44, windowHeight * 0.32, windowWidth * 0.77, windowHeight * 0.37);
+		check(leftChange < 60, "Module description kept moving after hover: " + leftChange);
+		context.setScreen(() -> null);
+	}
+
+	private static int changedPixels(java.nio.file.Path first, java.nio.file.Path second, double x1, double y1, double x2, double y2) {
+		try {
+			java.awt.image.BufferedImage a = javax.imageio.ImageIO.read(first.toFile());
+			java.awt.image.BufferedImage b = javax.imageio.ImageIO.read(second.toFile());
+			int left = Math.max(0, (int) x1);
+			int top = Math.max(0, (int) y1);
+			int right = Math.min(a.getWidth(), (int) x2);
+			int bottom = Math.min(a.getHeight(), (int) y2);
+			int changed = 0;
+			for (int y = top; y < bottom; y++) {
+				for (int x = left; x < right; x++) {
+					int p = a.getRGB(x, y);
+					int q = b.getRGB(x, y);
+					int difference = Math.abs((p >> 16 & 255) - (q >> 16 & 255)) + Math.abs((p >> 8 & 255) - (q >> 8 & 255)) + Math.abs((p & 255) - (q & 255));
+					if (difference > 120) {
+						changed++;
+					}
+				}
+			}
+			return changed;
+		} catch (java.io.IOException exception) {
+			throw new AssertionError("Could not read screenshots", exception);
+		}
+	}
+
+	private static void testWaypointDeleteConfirm(ClientGameTestContext context) {
+		context.runOnClient(minecraft -> {
+			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
+			waypoints.setEnabled(true);
+			for (String name : List.copyOf(waypoints.names(minecraft))) {
+				waypoints.remove(minecraft, name);
+			}
+			waypoints.add(minecraft, "Delete me");
+		});
+		context.setScreen(() -> new WaypointsScreen(null));
+		context.waitTicks(10);
+		double[] button = context.computeOnClient(minecraft -> {
+			int width = minecraft.getWindow().getGuiScaledWidth();
+			int height = minecraft.getWindow().getGuiScaledHeight();
+			int w = Math.min(470, width - 12);
+			int h = Math.min(300, height - 12);
+			int x = (width - w) / 2;
+			int y = (height - h) / 2;
+			int listY = y + 34 + 24 + 22;
+			int rowX = x + 10;
+			int rowW = w - 26;
+			double scale = minecraft.getWindow().getGuiScale();
+			return new double[] {(rowX + rowW - 4 - 24) * scale, (listY + 12) * scale};
+		});
+		context.getInput().setCursorPos(button[0], button[1]);
+		context.waitTicks(3);
+		context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(3);
+		context.runOnClient(minecraft -> check(PretupidClient.get().modules().get(WaypointsModule.class).names(minecraft).contains("Delete me"), "First click deleted the waypoint"));
+		context.takeScreenshot("pretupid-waypoint-confirm");
+		context.waitTicks(70);
+		context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(3);
+		context.runOnClient(minecraft -> check(PretupidClient.get().modules().get(WaypointsModule.class).names(minecraft).contains("Delete me"), "Expired confirmation deleted the waypoint"));
+		context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(3);
+		context.runOnClient(minecraft -> check(!PretupidClient.get().modules().get(WaypointsModule.class).names(minecraft).contains("Delete me"), "Confirmed click did not delete the waypoint"));
+		context.takeScreenshot("pretupid-waypoint-deleted");
+		context.getInput().setCursorPos(4, 4);
+		context.setScreen(() -> null);
+	}
+
+	private static long speedrunMillis(net.minecraft.client.Minecraft minecraft) {
+		try {
+			var module = PretupidClient.get().modules().get(net.pretupid.client.module.hud.SpeedrunTimerModule.class);
+			var method = net.pretupid.client.module.hud.SpeedrunTimerModule.class.getDeclaredMethod("displayMillis", net.minecraft.client.Minecraft.class, boolean.class);
+			method.setAccessible(true);
+			return (long) method.invoke(module, minecraft, false);
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static com.google.gson.JsonObject speedrunWorld(net.minecraft.client.Minecraft minecraft) {
+		java.nio.file.Path file = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("pretupid").resolve("speedrun.json");
+		try {
+			com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(file)).getAsJsonObject();
+			return root.getAsJsonObject("worlds").getAsJsonObject(WaypointsModule.worldKey(minecraft));
+		} catch (java.io.IOException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static void testSpeedrunFlow(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		world.getServer().runCommand("gamemode creative @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 0 10");
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			var module = PretupidClient.get().modules().get(net.pretupid.client.module.hud.SpeedrunTimerModule.class);
+			module.setEnabled(true);
+		});
+		context.waitTicks(2);
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandReset(minecraft));
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> check(speedrunMillis(minecraft) == 0L, "Timer ran before the first input"));
+		context.getInput().holdKeyFor(options -> options.keyUp, 4);
+		context.waitTicks(12);
+		context.runOnClient(minecraft -> check(speedrunMillis(minecraft) > 0L, "Timer did not auto start on the first input"));
+		context.setScreen(() -> new PauseScreen(true));
+		context.waitTicks(8);
+		long pausedA = context.computeOnClient(PretupidClientGameTest::speedrunMillis);
+		context.waitTicks(20);
+		long pausedB = context.computeOnClient(PretupidClientGameTest::speedrunMillis);
+		check(pausedA == pausedB, "Timer kept running while paused: " + pausedA + " to " + pausedB);
+		context.setScreen(() -> null);
+		context.waitTicks(8);
+		long resumed = context.computeOnClient(PretupidClientGameTest::speedrunMillis);
+		check(resumed > pausedB, "Timer did not resume after pause");
+		world.getServer().runCommand("execute in minecraft:the_nether run tp @a " + feet.getX() + " 70 " + feet.getZ());
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> check(speedrunWorld(minecraft).get("nether").getAsLong() > 0L, "Nether split was not recorded"));
+		world.getServer().runCommand("execute in minecraft:the_end run tp @a 0 70 0");
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> check(speedrunWorld(minecraft).get("end").getAsLong() > 0L, "End split was not recorded"));
+		context.setScreen(() -> new net.minecraft.client.gui.screens.WinScreen(true, () -> { }));
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-speedrun-credits");
+		context.runOnClient(minecraft -> {
+			com.google.gson.JsonObject run = speedrunWorld(minecraft);
+			check(run.get("finished").getAsBoolean(), "Credits did not finish the run");
+			check(!run.get("running").getAsBoolean(), "Finished run is still running");
+		});
+		long finishedA = context.computeOnClient(PretupidClientGameTest::speedrunMillis);
+		context.waitTicks(20);
+		long finishedB = context.computeOnClient(PretupidClientGameTest::speedrunMillis);
+		check(finishedA == finishedB, "Finished timer kept counting");
+		context.setScreen(() -> null);
+		world.getServer().runCommand("execute in minecraft:overworld run tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		context.waitTicks(20);
+		context.takeScreenshot("pretupid-speedrun-finished");
+		context.runOnClient(minecraft -> {
+			var module = PretupidClient.get().modules().get(net.pretupid.client.module.hud.SpeedrunTimerModule.class);
+			module.commandReset(minecraft);
+			module.setEnabled(false);
+		});
+		world.getServer().runCommand("gamemode survival @a");
+		context.waitTicks(5);
+	}
+
+	private static net.minecraft.client.resources.sounds.SoundInstance playingSound() {
+		try {
+			Field field = net.pretupid.client.music.MusicController.class.getDeclaredField("playing");
+			field.setAccessible(true);
+			return (net.minecraft.client.resources.sounds.SoundInstance) field.get(PretupidClient.get().music());
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static void setVolumes(net.minecraft.client.Minecraft minecraft, double master, double music) {
+		minecraft.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(master);
+		minecraft.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MUSIC).set(music);
+	}
+
+	private static void setNowPlayingFlag(String id, boolean value) {
+		PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class).settings().stream()
+			.filter(setting -> setting.id().equals(id))
+			.map(net.pretupid.client.setting.BooleanSetting.class::cast)
+			.forEach(setting -> setting.set(value));
+	}
+
+	private static void checkPlaying(net.minecraft.client.Minecraft minecraft, net.pretupid.client.music.MusicTrack track, String step) {
+		var sound = playingSound();
+		check(sound != null, step + ": no controlled sound");
+		check(minecraft.getSoundManager().isActive(sound), step + ": sound is not active");
+		check(track.equals(PretupidClient.get().music().current(minecraft)), step + ": wrong current track");
+	}
+
+	private static void testMusicFlow(ClientGameTestContext context) {
+		double[] volumes = context.computeOnClient(minecraft -> new double[] {
+			minecraft.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).get(),
+			minecraft.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MUSIC).get()
+		});
+		var tracks = context.computeOnClient(minecraft -> {
+			PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class).setEnabled(true);
+			setVolumes(minecraft, 1.0, 0.5);
+			setNowPlayingFlag("always_show", true);
+			setNowPlayingFlag("show_when_muted", false);
+			var all = PretupidClient.get().music().catalog().tracks(minecraft);
+			check(all.size() >= 3, "Music catalog is too small");
+			return List.of(all.get(0), all.get(1), all.get(2));
+		});
+		context.runOnClient(minecraft -> PretupidClient.get().music().play(minecraft, tracks.get(0)));
+		context.waitTicks(20);
+		context.runOnClient(minecraft -> {
+			checkPlaying(minecraft, tracks.get(0), "Play");
+			check(!(minecraft.getMusicManager() == null), "No music manager");
+			PretupidClient.get().music().enqueue(minecraft, tracks.get(1));
+			check(PretupidClient.get().music().queue().size() == 1, "Queue did not take the track");
+			PretupidClient.get().music().skip(minecraft);
+			check(PretupidClient.get().music().queue().isEmpty(), "Skip did not take the next queued track");
+		});
+		context.waitTicks(20);
+		context.runOnClient(minecraft -> {
+			checkPlaying(minecraft, tracks.get(1), "Skip to queued");
+			PretupidClient.get().music().enqueue(minecraft, tracks.get(2));
+			minecraft.getSoundManager().stop(playingSound());
+		});
+		context.waitTicks(25);
+		context.runOnClient(minecraft -> {
+			checkPlaying(minecraft, tracks.get(2), "Queue after song end");
+			check(PretupidClient.get().music().queue().isEmpty(), "Finished queue entry stayed queued");
+			PretupidClient.get().music().loop(minecraft, tracks.get(0));
+		});
+		context.waitTicks(20);
+		var firstLoop = context.computeOnClient(minecraft -> {
+			checkPlaying(minecraft, tracks.get(0), "Loop");
+			var sound = playingSound();
+			minecraft.getSoundManager().stop(sound);
+			return sound;
+		});
+		context.waitTicks(25);
+		context.runOnClient(minecraft -> {
+			checkPlaying(minecraft, tracks.get(0), "Loop restart");
+			check(playingSound() != firstLoop, "Loop did not start a new sound");
+			check(tracks.get(0).equals(PretupidClient.get().music().looping()), "Loop state was lost");
+		});
+		context.takeScreenshot("pretupid-music-loop");
+		context.setScreen(() -> new net.pretupid.client.ui.screen.MusicScreen(null));
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-music-loop-screen");
+		context.setScreen(() -> null);
+		context.runOnClient(minecraft -> {
+			var module = PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class);
+			check(module.visible(minecraft), "Now Playing hidden at audible volume");
+			setVolumes(minecraft, 1.0, 0.0);
+			check(!module.visible(minecraft), "Now Playing shown with music at 0%");
+			setVolumes(minecraft, 0.0, 0.5);
+			check(!module.visible(minecraft), "Now Playing shown with master at 0%");
+			setNowPlayingFlag("show_when_muted", true);
+			check(module.visible(minecraft), "show_when_muted did not show Now Playing");
+			setNowPlayingFlag("show_when_muted", false);
+			setVolumes(minecraft, 1.0, 0.5);
+		});
+		var previous = context.computeOnClient(minecraft -> {
+			var sound = playingSound();
+			PretupidClient.get().music().useDynamic(minecraft);
+			check(!PretupidClient.get().music().overridesVanilla(), "Dynamic left the player in control");
+			check(playingSound() == null, "Dynamic left a controlled sound");
+			check(PretupidClient.get().music().looping() == null, "Dynamic kept the loop");
+			return sound;
+		});
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> check(!minecraft.getSoundManager().isActive(previous), "Dynamic did not stop the track"));
+		boolean vanillaStarted = false;
+		for (int i = 0; i < 300 && !vanillaStarted; i++) {
+			context.waitTick();
+			vanillaStarted = context.computeOnClient(minecraft -> PretupidClient.get().music().current(minecraft) != null);
+		}
+		check(vanillaStarted, "Vanilla music did not resume in dynamic mode");
+		context.runOnClient(minecraft -> {
+			check(playingSound() == null, "Dynamic track is not vanilla");
+			PretupidClient.get().music().skip(minecraft);
+		});
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			check(PretupidClient.get().music().current(minecraft) == null, "Skip did not stop vanilla music");
+			setNowPlayingFlag("always_show", false);
+			setVolumes(minecraft, volumes[0], volumes[1]);
+			PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class).setEnabled(false);
+		});
+		context.waitTicks(5);
+	}
+
+	private static Object editorField(String name) {
+		try {
+			Field field = ScreenieScreen.class.getDeclaredField(name);
+			field.setAccessible(true);
+			return field.get(Platform.screen());
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static java.awt.image.BufferedImage screenieSource() {
+		return Platform.screen() instanceof ScreenieScreen ? (java.awt.image.BufferedImage) editorField("source") : null;
+	}
+
+	private static void invokeEditor(String method, Class<?> type, Object value) {
+		try {
+			var target = ScreenieScreen.class.getDeclaredMethod(method, type);
+			target.setAccessible(true);
+			target.invoke(Platform.screen(), value);
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static int imageDifference(java.awt.image.BufferedImage a, java.awt.image.BufferedImage b) {
+		int width = Math.min(a.getWidth(), b.getWidth());
+		int height = Math.min(a.getHeight(), b.getHeight());
+		int changed = 0;
+		for (int y = 0; y < height; y += 2) {
+			for (int x = 0; x < width; x += 2) {
+				int p = a.getRGB(x, y);
+				int q = b.getRGB(x, y);
+				if (Math.abs((p >> 16 & 255) - (q >> 16 & 255)) + Math.abs((p >> 8 & 255) - (q >> 8 & 255)) + Math.abs((p & 255) - (q & 255)) > 60) {
+					changed++;
+				}
+			}
+		}
+		return changed;
+	}
+
+	private static java.awt.image.BufferedImage retakeEditor(ClientGameTestContext context) {
+		Object before = context.computeOnClient(minecraft -> screenieSource());
+		context.runOnClient(minecraft -> invokeEditor("retake", net.pretupid.client.screenie.MemeShot.class, net.pretupid.client.screenie.MemeShot.NORMAL));
+		for (int i = 0; i < 200 && context.computeOnClient(minecraft -> screenieSource() == before); i++) {
+			context.waitTick();
+		}
+		context.waitTicks(3);
+		java.awt.image.BufferedImage image = context.computeOnClient(minecraft -> screenieSource());
+		check(image != null && image != before, "The editor did not retake the picture");
+		return image;
+	}
+
+	private static void testEditorControls(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		world.getServer().runCommand("gamemode creative @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 0 15");
+		world.getServer().runCommand("summon minecraft:pig " + feet.getX() + " " + feet.getY() + " " + (feet.getZ() + 4) + " {NoAI:1b,Silent:1b,CustomName:\"Editor Pig\",CustomNameVisible:1b,Tags:[\"editor\"]}");
+		context.waitTicks(30);
+		calm(context);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().requestMeme());
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.waitTick();
+		}
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-editor-placeholders");
+		var module = PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
+		context.runOnClient(minecraft -> {
+			@SuppressWarnings("unchecked")
+			var layers = (List<net.pretupid.client.screenie.TextLayer>) editorField("layers");
+			check(layers.size() == 2 && layers.stream().allMatch(layer -> layer.text().isBlank()), "The meme starts with typed text");
+			java.awt.image.BufferedImage source = screenieSource();
+			java.awt.image.BufferedImage plain = net.pretupid.client.screenie.ScreenieComposer.compose(source, net.pretupid.client.screenie.ScreenieLook.NATURAL, List.of(), net.pretupid.client.screenie.MemeTemplate.CLASSIC, 640);
+			java.awt.image.BufferedImage exported = net.pretupid.client.screenie.ScreenieComposer.compose(source, net.pretupid.client.screenie.ScreenieLook.NATURAL, List.copyOf(layers), net.pretupid.client.screenie.MemeTemplate.CLASSIC, 640);
+			check(imageDifference(plain, exported) == 0, "Placeholder text reached the export");
+		});
+		java.awt.image.BufferedImage shown = retakeEditor(context);
+		context.runOnClient(minecraft -> module.showEntities().set(false));
+		java.awt.image.BufferedImage hidden = retakeEditor(context);
+		int entityChange = imageDifference(shown, hidden);
+		check(entityChange > 40, "Hiding entities did not change the picture: " + entityChange);
+		context.takeScreenshot("pretupid-editor-hidden-entities");
+		context.runOnClient(minecraft -> {
+			check(!PretupidClient.get().screenies().hidesEntity(minecraft.level.getEntitiesOfClass(net.minecraft.world.entity.animal.Animal.class, minecraft.player.getBoundingBox().inflate(12)).get(0)), "Entity filter stayed on after capture");
+			module.showEntities().set(true);
+			module.showNametags().set(false);
+		});
+		java.awt.image.BufferedImage noName = retakeEditor(context);
+		int nameChange = imageDifference(shown, noName);
+		check(nameChange > 8, "Hiding nametags did not change the picture: " + nameChange);
+		context.runOnClient(minecraft -> {
+			check(!PretupidClient.get().screenies().hidesNames(), "Name filter stayed on after capture");
+			module.showNametags().set(true);
+		});
+		java.awt.image.BufferedImage restored = retakeEditor(context);
+		int restoredChange = imageDifference(shown, restored);
+		check(restoredChange < entityChange, "Hidden things did not come back: " + restoredChange);
+		context.runOnClient(minecraft -> {
+			var zoom = (net.pretupid.client.setting.NumberSetting) editorField("zoom");
+			java.awt.image.BufferedImage source = screenieSource();
+			zoom.set(2.0);
+			try {
+				var working = ScreenieScreen.class.getDeclaredMethod("working");
+				working.setAccessible(true);
+				java.awt.image.BufferedImage center = (java.awt.image.BufferedImage) working.invoke(Platform.screen());
+				check(Math.abs(center.getWidth() - source.getWidth() / 2) <= 1, "Zoom did not crop the picture");
+				Field focus = ScreenieScreen.class.getDeclaredField("focusX");
+				focus.setAccessible(true);
+				focus.setDouble(Platform.screen(), 0.0);
+				Field cropped = ScreenieScreen.class.getDeclaredField("cropped");
+				cropped.setAccessible(true);
+				cropped.set(Platform.screen(), null);
+				java.awt.image.BufferedImage left = (java.awt.image.BufferedImage) working.invoke(Platform.screen());
+				check(left.getWidth() == center.getWidth() && left.getRGB(0, left.getHeight() / 2) == source.getRGB(0, (source.getHeight() - left.getHeight()) / 2 + left.getHeight() / 2), "Reposition did not move the crop");
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError(exception);
+			}
+			invokeEditor("select", int.class, 0);
+			((net.pretupid.client.setting.NumberSetting) editorField("textAngle")).set(-18.0);
+			@SuppressWarnings("unchecked")
+			var layers = (List<net.pretupid.client.screenie.TextLayer>) editorField("layers");
+			check(Math.abs(layers.get(0).angle() + 18f) < 0.01f, "Text angle was not applied");
+		});
+		context.waitTicks(15);
+		context.takeScreenshot("pretupid-editor-zoom-angle");
+		context.setScreen(() -> null);
+		world.getServer().runCommand("kill @e[tag=editor]");
+		world.getServer().runCommand("gamemode survival @a");
+		context.waitTicks(5);
+	}
+
+	private static long presenceField(String name) {
+		try {
+			Field field = net.pretupid.client.network.PresenceService.class.getDeclaredField(name);
+			field.setAccessible(true);
+			return field.getLong(PretupidClient.get().presence());
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static void setNextLookup(long value) {
+		try {
+			Field field = net.pretupid.client.network.PresenceService.class.getDeclaredField("nextLookup");
+			field.setAccessible(true);
+			field.setLong(PretupidClient.get().presence(), value);
+		} catch (ReflectiveOperationException exception) {
+			throw new AssertionError(exception);
+		}
+	}
+
+	private static void testPresenceSwitch(ClientGameTestContext context) {
+		boolean share = context.computeOnClient(minecraft -> PretupidClient.get().settings().sharePresence.enabled());
+		boolean badges = context.computeOnClient(minecraft -> PretupidClient.get().settings().showOtherBadges.enabled());
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().settings().showOtherBadges.set(true);
+			PretupidClient.get().settings().sharePresence.set(false);
+			setNextLookup(1L);
+		});
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> check(presenceField("nextLookup") == 1L, "A player lookup ran with online services off"));
+		context.runOnClient(minecraft -> PretupidClient.get().settings().sharePresence.set(true));
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			check(presenceField("nextLookup") > 1L, "Player lookups did not resume");
+			PretupidClient.get().settings().sharePresence.set(share);
+			PretupidClient.get().settings().showOtherBadges.set(badges);
+		});
+		context.waitTicks(3);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void setMinimap(String id, Object value) {
+		var minimap = PretupidClient.get().modules().get(net.pretupid.client.module.utility.MinimapModule.class);
+		for (var setting : minimap.settings()) {
+			if (setting.id().equals(id)) {
+				((net.pretupid.client.setting.Setting<Object>) setting).set(value);
+				return;
+			}
+		}
+		throw new AssertionError("No minimap setting " + id);
+	}
+
+	private static void minimapDirections(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet, String block, String label) {
+		int y = feet.getY() - 1;
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ());
+		context.waitTicks(30);
+		world.getServer().runCommand("fill " + (feet.getX() - 70) + " " + y + " " + (feet.getZ() - 70) + " " + (feet.getX() + 70) + " " + y + " " + (feet.getZ() + 70) + " minecraft:" + block);
+		context.waitTicks(180);
+		String[] names = {"s", "sw", "w", "nw", "n", "ne", "e", "se"};
+		for (int i = 0; i < names.length; i++) {
+			world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " " + (i * 45) + " 20");
+			context.waitTicks(4);
+			context.takeScreenshot("pretupid-minimap-" + label + "-" + names[i]);
+		}
+	}
+
+	private static void testMinimapSprites(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		world.getServer().runCommand("gamemode creative @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ());
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> {
+			var modules = PretupidClient.get().modules();
+			WaypointsModule waypoints = modules.get(WaypointsModule.class);
+			waypoints.setEnabled(true);
+			modules.get(net.pretupid.client.module.utility.MinimapModule.class).setEnabled(true);
+			setMinimap("rotate", false);
+			setMinimap("size", 112.0);
+			setMinimap("shape", net.pretupid.client.module.utility.MinimapModule.MinimapShape.CIRCLE);
+			Platform.chat().clearMessages(false);
+		});
+		for (String[] spot : new String[][] {{"Pin A", "18", "-14"}, {"Pin B", "-20", "12"}, {"Far", "160", "90"}}) {
+			world.getServer().runCommand("tp @a " + (feet.getX() + Integer.parseInt(spot[1])) + " " + feet.getY() + " " + (feet.getZ() + Integer.parseInt(spot[2])));
+			context.waitTicks(3);
+			context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, spot[0]));
+		}
+		minimapDirections(context, world, feet, "white_concrete", "light-circle");
+		context.runOnClient(minecraft -> setMinimap("shape", net.pretupid.client.module.utility.MinimapModule.MinimapShape.SQUARE));
+		minimapDirections(context, world, feet, "black_concrete", "dark-square");
+		context.runOnClient(minecraft -> {
+			setMinimap("rotate", true);
+			setMinimap("scale", 1.25);
+		});
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-minimap-scale-125");
+		context.runOnClient(minecraft -> setMinimap("scale", 2.0));
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-minimap-scale-200");
+		int y = feet.getY() - 1;
+		world.getServer().runCommand("fill " + (feet.getX() - 70) + " " + y + " " + (feet.getZ() - 70) + " " + (feet.getX() + 70) + " " + y + " " + (feet.getZ() + 70) + " minecraft:grass_block");
+		context.runOnClient(minecraft -> {
+			var modules = PretupidClient.get().modules();
+			WaypointsModule waypoints = modules.get(WaypointsModule.class);
+			for (String name : List.of("Pin A", "Pin B", "Far")) {
+				waypoints.remove(minecraft, name);
+			}
+			setMinimap("scale", 1.0);
+			setMinimap("size", 96.0);
+			setMinimap("shape", net.pretupid.client.module.utility.MinimapModule.MinimapShape.CIRCLE);
+			modules.get(net.pretupid.client.module.utility.MinimapModule.class).setEnabled(false);
+		});
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		world.getServer().runCommand("gamemode survival @a");
+		context.waitTicks(10);
+	}
+
+	private static void setFreecamFreeMove(boolean value) {
+		PretupidClient.get().modules().get(FreecamModule.class).settings().stream()
+			.filter(setting -> setting.id().equals("free_move"))
+			.map(net.pretupid.client.setting.BooleanSetting.class::cast)
+			.forEach(setting -> setting.set(value));
+	}
+
+	private static double freecamClimb(ClientGameTestContext context, boolean freeMove) {
+		context.runOnClient(minecraft -> {
+			FreecamModule freecam = PretupidClient.get().modules().get(FreecamModule.class);
+			freecam.setEnabled(true);
+			setFreecamFreeMove(freeMove);
+			freecam.setHeld(minecraft, true);
+		});
+		context.waitTicks(4);
+		double start = context.computeOnClient(minecraft -> PretupidClient.get().modules().get(FreecamModule.class).position(1f).y);
+		context.getInput().holdKeyFor(options -> options.keyUp, 12);
+		context.waitTicks(3);
+		double end = context.computeOnClient(minecraft -> PretupidClient.get().modules().get(FreecamModule.class).position(1f).y);
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(FreecamModule.class).setHeld(minecraft, false));
+		context.waitTicks(2);
+		return end - start;
+	}
+
+	private static void testFreeMoveAndDefaults(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		boolean wasEnabled = context.computeOnClient(minecraft -> PretupidClient.get().modules().get(FreecamModule.class).enabledSetting().get());
+		world.getServer().runCommand("gamemode creative @a");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + (feet.getY() + 2) + " " + feet.getZ() + " 0 -45");
+		context.waitTicks(8);
+		double level = freecamClimb(context, false);
+		check(Math.abs(level) < 0.01, "Normal freecam moved vertically: " + level);
+		double climb = freecamClimb(context, true);
+		check(climb > 1.0, "Free move did not follow the camera pitch: " + climb);
+		context.runOnClient(minecraft -> {
+			setFreecamFreeMove(false);
+			PretupidClient.get().modules().get(FreecamModule.class).setEnabled(wasEnabled);
+			var cinematic = new net.pretupid.client.module.visual.CinematicModule();
+			check(cinematic.enabledSetting().get(), "Cinematic is not on for new users");
+			var screenies = new net.pretupid.client.module.utility.ScreeniesModule();
+			check(screenies.enabledSetting().get(), "Screenies is not on for new users");
+			com.google.gson.JsonObject saved = cinematic.save();
+			saved.addProperty("enabled", false);
+			cinematic.loadDefaults();
+			cinematic.load(saved);
+			check(!cinematic.enabledSetting().get(), "A saved off state for Cinematic was overwritten");
+		});
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		world.getServer().runCommand("gamemode survival @a");
+		context.waitTicks(5);
+	}
+
+	private static void testEditorMouse(ClientGameTestContext context) {
+		calm(context);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().request());
+		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.waitTick();
+		}
+		context.waitTicks(10);
+		double scale = context.computeOnClient(minecraft -> (double) minecraft.getWindow().getGuiScale());
+		int guiWidth = context.computeOnClient(minecraft -> minecraft.getWindow().getGuiScaledWidth());
+		int guiHeight = context.computeOnClient(minecraft -> minecraft.getWindow().getGuiScaledHeight());
+		double centerX = (8 + (guiWidth - 176 - 24) / 2.0) * scale;
+		double centerY = (24 + (guiHeight - 58) / 2.0) * scale;
+		context.getInput().setCursorPos(centerX, centerY);
+		context.waitTicks(3);
+		for (int i = 0; i < 6; i++) {
+			context.getInput().scroll(1);
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> check(((net.pretupid.client.setting.NumberSetting) editorField("zoom")).get() > 1.4, "The mouse wheel did not zoom the picture"));
+		double focusBefore = context.computeOnClient(minecraft -> (double) editorField("focusX"));
+		context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(2);
+		for (int i = 0; i < 6; i++) {
+			context.getInput().moveCursor(14, 0);
+			context.waitTick();
+		}
+		context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(3);
+		context.runOnClient(minecraft -> check((double) editorField("focusX") < focusBefore, "Dragging did not reposition the picture"));
+		context.takeScreenshot("pretupid-editor-mouse-framed");
+		int panelX = guiWidth - 176 - 8;
+		clickGui(context, panelX + 4 + 2 * 56 + 27, 24 + 4 + 8);
+		context.runOnClient(minecraft -> check("FRAME".equals(editorField("tab").toString()), "The Frame tab did not open"));
+		context.waitTicks(3);
+		context.takeScreenshot("pretupid-editor-frame-tab");
+		Object before = context.computeOnClient(minecraft -> screenieSource());
+		clickGui(context, panelX + 4 + (176 - 8 - 6) - 24 + 8, 24 + 26 + 48 + 5);
+		context.runOnClient(minecraft -> check(!PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class).showNametags().enabled(), "The nametag toggle did not switch"));
+		for (int i = 0; i < 200 && context.computeOnClient(minecraft -> screenieSource() == before); i++) {
+			context.waitTick();
+		}
+		context.runOnClient(minecraft -> {
+			check(screenieSource() != before, "The hide toggle did not retake the picture");
+			PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class).showNametags().set(true);
+		});
+		clickGui(context, panelX + 4 + 56 + 27, 24 + 4 + 8);
+		context.waitTicks(10);
+		context.runOnClient(minecraft -> {
+			check("TEXT".equals(editorField("tab").toString()), "The Text tab did not open");
+			@SuppressWarnings("unchecked")
+			var layers = (List<net.pretupid.client.screenie.TextLayer>) editorField("layers");
+			check(layers.size() == 1 && layers.get(0).text().isBlank(), "The Text tab did not add a placeholder layer");
+		});
+		context.takeScreenshot("pretupid-editor-screenie-placeholder");
+		context.getInput().setCursorPos(4, 4);
+		context.setScreen(() -> null);
+		context.waitTicks(5);
+	}
+
 	private static void setNowPlayingWhenMuted(boolean value) {
 		PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class).settings().stream()
 			.filter(setting -> setting.id().equals("show_when_muted"))
@@ -589,7 +1355,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.runOnClient(minecraft -> PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class).exportAspect()
 			.set(net.pretupid.client.module.utility.ScreeniesModule.ExportAspect.ORIGINAL));
 		for (String shot : new String[] {"FACE", "WORM", "DUTCH"}) {
-			Object before = context.computeOnClient(minecraft -> Platform.screen());
+			Object before = context.computeOnClient(minecraft -> screenieSource());
 			context.runOnClient(minecraft -> {
 				try {
 					var retake = ScreenieScreen.class.getDeclaredMethod("retake", net.pretupid.client.screenie.MemeShot.class);
@@ -601,11 +1367,11 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			});
 			context.waitTicks(2);
 			context.runOnClient(minecraft -> check(Platform.screen() instanceof ScreenieScreen, "The meme editor closed during a retake"));
-			for (int i = 0; i < 200 && context.computeOnClient(minecraft -> Platform.screen() == before); i++) {
+			for (int i = 0; i < 200 && context.computeOnClient(minecraft -> screenieSource() == before); i++) {
 				context.waitTick();
 			}
 			context.runOnClient(minecraft -> {
-				check(Platform.screen() instanceof ScreenieScreen && Platform.screen() != before, "The meme editor did not show the retaken picture");
+				check(Platform.screen() instanceof ScreenieScreen && screenieSource() != before, "The meme editor did not show the retaken picture");
 				try {
 					Field field = ScreenieScreen.class.getDeclaredField("slotInputs");
 					field.setAccessible(true);
