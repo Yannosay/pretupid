@@ -9,8 +9,8 @@
 	],
 	"contact": {
 		"homepage": "https://pretupid.net",
-		"sources": "https://github.com/yannosay/pretupid-launcher",
-		"issues": "https://github.com/yannosay/pretupid-launcher/issues"
+		"sources": "https://github.com/Yannosay/pretupid",
+		"issues": "https://github.com/Yannosay/pretupid/issues"
 	},
 	"license": "AGPL-3.0-only",
 	"icon": "assets/pretupid/icon.png",

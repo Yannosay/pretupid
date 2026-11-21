@@ -46,6 +46,21 @@ The workflow decides from the tag which of the two it builds; a tag that matches
 
 Update notes reach players from these releases: the in-game updater and the launcher show the body of the client release, the launcher's What's new screen shows the body of the launcher release, and the website picks each download from the newest release that carries it. Older combined `Pretupid v<version>` releases keep working.
 
+### Modrinth
+
+Every client release can go to Modrinth as one version per Minecraft build, with Fabric API as a required dependency and the release notes as the changelog.
+
+One-time setup: create the project on Modrinth, create a personal access token with the `VERSION_CREATE` and `PROJECT_READ` scopes, then add it to the repository with `gh secret set MODRINTH_TOKEN` and store the project id or slug with `gh variable set MODRINTH_PROJECT_ID`.
+
+After that, each successful client release uploads itself through `.github/workflows/modrinth.yml`. Launcher releases are ignored, and builds already on Modrinth are skipped, so a failed run can be repeated. To upload an existing release, or check it first:
+
+```bash
+gh workflow run modrinth.yml -f tag=v0.1.7 -f dry_run=true
+gh workflow run modrinth.yml -f tag=v0.1.7 -f dry_run=false
+```
+
+Locally, `python pretupid-client/scripts/publish-modrinth.py v0.1.7 --dry-run` runs the same checks.
+
 ## Assets
 
 - `assets/branding/pretupid_logo_512x.png` is the icon and `pretupid_logo_full.png` the wordmark. Both are hand-made source files: never edit them. `npm run sync-branding` regenerates the app icons from the icon, and the client build derives its icon, menu logo and nametag badge from it.

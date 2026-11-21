@@ -1,0 +1,60 @@
+name: Modrinth
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Client release tag, for example v0.1.8
+        required: true
+      dry_run:
+        description: Check everything without uploading
+        type: boolean
+        default: true
+
+concurrency:
+  group: modrinth
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && vars.MODRINTH_PROJECT_ID != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_branch }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check that this is a client release
+        id: release
+        run: |
+          if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qx client-manifest.json; then
+            echo "client=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "$TAG has no client builds, nothing to upload"
+            echo "client=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload to Modrinth
+        if: steps.release.outputs.client == 'true'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python pretupid-client/scripts/publish-modrinth.py "$TAG" --dry-run
+          else
+            python pretupid-client/scripts/publish-modrinth.py "$TAG"
+          fi
