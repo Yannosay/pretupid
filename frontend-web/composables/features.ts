@@ -196,12 +196,12 @@ export const featureGroups: FeatureGroup[] = [
       {
         icon: 'sparkle',
         title: 'Screenies and memes',
-        description: 'Press F4 for a screenshot without the HUD at up to three times your screen size. Add filters, text and meme layouts, save it or send it to a friend.'
+        description: 'Press F4 for a screenshot without the HUD at up to three times your screen size and add filters and text. F7 opens the Meme Editor with layouts and camera angles. Save it or send it to a friend.'
       },
       {
         icon: 'eye-off',
         title: 'Freecam and Cinematic Studio',
-        description: 'Fly the camera away from your player, then place camera keyframes on a timeline and play smooth shots with cinema bars for your videos.'
+        description: 'Fly the camera away from your player, build shots from keyframes or templates, set easing and speed, and render them as PNG frames for your videos.'
       },
       {
         icon: 'users',

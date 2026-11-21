@@ -8,6 +8,7 @@ Rules for anyone, human or AI agent, changing this repository. `DEVELOPMENT.md` 
 - Never edit `assets/branding/pretupid_logo_512x.png` or `assets/branding/pretupid_logo_full.png`. Derived copies (app icons, favicons, client textures) are generated from them.
 - Do not change the root `README.md` or text a maintainer has rephrased unless asked.
 - Every claim on the website, in the launcher or in a README must match a shipped feature. A maintainer will most likely review some texts and rewrite some other. Update the copy in the same change as the feature.
+- No filler text in the UI. Do not add hint lines, footers or descriptions that explain obvious controls or restate what a button does (for example "Save keeps the full resolution. Friends get a copy..."). Labels, short tooltips and real error messages are enough. No canned joke presets either; give users empty fields to fill in.
 - Keep each file's existing line endings. Many files use CRLF; rewriting them as LF produces whole-file diffs.
 - Never commit secrets, `.dev.vars`, `todo.txt`, `run/` folders or build output.
 - When pushing, full release (Latest) the version in GitHub releases, so that user's can actually access it via website or GitHub (version tag should not hold 'client' prefix as this would be wrong)

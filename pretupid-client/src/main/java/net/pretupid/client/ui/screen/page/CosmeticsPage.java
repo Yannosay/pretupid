@@ -11,7 +11,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.FormattedCharSequence;
 import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ClientSettings;
 import net.pretupid.client.cosmetic.Catalog;
@@ -176,17 +175,11 @@ public final class CosmeticsPage implements MenuPage {
 		List<Setting<?>> custom = visible(settings.nametagAnimation, settings.nametagPrimary, settings.nametagSecondary, settings.nametagEffect, settings.nametagSpeed,
 			settings.nametagBold, settings.nametagBadge, settings.nametagMovingBackground);
 		List<Setting<?>> display = visible(settings.showOtherBadges, settings.tabListBadges);
-		List<FormattedCharSequence> hint = ui.font().split(Component.translatable("pretupid.cosmetics.nametag.hint"), areaW - 4);
-		int content = 16 + hint.size() * 10 + 4 + presetRows * (PRESET_HEIGHT + 4) + 8 + 16 + custom.size() * Widgets.ROW_HEIGHT + 8 + 16 + display.size() * Widgets.ROW_HEIGHT;
+		int content = 16 + 4 + presetRows * (PRESET_HEIGHT + 4) + 8 + 16 + custom.size() * Widgets.ROW_HEIGHT + 8 + 16 + display.size() * Widgets.ROW_HEIGHT;
 		scroll.begin(ui, "cosmetics.nametag", x, listY, w, listH, content);
 		int rowY = listY - scroll.offset();
 		Widgets.sectionHeader(ui, Component.translatable("pretupid.cosmetics.nametag.presets"), x, rowY + 2, areaW);
-		rowY += 16;
-		for (FormattedCharSequence line : hint) {
-			Draw.text(ui.g(), ui.font(), line, x, rowY, Theme.TEXT_DIM, false);
-			rowY += 10;
-		}
-		rowY += 4;
+		rowY += 20;
 		NametagStyle current = settings.nametagStyle();
 		for (int i = 0; i <= presets.size(); i++) {
 			int px = x + (i % columns) * (presetW + 4);

@@ -492,47 +492,168 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		}
 	}
 
-	private void drawMarker(Gfx graphics, Font font, Matrix4f matrix, Vec3 eye, Located located, int width, int height) {
-		Vec3 target = located.position().add(0, 1.2, 0);
-		Vec3 relative = target.subtract(eye);
+	private record Projected(float x, float y, boolean behind) {
+	}
+
+	private static Projected project(Matrix4f matrix, Vec3 eye, Vec3 point, int width, int height) {
+		Vec3 relative = point.subtract(eye);
 		Vector4f clip = matrix.transform(new Vector4f((float) relative.x, (float) relative.y, (float) relative.z, 1f));
-		boolean behind = clip.w <= 0.05f;
-		float nx = behind ? -clip.x : clip.x / clip.w;
-		float ny = behind ? -clip.y : clip.y / clip.w;
-		if (behind) {
-			float length = Math.max(1e-3f, Math.max(Math.abs(nx), Math.abs(ny)));
-			nx /= length;
-			ny /= length;
+		if (clip.w <= 0.05f) {
+			return new Projected(-clip.x, -clip.y, true);
 		}
-		boolean offScreen = behind || Math.abs(nx) > 0.95f || Math.abs(ny) > 0.95f;
-		nx = Math.clamp(nx, -0.95f, 0.95f);
-		ny = Math.clamp(ny, -0.9f, 0.9f);
-		int sx = Math.round((nx * 0.5f + 0.5f) * width);
-		int sy = Math.round((1f - (ny * 0.5f + 0.5f)) * height);
+		float nx = clip.x / clip.w;
+		float ny = clip.y / clip.w;
+		return new Projected((nx * 0.5f + 0.5f) * width, (1f - (ny * 0.5f + 0.5f)) * height, false);
+	}
+
+	private void drawMarker(Gfx graphics, Font font, Matrix4f matrix, Vec3 eye, Located located, int width, int height) {
+		Vec3 base = located.position();
+		Projected pin = project(matrix, eye, base.add(0, 1.4, 0), width, height);
 		double distance = located.distance();
-		float fade = (float) Math.clamp((distance - 2.0) / 6.0, 0.25, 1.0);
 		int color = located.waypoint().color();
+		float fade = (float) Math.clamp((distance - 1.5) / 5.0, 0.3, 1.0);
 		int alpha = Math.round(255 * fade);
-		diamond(graphics, sx, sy, 4, Colors.withAlpha(0x000000, Math.round(alpha * 0.6f)));
-		diamond(graphics, sx, sy, 3, Colors.withAlpha(color, alpha));
+		int margin = 14;
+		boolean offScreen = pin.behind() || pin.x() < margin || pin.x() > width - margin || pin.y() < margin || pin.y() > height - margin;
 		if (offScreen) {
+			drawEdgePointer(graphics, font, pin, located, width, height, margin);
+			return;
+		}
+		int sx = Math.round(pin.x());
+		int sy = Math.round(pin.y());
+		Projected top = project(matrix, eye, base.add(0, 48, 0), width, height);
+		Projected foot = project(matrix, eye, base, width, height);
+		if (!top.behind() && !foot.behind() && distance > 6) {
+			drawBeam(graphics, foot.x(), foot.y(), top.x(), top.y(), color, Math.round(alpha * 0.35f));
+		}
+		if (distance < 8) {
+			float pulse = (float) ((System.currentTimeMillis() % 1400L) / 1400.0);
+			ring(graphics, sx, sy + 4, Math.round(6 + pulse * 10), Colors.withAlpha(color, Math.round(alpha * (1f - pulse) * 0.8f)));
+		}
+		drawPin(graphics, font, sx, sy, color, alpha, located.waypoint());
+		float centerDistance = (float) Math.hypot(sx - width / 2.0, sy - height / 2.0);
+		boolean focused = centerDistance < Math.min(width, height) * 0.18f;
+		String meters = distanceText(distance);
+		int dy = located.waypoint().y() - Mth.floor(eye.y);
+		String vertical = Math.abs(dy) >= 4 ? (dy > 0 ? " ↑" : " ↓") + Math.abs(dy) : "";
+		if (!focused) {
+			String text = meters + vertical;
+			int w = font.width(text) + 6;
+			Draw.rect(graphics, sx - w / 2, sy - 22, w, 11, Colors.withAlpha(0x000000, Math.round(120 * fade)));
+			graphics.text(font, text, sx - font.width(text) / 2, sy - 20, Colors.withAlpha(0xFFFFFF, alpha), false);
 			return;
 		}
 		String name = located.waypoint().name() + (located.converted() ? " ⇄" : "");
-		String meters = distanceText(distance);
-		int nameWidth = font.width(name);
-		int box = Math.max(nameWidth, font.width(meters)) + 6;
-		int top = sy - 26;
-		Draw.rect(graphics, sx - box / 2, top, box, 20, Colors.withAlpha(0x000000, Math.round(110 * fade)));
-		Draw.rect(graphics, sx - box / 2, top, box, 1, Colors.withAlpha(color, alpha));
-		graphics.text(font, name, sx - nameWidth / 2, top + 2, Colors.withAlpha(0xFFFFFF, alpha), false);
-		graphics.text(font, meters, sx - font.width(meters) / 2, top + 11, Colors.withAlpha(0xC8D0DC, alpha), false);
+		String detail = meters + vertical;
+		if (showCoordinates.enabled()) {
+			detail += "  " + located.waypoint().x() + " " + located.waypoint().y() + " " + located.waypoint().z();
+		}
+		int box = Math.max(font.width(name), font.width(detail)) + 10;
+		int boxTop = sy - 33;
+		Draw.rect(graphics, sx - box / 2, boxTop, box, 22, Colors.withAlpha(0x0B0D12, Math.round(200 * fade)));
+		Draw.rect(graphics, sx - box / 2, boxTop, 2, 22, Colors.withAlpha(color, alpha));
+		graphics.text(font, name, sx - font.width(name) / 2, boxTop + 3, Colors.withAlpha(0xFFFFFF, alpha), false);
+		graphics.text(font, detail, sx - font.width(detail) / 2, boxTop + 12, Colors.withAlpha(0xB8C2D0, alpha), false);
 	}
 
-	private static void diamond(Gfx graphics, int cx, int cy, int radius, int color) {
+	private static void drawPin(Gfx graphics, Font font, int cx, int cy, int color, int alpha, Waypoint waypoint) {
+		disc(graphics, cx, cy, 6, Colors.withAlpha(0x000000, Math.round(alpha * 0.55f)));
+		triangle(graphics, cx - 4, cy + 3, cx + 4, cy + 3, cx, cy + 10, Colors.withAlpha(0x000000, Math.round(alpha * 0.55f)));
+		disc(graphics, cx, cy, 5, Colors.withAlpha(color, alpha));
+		triangle(graphics, cx - 3, cy + 3, cx + 3, cy + 3, cx, cy + 8, Colors.withAlpha(color, alpha));
+		String glyph = waypoint.death() ? "☠" : waypoint.name().isEmpty() ? "•" : waypoint.name().substring(0, 1).toUpperCase(Locale.ROOT);
+		int textColor = luminance(color) > 0.6f ? 0xFF101318 : 0xFFFFFFFF;
+		graphics.text(font, glyph, cx - font.width(glyph) / 2 + 1, cy - 3, Colors.withAlpha(textColor, alpha), false);
+	}
+
+	private void drawEdgePointer(Gfx graphics, Font font, Projected pin, Located located, int width, int height, int margin) {
+		float cx = width / 2f;
+		float cy = height / 2f;
+		float dx = pin.behind() ? pin.x() : pin.x() - cx;
+		float dy = pin.behind() ? -pin.y() : pin.y() - cy;
+		float length = (float) Math.max(1e-3, Math.hypot(dx, dy));
+		dx /= length;
+		dy /= length;
+		float scale = Math.min((cx - margin) / Math.max(1e-3f, Math.abs(dx)), (cy - margin) / Math.max(1e-3f, Math.abs(dy)));
+		int px = Math.round(cx + dx * scale);
+		int py = Math.round(cy + dy * scale);
+		int color = located.waypoint().color();
+		disc(graphics, px, py, 7, 0xA0000000);
+		disc(graphics, px, py, 6, Colors.withAlpha(color, 230));
+		float nx = -dy;
+		float ny = dx;
+		int tipX = Math.round(px + dx * 12);
+		int tipY = Math.round(py + dy * 12);
+		triangle(graphics, Math.round(px + dx * 6 + nx * 4), Math.round(py + dy * 6 + ny * 4), Math.round(px + dx * 6 - nx * 4), Math.round(py + dy * 6 - ny * 4),
+			tipX, tipY, Colors.withAlpha(color, 230));
+		String glyph = located.waypoint().death() ? "☠" : located.waypoint().name().isEmpty() ? "•" : located.waypoint().name().substring(0, 1).toUpperCase(Locale.ROOT);
+		int textColor = luminance(color) > 0.6f ? 0xFF101318 : 0xFFFFFFFF;
+		graphics.text(font, glyph, px - font.width(glyph) / 2 + 1, py - 3, textColor, false);
+		String meters = distanceText(located.distance());
+		int textX = Math.clamp(Math.round(px - dx * 14) - font.width(meters) / 2, 2, width - font.width(meters) - 2);
+		int textY = Math.clamp(Math.round(py - dy * 14) - 4, 2, height - 10);
+		graphics.text(font, meters, textX, textY, 0xFFFFFFFF, true);
+	}
+
+	private static float luminance(int argb) {
+		return (0.299f * ((argb >> 16) & 0xFF) + 0.587f * ((argb >> 8) & 0xFF) + 0.114f * (argb & 0xFF)) / 255f;
+	}
+
+	private static void drawBeam(Gfx graphics, float x1, float y1, float x2, float y2, int color, int alpha) {
+		int steps = Math.max(1, Math.round(Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1))));
+		steps = Math.min(steps, 800);
+		for (int i = 0; i <= steps; i++) {
+			float t = i / (float) steps;
+			int x = Math.round(x1 + (x2 - x1) * t);
+			int y = Math.round(y1 + (y2 - y1) * t);
+			int a = Math.round(alpha * (1f - t));
+			if (a < 4) {
+				break;
+			}
+			graphics.fill(x - 1, y, x + 2, y + 1, Colors.withAlpha(color, a));
+		}
+	}
+
+	private static void disc(Gfx graphics, int cx, int cy, int radius, int color) {
 		for (int dy = -radius; dy <= radius; dy++) {
-			int half = radius - Math.abs(dy);
+			int half = (int) Math.floor(Math.sqrt(radius * radius - dy * dy + radius * 0.6));
 			graphics.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, color);
+		}
+	}
+
+	private static void ring(Gfx graphics, int cx, int cy, int radius, int color) {
+		if ((color >>> 24) < 4) {
+			return;
+		}
+		int segments = Math.max(16, radius * 6);
+		for (int i = 0; i < segments; i++) {
+			double angle = Math.PI * 2 * i / segments;
+			int x = (int) Math.round(cx + Math.cos(angle) * radius);
+			int y = (int) Math.round(cy + Math.sin(angle) * radius * 0.45);
+			graphics.fill(x, y, x + 1, y + 1, color);
+		}
+	}
+
+	private static void triangle(Gfx graphics, int x1, int y1, int x2, int y2, int x3, int y3, int color) {
+		int minY = Math.min(y1, Math.min(y2, y3));
+		int maxY = Math.max(y1, Math.max(y2, y3));
+		for (int y = minY; y <= maxY; y++) {
+			float left = Float.MAX_VALUE;
+			float right = -Float.MAX_VALUE;
+			int[][] edges = {{x1, y1, x2, y2}, {x2, y2, x3, y3}, {x3, y3, x1, y1}};
+			for (int[] edge : edges) {
+				int ay = edge[1];
+				int by = edge[3];
+				if (ay == by || y < Math.min(ay, by) || y > Math.max(ay, by)) {
+					continue;
+				}
+				float x = edge[0] + (edge[2] - edge[0]) * (y - ay) / (float) (by - ay);
+				left = Math.min(left, x);
+				right = Math.max(right, x);
+			}
+			if (left <= right) {
+				graphics.fill(Math.round(left), y, Math.round(right) + 1, y + 1, color);
+			}
 		}
 	}
 }

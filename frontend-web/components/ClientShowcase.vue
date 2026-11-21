@@ -113,8 +113,8 @@ const slides: Slide[] = [
     id: 'screenies',
     icon: 'sparkle',
     title: 'Screenies and memes',
-    text: 'Grab a screenshot without the HUD at up to three times your screen size, add filters and meme text, then save it or send it to a friend.',
-    key: 'F4',
+    text: 'Grab a screenshot without the HUD at up to three times your screen size and add filters and text. The Meme Editor retakes your shot from funny camera angles.',
+    key: 'F4 · F7',
     image: '/screenshots/client-screenie.webp',
     alt: 'Screenie Studio with a top and bottom meme caption over a Minecraft landscape'
   },
@@ -122,7 +122,7 @@ const slides: Slide[] = [
     id: 'cinematic',
     icon: 'eye-off',
     title: 'Freecam and Cinematic Studio',
-    text: 'Fly the camera freely, drop keyframes along a path and play smooth camera shots with cinema bars.',
+    text: 'Fly the camera freely, build shots from keyframes or templates like orbit and dolly zoom, and render them as frames for your videos.',
     key: 'F6 · K · J',
     image: '/screenshots/client-cinematic.webp',
     alt: 'The Cinematic Studio timeline with keyframes and the camera path drawn in the world'

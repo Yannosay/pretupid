@@ -117,8 +117,6 @@ public final class WaypointsScreen extends PretupidScreen {
 
 		if (status != null && System.currentTimeMillis() - statusAt < 5000L) {
 			Draw.text(g, font, Draw.ellipsize(font, status, w - 20), x + 10, y + h - 13, statusError ? Theme.DANGER : Theme.TEXT_MUTED);
-		} else {
-			Draw.text(g, font, Draw.ellipsize(font, Component.translatable("pretupid.waypoints.screen_hint"), w - 20), x + 10, y + h - 13, Theme.TEXT_DIM);
 		}
 	}
 

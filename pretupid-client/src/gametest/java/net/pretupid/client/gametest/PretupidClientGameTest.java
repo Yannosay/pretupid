@@ -393,6 +393,13 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		lookAt(context, feet.offset(0, 1, 0));
 		context.waitTicks(10);
 		context.takeScreenshot("pretupid-waypoints");
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, "Camp"));
+		world.getServer().runCommand("tp @a " + (feet.getX() + 12) + " " + feet.getY() + " " + (feet.getZ() + 6));
+		context.waitTicks(10);
+		lookAt(context, feet.offset(0, 1, 0));
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-waypoints-edge");
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).remove(minecraft, "Camp"));
 		context.setScreen(() -> new WaypointsScreen(null));
 		context.waitTicks(5);
 		context.takeScreenshot("pretupid-waypoints-manager");

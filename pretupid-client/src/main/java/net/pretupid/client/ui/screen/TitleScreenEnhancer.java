@@ -133,23 +133,47 @@ public final class TitleScreenEnhancer {
 	}
 
 	private void drawBackdrop(Gfx graphics, Screen screen) {
+		boolean animated = PretupidClient.get().settings().animations.enabled();
+		if (PretupidClient.get().settings().enhancedTitleScreen.enabled()) {
+			drawCinematic(graphics, screen.width, screen.height, animated);
+		}
 		if (panels.visible()) {
-			boolean animated = PretupidClient.get().settings().animations.enabled();
 			float fade = animated ? Easing.outCubic(Math.clamp((System.currentTimeMillis() - animationStart) / 600f, 0f, 1f)) : 1f;
 			panels.render(graphics, Math.round(fade * 255));
 		}
-		if (!PretupidClient.get().settings().enhancedTitleScreen.enabled()) {
-			return;
+	}
+
+	private void drawCinematic(Gfx graphics, int width, int height, boolean animated) {
+		long now = System.currentTimeMillis();
+		float fade = animated ? Easing.outCubic(Math.clamp((now - animationStart) / 1200f, 0f, 1f)) : 1f;
+		float pulse = 0.5f + 0.5f * (float) Math.sin(now / 2400.0);
+		Draw.verticalGradient(graphics, 0, 0, width, height / 3, Colors.withAlpha(0x000000, Math.round(0xA0 * fade)), 0x00000000);
+		Draw.verticalGradient(graphics, 0, height / 2, width, height - height / 2, 0x00000000, Colors.withAlpha(0x000000, Math.round(0xC0 * fade)));
+		int side = Math.max(24, width / 6);
+		for (int i = 0; i < side; i += 2) {
+			int alpha = Math.round(0x70 * fade * (1f - i / (float) side) * (1f - i / (float) side));
+			Draw.rect(graphics, i, 0, 2, height, Colors.withAlpha(0x000000, alpha));
+			Draw.rect(graphics, width - i - 2, 0, 2, height, Colors.withAlpha(0x000000, alpha));
 		}
-		int width = screen.width;
-		int height = screen.height;
-		float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 2400.0);
-		boolean animated = PretupidClient.get().settings().animations.enabled();
-		float fade = animated ? Easing.outCubic(Math.clamp((System.currentTimeMillis() - animationStart) / 900f, 0f, 1f)) : 1f;
-		Draw.verticalGradient(graphics, 0, 0, width, height / 3, Colors.withAlpha(0x000000, Math.round(0x90 * fade)), 0x00000000);
-		Draw.verticalGradient(graphics, 0, height / 2, width, height - height / 2, 0x00000000, Colors.withAlpha(0x000000, Math.round(0xB0 * fade)));
-		int glow = Colors.withAlpha(Theme.accent(), Math.round((50 + 40 * pulse) * fade));
-		Draw.verticalGradient(graphics, 0, height - 90, width, 90, 0x00000000, glow);
+		int glow = Colors.withAlpha(Theme.accent(), Math.round((60 + 45 * pulse) * fade));
+		Draw.verticalGradient(graphics, 0, height - 110, width, 110, 0x00000000, glow);
+		if (animated) {
+			for (int i = 0; i < 46; i++) {
+				long seed = i * 2654435761L;
+				float speed = 6f + (seed >>> 8 & 15);
+				float life = ((now / 1000f) * speed / height + ((seed >>> 16) & 1023) / 1023f) % 1f;
+				float px = ((seed >>> 4) & 4095) / 4095f * width + (float) Math.sin(now / 1700.0 + i) * 8f;
+				float py = height * (1.05f - life * 1.1f);
+				float twinkle = 0.5f + 0.5f * (float) Math.sin(now / 380.0 + i * 1.7);
+				int alpha = Math.round(fade * twinkle * 150 * Math.min(1f, Math.min(life * 5f, (1f - life) * 3f)));
+				int size = (seed >>> 24 & 3) == 0 ? 2 : 1;
+				int color = (seed >>> 28 & 1) == 0 ? Theme.accent() : 0xFFFFF2D6;
+				Draw.rect(graphics, Math.round(px), Math.round(py), size, size, Colors.withAlpha(color, alpha));
+			}
+		}
+		int bar = Math.round(Math.max(8, height * 0.055f) * fade);
+		Draw.rect(graphics, 0, 0, width, bar, 0xFF000000);
+		Draw.rect(graphics, 0, height - bar, width, bar, 0xFF000000);
 	}
 
 	private void drawOverlay(Gfx graphics, Screen screen) {
