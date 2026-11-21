@@ -18,6 +18,7 @@ API = "https://api.modrinth.com/v2"
 USER_AGENT = "pretupid-release-tool/1.0"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_ATTEMPTS = 5
+ENVIRONMENT = "client_only"
 
 
 class PublishError(Exception):
@@ -127,6 +128,7 @@ def publish(args):
         for build in builds:
             groups.setdefault(build["file"], {**build, "versions": []})["versions"].append(build["minecraft"])
         created = skipped = 0
+        wrong_environment = []
         for build in groups.values():
             versions = build["versions"]
             minecraft = versions[0] if len(versions) == 1 else f"{versions[0]}-{versions[-1]}"
@@ -147,7 +149,7 @@ def publish(args):
                 "version_type": "release",
                 "loaders": ["fabric"],
                 "game_versions": versions,
-                "environment": "client_only",
+                "environment": ENVIRONMENT,
                 "featured": newest in versions,
                 "status": "listed",
                 "dependencies": [{"project_id": fabric_api, "dependency_type": "required"}],
@@ -155,11 +157,15 @@ def publish(args):
                 "primary_file": "jar",
             }
             body, content_type = multipart(data, "jar", Path(build["file"]).name, (directory / Path(build["file"]).name).read_bytes())
-            request("POST", "/version", token, body, content_type)
+            uploaded = request("POST", "/version", token, body, content_type)
             created += 1
             print(f"created {number}")
+            if not uploaded or uploaded.get("environment") != ENVIRONMENT:
+                wrong_environment.append(number)
     action = "would upload" if args.dry_run else "uploaded"
     print(f"{action} {created}, skipped {skipped}, of {len(groups)} files for {len(builds)} Minecraft versions")
+    if wrong_environment:
+        raise PublishError("Modrinth did not confirm client-only for: " + ", ".join(wrong_environment))
 
 
 def main():
