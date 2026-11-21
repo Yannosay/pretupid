@@ -1,5 +1,4 @@
 <picture>
-	<source media="(prefers-color-scheme: light)" srcset=".github/assets/monorepo_cover_light.png">
 	<img alt="Modrinth Monorepo Cover" src=".github/assets/monorepo_cover.png">
 </picture>
 
