@@ -98,43 +98,43 @@ const slides: Slide[] = [
     text: 'Capes that move with you, wings, crowns, pets and a nametag you style yourself. Every Pretupid player sees them.',
     key: 'Right Shift · Cosmetics',
     image: '/screenshots/client-ingame.webp',
-    alt: 'A player with a crown, wings, a cape, a pet and a rainbow nametag, with FPS, CPS, keystrokes and armor on the HUD'
+    alt: 'A player with a crown, angel wings, a ghost pet and a styled nametag in a cherry grove, with FPS, keystrokes and armor on the HUD'
   },
   {
     id: 'emoji',
-    icon: 'users',
+    icon: 'smile',
     title: 'Emoji in chat',
     text: 'Type :sob: or pick one from the button. Pretupid players see real emoji; everyone else just sees your words.',
     key: 'Chat · :name:',
     image: '/screenshots/client-emoji.webp',
-    alt: 'Minecraft chat with fire, crying and laughing emoji and the emoji picker open'
+    alt: 'Minecraft chat in a cherry grove with pickaxe, fire, crying and laughing emoji'
   },
   {
     id: 'screenies',
-    icon: 'sparkle',
+    icon: 'image',
     title: 'Screenies and memes',
     text: 'Grab a screenshot without the HUD at up to three times your screen size and add filters and text. The Meme Editor retakes your shot from funny camera angles.',
     key: 'F4 · F7',
     image: '/screenshots/client-screenie.webp',
-    alt: 'Screenie Studio with a top and bottom meme caption over a Minecraft landscape'
+    alt: 'The Meme Editor with a face close-up of a player, a creeper right behind them and the caption When you hear Ssssssss'
   },
   {
     id: 'cinematic',
-    icon: 'eye-off',
+    icon: 'video',
     title: 'Freecam and Cinematic Studio',
     text: 'Fly the camera freely, build shots from keyframes or templates like orbit and dolly zoom, and render them as frames for your videos.',
     key: 'F6 · K · J',
     image: '/screenshots/client-cinematic.webp',
-    alt: 'The Cinematic Studio timeline with keyframes and the camera path drawn in the world'
+    alt: 'Cinematic Studio with an orbit template drawn as a circle of keyframes in a cherry grove and the timeline below'
   },
   {
     id: 'waypoints',
-    icon: 'folder',
+    icon: 'map-pin',
     title: 'Waypoints',
     text: 'Coloured markers in the world with their distance, death points that clear themselves and Nether coordinates worked out for you.',
     key: 'N',
     image: '/screenshots/client-waypoints.webp',
-    alt: 'A waypoint marker named Home floating over the landscape with its distance'
+    alt: 'Waypoint pins with light beams for Home, a diamond mine and villager trades in a cherry grove'
   },
   {
     id: 'menu',

@@ -155,6 +155,21 @@ public final class TitleScreenEnhancer {
 			Draw.rect(graphics, i, 0, 2, height, Colors.withAlpha(0x000000, alpha));
 			Draw.rect(graphics, width - i - 2, 0, 2, height, Colors.withAlpha(0x000000, alpha));
 		}
+		int halo = Math.round((26 + 18 * pulse) * fade);
+		int haloX = width / 2;
+		int haloY = Math.round(height * 0.17f);
+		int radiusX = Math.round(width * 0.36f);
+		int radiusY = Math.round(height * 0.2f);
+		for (int dy = -radiusY; dy <= radiusY; dy += 2) {
+			float ny = dy / (float) radiusY;
+			float span = (float) Math.sqrt(Math.max(0f, 1f - ny * ny));
+			int half = Math.round(radiusX * span);
+			for (int ring = 0; ring < 3; ring++) {
+				int inner = Math.round(half * (1f - ring * 0.3f));
+				int alpha = Math.round(halo * (1f - Math.abs(ny)) * 0.34f);
+				Draw.rect(graphics, haloX - inner, haloY + dy, inner * 2, 2, Colors.withAlpha(Theme.accent(), alpha));
+			}
+		}
 		int glow = Colors.withAlpha(Theme.accent(), Math.round((60 + 45 * pulse) * fade));
 		Draw.verticalGradient(graphics, 0, height - 110, width, 110, 0x00000000, glow);
 		if (animated) {
@@ -171,9 +186,6 @@ public final class TitleScreenEnhancer {
 				Draw.rect(graphics, Math.round(px), Math.round(py), size, size, Colors.withAlpha(color, alpha));
 			}
 		}
-		int bar = Math.round(Math.max(8, height * 0.055f) * fade);
-		Draw.rect(graphics, 0, 0, width, bar, 0xFF000000);
-		Draw.rect(graphics, 0, height - bar, width, bar, 0xFF000000);
 	}
 
 	private void drawOverlay(Gfx graphics, Screen screen) {

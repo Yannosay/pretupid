@@ -47,6 +47,10 @@ export type SiteIconName =
   | 'sparkle'
   | 'users'
   | 'cpu'
+  | 'map-pin'
+  | 'video'
+  | 'image'
+  | 'smile'
 
 const props = withDefaults(defineProps<{ name: SiteIconName; size?: number }>(), { size: 24 })
 
@@ -78,7 +82,11 @@ const ICONS: Record<SiteIconName, string[]> = {
   mail: ['M3 5h18v14H3z', 'M3 6l9 7 9-7'],
   sparkle: ['M12 3v5', 'M12 16v5', 'M3 12h5', 'M16 12h5', 'M8 8l2 2', 'M14 14l2 2', 'M16 8l-2 2', 'M10 14l-2 2'],
   users: ['M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1', 'M16 3.5a4 4 0 0 1 0 7', 'M19 14a5 5 0 0 1 3 4.5V21'],
-  cpu: ['M6 6h12v12H6z', 'M9 9h6v6H9z', 'M9 2v4', 'M15 2v4', 'M9 18v4', 'M15 18v4', 'M2 9h4', 'M2 15h4', 'M18 9h4', 'M18 15h4']
+  cpu: ['M6 6h12v12H6z', 'M9 9h6v6H9z', 'M9 2v4', 'M15 2v4', 'M9 18v4', 'M15 18v4', 'M2 9h4', 'M2 15h4', 'M18 9h4', 'M18 15h4'],
+  'map-pin': ['M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0z', 'M15 10a3 3 0 1 1-6 0a3 3 0 1 1 6 0'],
+  video: ['M3 7h12v10H3z', 'M15 10l6-3v10l-6-3z'],
+  image: ['M3 5h18v14H3z', 'M3 16l5-5 4 4 3-3 6 6', 'M17 9a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0'],
+  smile: ['M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0', 'M8 14s1.5 2 4 2 4-2 4-2', 'M9 9.5h.01', 'M15 9.5h.01']
 }
 
 const paths = computed(() => ICONS[props.name] ?? [])

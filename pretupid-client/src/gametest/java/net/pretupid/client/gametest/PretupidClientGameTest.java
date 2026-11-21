@@ -79,9 +79,6 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testMenuPages(context);
 			testHudEditor(context);
 			testHosting(context);
-			if (System.getenv("PRETUPID_SHOWCASE") != null) {
-				showcase(context, world, feet);
-			}
 			context.setScreen(() -> new PauseScreen(true));
 			context.waitTicks(5);
 			context.takeScreenshot("pretupid-pause-screen");
@@ -91,6 +88,44 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.waitTicks(20);
 		context.takeScreenshot("pretupid-title-screen");
 		testTitleScreenEntrance(context);
+		if (System.getenv("PRETUPID_SHOWCASE") != null) {
+			try (TestSingleplayerContext scenic = context.worldBuilder().setUseConsistentSettings(false).adjustSettings(state -> state.setSeed("pretupid")).create()) {
+				waitForChunks(scenic);
+				BlockPos spot = scenic.getServer().computeOnServer(PretupidClientGameTest::scenicSpot);
+				for (String command : new String[] {"gamerule doDaylightCycle false", "gamerule advance_time false", "gamerule doWeatherCycle false", "gamerule doMobSpawning false", "weather clear", "difficulty easy"}) {
+					try {
+						scenic.getServer().runCommand(command);
+					} catch (RuntimeException ignored) {
+					}
+				}
+				scenic.getServer().runCommand("fill " + (spot.getX() - 5) + " " + spot.getY() + " " + (spot.getZ() - 5) + " " + (spot.getX() + 5) + " " + (spot.getY() + 4) + " " + (spot.getZ() + 5) + " minecraft:air");
+				scenic.getServer().runCommand("tp @a " + spot.getX() + " " + spot.getY() + " " + spot.getZ() + " 160 8");
+				context.waitTicks(40);
+				waitForChunks(scenic);
+				showcase(context, scenic, spot);
+			}
+		}
+	}
+
+	private static BlockPos scenicSpot(net.minecraft.server.MinecraftServer server) {
+		net.minecraft.server.level.ServerLevel level = server.overworld();
+		var found = level.findClosestBiome3d(biome -> biome.is(net.minecraft.world.level.biome.Biomes.CHERRY_GROVE), BlockPos.ZERO, 6400, 32, 64);
+		BlockPos origin = found == null ? BlockPos.ZERO : found.getFirst();
+		BlockPos best = origin;
+		int bestY = Integer.MIN_VALUE;
+		for (int dx = -24; dx <= 24; dx += 8) {
+			for (int dz = -24; dz <= 24; dz += 8) {
+				int x = origin.getX() + dx;
+				int z = origin.getZ() + dz;
+				level.getChunk(x >> 4, z >> 4);
+				int y = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+				if (y > bestY && level.getBlockState(new BlockPos(x, y - 1, z)).isSolidRender()) {
+					bestY = y;
+					best = new BlockPos(x, y, z);
+				}
+			}
+		}
+		return bestY == Integer.MIN_VALUE ? origin.atY(level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, origin.getX(), origin.getZ())) : best;
 	}
 
 	private static float widgetAlpha(net.minecraft.client.gui.components.AbstractWidget widget) {
@@ -446,7 +481,24 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		});
 		context.waitTicks(30);
 		context.takeScreenshot("pretupid-meme-editor");
+		context.runOnClient(minecraft -> {
+			var module = PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
+			module.exportAspect().set(net.pretupid.client.module.utility.ScreeniesModule.ExportAspect.SQUARE);
+			try {
+				var exported = ScreenieScreen.class.getDeclaredMethod("exported");
+				exported.setAccessible(true);
+				var image = (java.awt.image.BufferedImage) exported.invoke(Platform.screen());
+				check(image.getWidth() == 1080 && image.getHeight() == 1080, "A square 1K export is " + image.getWidth() + "x" + image.getHeight());
+			} catch (ReflectiveOperationException exception) {
+				throw new AssertionError("The export settings are not reachable", exception);
+			}
+		});
+		context.waitTicks(10);
+		context.takeScreenshot("pretupid-meme-square");
+		context.runOnClient(minecraft -> PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class).exportAspect()
+			.set(net.pretupid.client.module.utility.ScreeniesModule.ExportAspect.ORIGINAL));
 		for (String shot : new String[] {"FACE", "WORM", "DUTCH"}) {
+			Object before = context.computeOnClient(minecraft -> Platform.screen());
 			context.runOnClient(minecraft -> {
 				try {
 					var retake = ScreenieScreen.class.getDeclaredMethod("retake", net.pretupid.client.screenie.MemeShot.class);
@@ -457,11 +509,12 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				}
 			});
 			context.waitTicks(2);
-			for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
+			context.runOnClient(minecraft -> check(Platform.screen() instanceof ScreenieScreen, "The meme editor closed during a retake"));
+			for (int i = 0; i < 200 && context.computeOnClient(minecraft -> Platform.screen() == before); i++) {
 				context.waitTick();
 			}
 			context.runOnClient(minecraft -> {
-				check(Platform.screen() instanceof ScreenieScreen, "The meme editor did not come back after a retake");
+				check(Platform.screen() instanceof ScreenieScreen && Platform.screen() != before, "The meme editor did not show the retaken picture");
 				try {
 					Field field = ScreenieScreen.class.getDeclaredField("slotInputs");
 					field.setAccessible(true);
@@ -768,19 +821,38 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 				}
 			}
 		});
-		world.getServer().runCommand("time set 11800");
+		world.getServer().runCommand("time set 12300");
+		world.getServer().runCommand("clear @a");
 		world.getServer().runCommand("give @a minecraft:diamond_sword");
 		world.getServer().runCommand("item replace entity @a armor.chest with minecraft:diamond_chestplate");
 		world.getServer().runCommand("item replace entity @a armor.legs with minecraft:iron_leggings");
-		for (int i = 0; i < 6; i++) {
-			world.getServer().runCommand("place feature minecraft:oak " + (feet.getX() - 9 + i * 4) + " " + feet.getY() + " " + (feet.getZ() - 8 - (i % 2) * 3));
-		}
 		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 160 8");
-		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK));
-		context.waitTicks(60);
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> {
+			minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+			PretupidClient.get().modules().get(CinematicModule.class).setEnabled(true);
+			var director = PretupidClient.get().cinematic();
+			director.newShot();
+			net.minecraft.world.phys.Vec3 eye = minecraft.player.getEyePosition();
+			double yaw = Math.toRadians(minecraft.player.getYRot());
+			net.minecraft.world.phys.Vec3 forward = new net.minecraft.world.phys.Vec3(-Math.sin(yaw), 0, Math.cos(yaw));
+			net.minecraft.world.phys.Vec3 right = new net.minecraft.world.phys.Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+			net.minecraft.world.phys.Vec3 camera = eye.add(forward.scale(3.4)).add(right.scale(-1.8)).add(0, 0.35, 0);
+			net.minecraft.world.phys.Vec3 delta = eye.add(0, -0.35, 0).subtract(camera);
+			float cameraYaw = (float) Math.toDegrees(Math.atan2(-delta.x, delta.z));
+			float cameraPitch = (float) -Math.toDegrees(Math.atan2(delta.y, Math.sqrt(delta.x * delta.x + delta.z * delta.z)));
+			director.current().add(new net.pretupid.client.cinematic.CameraKeyframe(0, camera, cameraYaw, cameraPitch, 0f, 62f,
+				net.pretupid.client.cinematic.CameraKeyframe.Ease.SMOOTH));
+			director.preview(0);
+		});
+		context.waitTicks(20);
 		calm(context);
 		context.takeScreenshot("showcase-ingame");
-		context.runOnClient(minecraft -> minecraft.options.setCameraType(CameraType.FIRST_PERSON));
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().cinematic().stop();
+			PretupidClient.get().cinematic().deleteShot();
+			minecraft.options.setCameraType(CameraType.FIRST_PERSON);
+		});
 		context.setScreen(() -> Platform.chatScreen("on my way :running:"));
 		context.waitTicks(5);
 		context.runOnClient(minecraft -> {
@@ -793,24 +865,35 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		context.takeScreenshot("showcase-emoji");
 		context.setScreen(() -> null);
 		calm(context);
-		context.runOnClient(minecraft -> PretupidClient.get().screenies().requestMeme());
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 160 0");
+		double behindX = Math.sin(Math.toRadians(160)) * 1.8 + Math.cos(Math.toRadians(160)) * 0.9;
+		double behindZ = -Math.cos(Math.toRadians(160)) * 1.8 + Math.sin(Math.toRadians(160)) * 0.9;
+		world.getServer().runCommand("summon minecraft:creeper " + (feet.getX() + 0.5 + behindX) + " " + feet.getY() + " " + (feet.getZ() + 0.5 + behindZ) + " {NoAI:1b,Silent:1b,Rotation:[160f,0f]}");
+		context.runOnClient(minecraft -> {
+			PretupidClient.get().modules().get(OwnNametagModule.class).setEnabled(false);
+			PretupidClient.get().settings().pet.set("");
+		});
+		context.waitTicks(20);
+		context.runOnClient(minecraft -> PretupidClient.get().screenies().requestMeme(net.pretupid.client.screenie.MemeShot.FACE,
+			net.pretupid.client.screenie.MemeTemplate.CLASSIC, List.of("When you hear", "Ssssssss")));
 		for (int i = 0; i < 200 && !context.computeOnClient(minecraft -> Platform.screen() instanceof ScreenieScreen); i++) {
 			context.waitTick();
 		}
-		context.runOnClient(minecraft -> fillMeme((ScreenieScreen) Platform.screen(), "One more block", "they said"));
 		context.waitTicks(40);
 		calm(context);
 		context.takeScreenshot("showcase-screenie");
+		world.getServer().runCommand("kill @e[type=minecraft:creeper]");
+		context.runOnClient(minecraft -> {
+			enable(minecraft, OwnNametagModule.class);
+			PretupidClient.get().settings().pet.set("ghost");
+		});
 		context.setScreen(() -> null);
 		context.runOnClient(minecraft -> PretupidClient.get().modules().get(CinematicModule.class).setEnabled(true));
-		int[][] spots = {{-6, 3, -6, -45, 20}, {6, 5, -6, 45, 30}, {8, 2, 6, 135, 10}, {-4, 6, 8, -140, 35}};
-		for (int[] spot : spots) {
-			world.getServer().runCommand("tp @a " + (feet.getX() + spot[0]) + " " + (feet.getY() + spot[1]) + " " + (feet.getZ() + spot[2]) + " " + spot[3] + " " + spot[4]);
-			context.waitTicks(4);
-			context.runOnClient(minecraft -> PretupidClient.get().cinematic().addKeyframeAtCamera(minecraft, 2.0));
-		}
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 160 8");
+		context.waitTicks(5);
+		context.runOnClient(minecraft -> PretupidClient.get().cinematic().addTemplate(net.pretupid.client.cinematic.ShotTemplate.ORBIT, minecraft));
 		world.getServer().runCommand("gamemode spectator @a");
-		world.getServer().runCommand("tp @a " + feet.getX() + " " + (feet.getY() + 14) + " " + (feet.getZ() + 16) + " 180 38");
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + (feet.getY() + 9) + " " + (feet.getZ() + 13) + " 180 34");
 		context.waitTicks(10);
 		context.setScreen(CinematicEditorScreen::new);
 		context.waitTicks(10);
@@ -832,7 +915,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 		calm(context);
 		context.takeScreenshot("showcase-menu");
 		context.setScreen(() -> null);
-		world.getServer().runCommand("time set 4000");
+		world.getServer().runCommand("time set 1500");
 		context.runOnClient(minecraft -> {
 			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
 			waypoints.setEnabled(true);
@@ -841,7 +924,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			}
 			waypoints.add(minecraft, "Home");
 		});
-		world.getServer().runCommand("tp @a " + (feet.getX() - 6) + " " + (feet.getY() + 3) + " " + (feet.getZ() - 20));
+		world.getServer().runCommand("tp @a " + (feet.getX() - 18) + " " + (feet.getY() + 3) + " " + (feet.getZ() - 22));
 		context.waitTicks(4);
 		context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, "Diamond mine"));
 		world.getServer().runCommand("tp @a " + (feet.getX() + 12) + " " + feet.getY() + " " + (feet.getZ() - 12));

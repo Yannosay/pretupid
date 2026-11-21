@@ -50,6 +50,10 @@ public final class ScreenieScreen extends PretupidScreen {
 	private final List<TextLayer> layers = new ArrayList<>();
 	private final List<TextInput> slotInputs = new ArrayList<>();
 	private final boolean meme;
+	private final net.pretupid.client.module.utility.ScreeniesModule module = PretupidClient.get().modules().get(net.pretupid.client.module.utility.ScreeniesModule.class);
+	private net.pretupid.client.module.utility.ScreeniesModule.ExportAspect appliedAspect;
+	private BufferedImage cropped;
+	private boolean retaking;
 	private MemeShot shot = MemeShot.NORMAL;
 	private ScreenieLook look = ScreenieLook.NATURAL;
 	private MemeTemplate template = MemeTemplate.NONE;
@@ -167,6 +171,38 @@ public final class ScreenieScreen extends PretupidScreen {
 		}
 	}
 
+	public Screen parentScreen() {
+		return parent;
+	}
+
+	private BufferedImage working() {
+		var aspect = module.exportAspect().get();
+		if (cropped == null || aspect != appliedAspect) {
+			appliedAspect = aspect;
+			cropped = aspect.apply(source);
+			dirty = true;
+		}
+		return cropped;
+	}
+
+	private BufferedImage exported() {
+		return module.exportSize().get().apply(working());
+	}
+
+	private String exportLabel() {
+		BufferedImage image = working();
+		int shortEdge = Math.min(image.getWidth(), image.getHeight());
+		var size = module.exportSize().get();
+		double scale = size == net.pretupid.client.module.utility.ScreeniesModule.ExportSize.ORIGINAL ? 1.0 : (double) switch (size) {
+			case P720 -> 720;
+			case K1 -> 1080;
+			case K2 -> 1440;
+			case K4 -> 2160;
+			default -> shortEdge;
+		} / shortEdge;
+		return Math.round(image.getWidth() * scale) + " × " + Math.round(image.getHeight() * scale);
+	}
+
 	@Override
 	public void removed() {
 		screenies.releasePreview();
@@ -176,10 +212,11 @@ public final class ScreenieScreen extends PretupidScreen {
 	@Override
 	protected void drawContent(UiContext ui) {
 		var g = ui.g();
+		BufferedImage current = working();
 		if (dirty && !rendering) {
 			dirty = false;
 			rendering = true;
-			screenies.preview(source, look, List.copyOf(layers), template).whenComplete((id, error) -> {
+			screenies.preview(current, look, List.copyOf(layers), template).whenComplete((id, error) -> {
 				rendering = false;
 				if (id != null) {
 					texture = id;
@@ -188,7 +225,15 @@ public final class ScreenieScreen extends PretupidScreen {
 		}
 		Draw.rect(g, 0, 0, width, height, 0xF00B0D12);
 		Draw.textShadow(g, font, title, 10, 8, Theme.TEXT);
-		Draw.text(g, font, Component.literal(source.getWidth() + " × " + source.getHeight()), 14 + font.width(title), 8, Theme.TEXT_DIM);
+		Draw.text(g, font, Component.literal(exportLabel()), 14 + font.width(title), 8, Theme.TEXT_DIM);
+		Component aspectLabel = Component.translatable("pretupid.screenie.export_aspect");
+		Component sizeLabel = Component.translatable("pretupid.screenie.export_size");
+		int aspectX = width - 8 - 64;
+		Widgets.cycler(ui, "screenie.export.aspect", aspectX, 4, 64, module.exportAspect());
+		Draw.text(g, font, aspectLabel, aspectX - 4 - font.width(aspectLabel), 7, Theme.TEXT_MUTED);
+		int sizeX = aspectX - 12 - font.width(aspectLabel) - 64;
+		Widgets.cycler(ui, "screenie.export.size", sizeX, 4, 64, module.exportSize());
+		Draw.text(g, font, sizeLabel, sizeX - 4 - font.width(sizeLabel), 7, Theme.TEXT_MUTED);
 		int areaX = 8;
 		int areaY = 24;
 		int areaW = width - PANEL_WIDTH - 24;
@@ -201,13 +246,15 @@ public final class ScreenieScreen extends PretupidScreen {
 	private void drawPreview(UiContext ui, int x, int y, int w, int h) {
 		var g = ui.g();
 		Draw.rect(g, x, y, w, h, 0xFF05070A);
-		ScreenieComposer.Frame frame = ScreenieComposer.frame(source.getWidth(), source.getHeight(), Screenies.PREVIEW_WIDTH, template);
+		ScreenieComposer.Frame frame = ScreenieComposer.frame(working().getWidth(), working().getHeight(), Screenies.PREVIEW_WIDTH, template);
 		float scale = Math.min(w / (float) frame.canvasWidth(), h / (float) frame.canvasHeight());
 		previewW = Math.max(1, Math.round(frame.canvasWidth() * scale));
 		previewH = Math.max(1, Math.round(frame.canvasHeight() * scale));
 		previewX = x + (w - previewW) / 2;
 		previewY = y + (h - previewH) / 2;
-		if (texture != null) {
+		if (retaking) {
+			Draw.centered(g, font, Component.translatable("pretupid.screenie.rendering"), x + w / 2, y + h / 2 - 4, Theme.TEXT_DIM);
+		} else if (texture != null) {
 			g.blit(texture, previewX, previewY, 0f, 0f, previewW, previewH, frame.canvasWidth(), frame.canvasHeight(), frame.canvasWidth(), frame.canvasHeight());
 		} else {
 			Draw.centered(g, font, Component.translatable("pretupid.screenie.rendering"), x + w / 2, y + h / 2 - 4, Theme.TEXT_DIM);
@@ -432,7 +479,7 @@ public final class ScreenieScreen extends PretupidScreen {
 			return;
 		}
 		screenies.requestMeme(next, template, slotInputs.stream().map(TextInput::value).toList());
-		Platform.setScreen(null);
+		retaking = true;
 	}
 
 	private void drawActions(UiContext ui, int y) {
@@ -459,7 +506,7 @@ public final class ScreenieScreen extends PretupidScreen {
 					return;
 				}
 				working = true;
-				screenies.save(source, look, List.copyOf(layers), template).whenComplete((path, error) -> minecraft.execute(() -> {
+				screenies.save(exported(), look, List.copyOf(layers), template).whenComplete((path, error) -> minecraft.execute(() -> {
 					working = false;
 					show(error == null ? Component.translatable("pretupid.screenie.saved", path.getFileName().toString())
 						: Component.translatable("pretupid.screenie.save_failed"), error != null);
@@ -518,7 +565,7 @@ public final class ScreenieScreen extends PretupidScreen {
 		}
 		working = true;
 		show(Component.translatable("pretupid.screenie.sending", friend.name()), false);
-		screenies.render(source, look, List.copyOf(layers), template, 2560)
+		screenies.render(exported(), look, List.copyOf(layers), template, 2560)
 			.thenCompose(bytes -> PretupidClient.get().social().sendScreenie(friend.uuid(), bytes))
 			.whenComplete((ignored, error) -> minecraft.execute(() -> {
 				working = false;

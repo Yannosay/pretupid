@@ -126,7 +126,8 @@ public final class Screenies {
 	private void onCaptured(BufferedImage image, ScreeniesModule module, boolean meme) {
 		staged = null;
 		if (meme) {
-			Platform.setScreen(new ScreenieScreen(Platform.screen(), image, shot, memeTemplate, memeTexts));
+			net.minecraft.client.gui.screens.Screen parent = Platform.screen() instanceof ScreenieScreen open ? open.parentScreen() : Platform.screen();
+			Platform.setScreen(new ScreenieScreen(parent, image, shot, memeTemplate, memeTexts));
 		} else if (module.opensEditor()) {
 			Platform.setScreen(new ScreenieScreen(Platform.screen(), image));
 		} else {
