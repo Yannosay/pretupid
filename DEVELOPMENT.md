@@ -50,7 +50,7 @@ Update notes reach players from these releases: the in-game updater and the laun
 
 Every client release can go to Modrinth as one version per Minecraft build, with Fabric API as a required dependency and the release notes as the changelog.
 
-One-time setup: create the project on Modrinth, create a personal access token with the `VERSION_CREATE` and `PROJECT_READ` scopes, then add it to the repository with `gh secret set MODRINTH_TOKEN` and store the project id or slug with `gh variable set MODRINTH_PROJECT_ID`.
+One-time setup: create the project on Modrinth, create a personal access token with the `PROJECT_READ`, `VERSION_READ` and `VERSION_CREATE` scopes, then add it to the repository with `gh secret set MODRINTH_TOKEN` and store the project id or slug with `gh variable set MODRINTH_PROJECT_ID`.
 
 After that, each successful client release uploads itself through `.github/workflows/modrinth.yml`. Launcher releases are ignored, and builds already on Modrinth are skipped, so a failed run can be repeated. To upload an existing release, or check it first:
 
