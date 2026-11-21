@@ -19,7 +19,9 @@ public final class Widgets {
 	public static final int CONTROL_WIDTH = 118;
 	private static final Map<TextSetting, TextInput> TEXT_INPUTS = new WeakHashMap<>();
 	private static final Map<String, Long> HOVER_START = new java.util.HashMap<>();
+	private static final Map<String, Long> MARQUEE_START = new java.util.HashMap<>();
 	private static final long MARQUEE_HOLD_MS = 1800L;
+	private static final long MARQUEE_HOVER_DELAY_MS = 350L;
 	private static final float MARQUEE_SPEED = 24f;
 	private static final long TOOLTIP_DELAY_MS = 450L;
 
@@ -83,28 +85,56 @@ public final class Widgets {
 		if (!ui.animationsEnabled()) {
 			Draw.text(ui.g(), font, Draw.ellipsize(font, text, w), x, y, color);
 		} else {
-			int overflow = width - w;
-			long travel = Math.round(overflow / MARQUEE_SPEED * 1000f);
-			long cycle = 2 * (MARQUEE_HOLD_MS + travel);
-			long phase = Math.floorMod(System.currentTimeMillis() + Math.floorMod(id.hashCode(), 4000), cycle);
-			float progress;
-			if (phase < MARQUEE_HOLD_MS) {
-				progress = 0f;
-			} else if (phase < MARQUEE_HOLD_MS + travel) {
-				progress = Easing.inOutCubic((phase - MARQUEE_HOLD_MS) / (float) travel);
-			} else if (phase < 2 * MARQUEE_HOLD_MS + travel) {
-				progress = 1f;
-			} else {
-				progress = 1f - Easing.inOutCubic((phase - 2 * MARQUEE_HOLD_MS - travel) / (float) travel);
-			}
-			ui.pushClip(x, y - 1, w, font.lineHeight + 2);
-			ui.g().pose().pushMatrix();
-			ui.g().pose().translate(-progress * overflow, 0f);
-			Draw.text(ui.g(), font, text, x, y, color);
-			ui.g().pose().popMatrix();
-			ui.popClip();
+			scrollText(ui, text, x, y, w, color, System.currentTimeMillis() + Math.floorMod(id.hashCode(), 4000));
 		}
-		if (hovered && ui.hovered(x, y - 2, w, font.lineHeight + 4)) {
+		marqueeTooltip(ui, id, text, x, y, w, hovered);
+	}
+
+	public static void marqueeOnHover(UiContext ui, String id, Component text, int x, int y, int w, int color, boolean active, boolean tooltip) {
+		var font = ui.font();
+		if (font.width(text) <= w) {
+			MARQUEE_START.remove(id);
+			HOVER_START.remove(id);
+			Draw.text(ui.g(), font, text, x, y, color);
+			return;
+		}
+		if (active && ui.animationsEnabled()) {
+			long now = System.currentTimeMillis();
+			long start = MARQUEE_START.computeIfAbsent(id, key -> now);
+			scrollText(ui, text, x, y, w, color, now - start + MARQUEE_HOLD_MS - MARQUEE_HOVER_DELAY_MS);
+		} else {
+			MARQUEE_START.remove(id);
+			Draw.text(ui.g(), font, Draw.ellipsize(font, text, w), x, y, color);
+		}
+		marqueeTooltip(ui, id, text, x, y, w, tooltip);
+	}
+
+	private static void scrollText(UiContext ui, Component text, int x, int y, int w, int color, long clock) {
+		var font = ui.font();
+		int overflow = font.width(text) - w;
+		long travel = Math.max(1L, Math.round(overflow / MARQUEE_SPEED * 1000f));
+		long cycle = 2 * (MARQUEE_HOLD_MS + travel);
+		long phase = Math.floorMod(clock, cycle);
+		float progress;
+		if (phase < MARQUEE_HOLD_MS) {
+			progress = 0f;
+		} else if (phase < MARQUEE_HOLD_MS + travel) {
+			progress = Easing.inOutCubic((phase - MARQUEE_HOLD_MS) / (float) travel);
+		} else if (phase < 2 * MARQUEE_HOLD_MS + travel) {
+			progress = 1f;
+		} else {
+			progress = 1f - Easing.inOutCubic((phase - 2 * MARQUEE_HOLD_MS - travel) / (float) travel);
+		}
+		ui.pushClip(x, y - 1, w, font.lineHeight + 2);
+		ui.g().pose().pushMatrix();
+		ui.g().pose().translate(-progress * overflow, 0f);
+		Draw.text(ui.g(), font, text, x, y, color);
+		ui.g().pose().popMatrix();
+		ui.popClip();
+	}
+
+	private static void marqueeTooltip(UiContext ui, String id, Component text, int x, int y, int w, boolean hovered) {
+		if (hovered && ui.hovered(x, y - 2, w, ui.font().lineHeight + 4)) {
 			long now = System.currentTimeMillis();
 			long since = HOVER_START.computeIfAbsent(id, key -> now);
 			if (now - since >= TOOLTIP_DELAY_MS) {

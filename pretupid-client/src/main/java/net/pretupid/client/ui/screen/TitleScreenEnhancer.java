@@ -37,6 +37,13 @@ public final class TitleScreenEnhancer {
 	private long lastInit;
 	private Button newsButton;
 	private Button updateButton;
+	private float parallaxX;
+	private float parallaxY;
+	private float markerX;
+	private float markerY;
+	private float markerWidth;
+	private float markerOpacity;
+	private long markerAt = System.nanoTime();
 
 	private record Entry(AbstractWidget widget, int baseY, int order) {
 	}
@@ -148,7 +155,7 @@ public final class TitleScreenEnhancer {
 		float fade = animated ? Easing.outCubic(Math.clamp((now - animationStart) / 1200f, 0f, 1f)) : 1f;
 		float pulse = 0.5f + 0.5f * (float) Math.sin(now / 2400.0);
 		Draw.verticalGradient(graphics, 0, 0, width, height / 3, Colors.withAlpha(0x000000, Math.round(0xA0 * fade)), 0x00000000);
-		Draw.verticalGradient(graphics, 0, height / 2, width, height - height / 2, 0x00000000, Colors.withAlpha(0x000000, Math.round(0xC0 * fade)));
+		Draw.verticalGradient(graphics, 0, height / 2, width, height - height / 2, 0x00000000, Colors.withAlpha(0x000000, Math.round(0x58 * fade)));
 		int side = Math.max(24, width / 6);
 		for (int i = 0; i < side; i += 2) {
 			int alpha = Math.round(0x70 * fade * (1f - i / (float) side) * (1f - i / (float) side));
@@ -170,21 +177,60 @@ public final class TitleScreenEnhancer {
 				Draw.rect(graphics, haloX - inner, haloY + dy, inner * 2, 2, Colors.withAlpha(Theme.accent(), alpha));
 			}
 		}
-		int glow = Colors.withAlpha(Theme.accent(), Math.round((60 + 45 * pulse) * fade));
-		Draw.verticalGradient(graphics, 0, height - 110, width, 110, 0x00000000, glow);
 		if (animated) {
-			for (int i = 0; i < 46; i++) {
+			Minecraft minecraft = Minecraft.getInstance();
+			float targetX = (float) (minecraft.mouseHandler.xpos() / Math.max(1, minecraft.getWindow().getScreenWidth())) - 0.5f;
+			float targetY = (float) (minecraft.mouseHandler.ypos() / Math.max(1, minecraft.getWindow().getScreenHeight())) - 0.5f;
+			parallaxX += (targetX - parallaxX) * 0.06f;
+			parallaxY += (targetY - parallaxY) * 0.06f;
+			for (int i = 0; i < 36; i++) {
 				long seed = i * 2654435761L;
-				float speed = 6f + (seed >>> 8 & 15);
-				float life = ((now / 1000f) * speed / height + ((seed >>> 16) & 1023) / 1023f) % 1f;
-				float px = ((seed >>> 4) & 4095) / 4095f * width + (float) Math.sin(now / 1700.0 + i) * 8f;
-				float py = height * (1.05f - life * 1.1f);
-				float twinkle = 0.5f + 0.5f * (float) Math.sin(now / 380.0 + i * 1.7);
-				int alpha = Math.round(fade * twinkle * 150 * Math.min(1f, Math.min(life * 5f, (1f - life) * 3f)));
-				int size = (seed >>> 24 & 3) == 0 ? 2 : 1;
+				float depth = (i % 3 + 1) / 3f;
+				float speed = (4f + (seed >>> 8 & 7)) * (0.6f + depth);
+				double travel = (now % 3_600_000L) / 1000.0 * speed / height + ((seed >>> 16) & 1023) / 1023.0;
+				float life = (float) (travel - Math.floor(travel));
+				float px = ((seed >>> 4) & 4095) / 4095f * width + (float) Math.sin(now / 2100.0 + i) * 6f - parallaxX * (4f + 16f * depth);
+				float py = height * (1.05f - life * 1.1f) - parallaxY * (2f + 8f * depth);
+				float twinkle = 0.55f + 0.45f * (float) Math.sin(now / 520.0 + i * 1.7);
+				int alpha = Math.round(fade * twinkle * (50 + 80 * depth) * Math.min(1f, Math.min(life * 5f, (1f - life) * 3f)));
+				int size = depth > 0.9f ? 2 : 1;
 				int color = (seed >>> 28 & 1) == 0 ? Theme.accent() : 0xFFFFF2D6;
 				Draw.rect(graphics, Math.round(px), Math.round(py), size, size, Colors.withAlpha(color, alpha));
 			}
+		}
+	}
+
+	private void drawHoverMarker(Gfx graphics, Screen screen, int alpha, boolean animated) {
+		AbstractWidget target = null;
+		for (AbstractWidget widget : Platform.widgets(screen)) {
+			if (widget.visible && widget.active && widget.isHovered() && widget.getWidth() >= 60 && widget.getHeight() >= 18) {
+				target = widget;
+				break;
+			}
+		}
+		long now = System.nanoTime();
+		float delta = Math.clamp((now - markerAt) / 1_000_000_000f, 0f, 0.1f);
+		markerAt = now;
+		float rate = animated ? 1f - (float) Math.exp(-delta * 18f) : 1f;
+		if (target != null) {
+			float x = target.getX() + 2;
+			float y = target.getY() + target.getHeight() - 3;
+			float width = target.getWidth() - 4;
+			if (markerOpacity < 0.02f) {
+				markerX = x;
+				markerY = y;
+				markerWidth = width;
+			} else {
+				markerX += (x - markerX) * rate;
+				markerY += (y - markerY) * rate;
+				markerWidth += (width - markerWidth) * rate;
+			}
+			markerOpacity += (1f - markerOpacity) * rate;
+		} else {
+			markerOpacity -= markerOpacity * rate;
+		}
+		if (markerOpacity >= 0.02f) {
+			Draw.rect(graphics, Math.round(markerX), Math.round(markerY), Math.round(markerWidth), 1, Colors.withAlpha(Theme.accent(), Math.round(alpha * markerOpacity)));
 		}
 	}
 
@@ -200,6 +246,7 @@ public final class TitleScreenEnhancer {
 		if (alpha < 8) {
 			return;
 		}
+		drawHoverMarker(graphics, screen, alpha, client.settings().animations.enabled());
 		Component brand = Component.literal("Pretupid Client " + PretupidInfo.displayVersion());
 		int y = screen.height - 20;
 		Draw.text(graphics, font, brand, 2, y, Colors.withAlpha(0xFFFFFF, Math.round(alpha * 0.85f)));

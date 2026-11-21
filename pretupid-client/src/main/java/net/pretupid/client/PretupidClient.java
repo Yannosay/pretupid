@@ -132,6 +132,7 @@ public final class PretupidClient implements ClientModInitializer {
 	private final ChatEmojis chatEmojis = new ChatEmojis();
 	private final CinematicDirector cinematic = new CinematicDirector();
 	private final net.pretupid.client.screenie.Screenies screenies = new net.pretupid.client.screenie.Screenies();
+	private final net.pretupid.client.music.MusicController music = new net.pretupid.client.music.MusicController();
 	private final LocalHosting hosting = new LocalHosting();
 	private final ModIcons modIcons = new ModIcons();
 	private final SkinLibrary skins = new SkinLibrary(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID));
@@ -201,6 +202,8 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new BiomeHud());
 		modules.register(new DayHud());
 		modules.register(new LookAtHud());
+		modules.register(new net.pretupid.client.module.hud.SpeedrunTimerModule());
+		modules.register(new net.pretupid.client.module.hud.NowPlayingModule());
 		modules.register(new DynamicFpsModule());
 		modules.register(new EntityCullingModule());
 		modules.register(new ParticleLimiterModule());
@@ -228,6 +231,7 @@ public final class PretupidClient implements ClientModInitializer {
 		modules.register(new TabPingModule());
 		modules.register(new OwnNametagModule());
 		modules.register(new WaypointsModule());
+		modules.register(new net.pretupid.client.module.utility.MinimapModule());
 		modules.register(new CompactChatModule());
 		modules.register(new NickHiderModule());
 	}
@@ -332,6 +336,13 @@ public final class PretupidClient implements ClientModInitializer {
 								com.mojang.brigadier.arguments.StringArgumentType.getString(context, "name"))))))
 					.then(Platform.literal("list")
 						.executes(context -> waypointFeedback(context.getSource(), waypoints().list(Minecraft.getInstance())))))
+				.then(Platform.literal("speedrun")
+					.then(Platform.literal("start")
+						.executes(context -> waypointFeedback(context.getSource(), modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandStart(Minecraft.getInstance()))))
+					.then(Platform.literal("pause")
+						.executes(context -> waypointFeedback(context.getSource(), modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandPause(Minecraft.getInstance()))))
+					.then(Platform.literal("reset")
+						.executes(context -> waypointFeedback(context.getSource(), modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandReset(Minecraft.getInstance())))))
 				.then(Platform.literal("serverrules")
 					.executes(context -> {
 						for (net.minecraft.network.chat.Component line : net.pretupid.client.network.ServerRulesGuide.lines(modules)) {
@@ -385,6 +396,7 @@ public final class PretupidClient implements ClientModInitializer {
 		emoteKeys.tick(minecraft);
 		combat.tick(minecraft);
 		modules.tick(minecraft);
+		music.tick(minecraft);
 		boolean online = settings.sharePresence.enabled();
 		if (!online && session.token() != null) {
 			presence.signOut();
@@ -496,6 +508,10 @@ public final class PretupidClient implements ClientModInitializer {
 
 	public net.pretupid.client.screenie.Screenies screenies() {
 		return screenies;
+	}
+
+	public net.pretupid.client.music.MusicController music() {
+		return music;
 	}
 
 	public CinematicDirector cinematic() {

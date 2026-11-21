@@ -216,9 +216,11 @@ public final class EmoteWheelScreen extends PretupidScreen {
 		Draw.shadow(g, cx - labelWidth / 2, labelY, labelWidth, 14, 2, 0.5f * open);
 		Draw.chamfer(g, cx - labelWidth / 2, labelY, labelWidth, 14, Colors.withAlpha(0x0B0E14, Math.round(200 * open)));
 		Draw.centered(g, font, Draw.ellipsize(font, title, labelWidth - 8), cx, labelY + 3, selected >= 0 ? Theme.accentText() : Theme.TEXT);
-		Component hint = Component.translatable(holdMode && !released ? "pretupid.emotes.hint_hold" : "pretupid.emotes.hint_click");
-		float hintScale = 0.75f;
-		Draw.scaled(g, font, hint, cx - font.width(hint) * hintScale / 2f, labelY + 18, hintScale, Theme.TEXT_DIM, false);
+		if (!holdMode || released) {
+			Component hint = Component.translatable("pretupid.emotes.hint_click");
+			float hintScale = 0.75f;
+			Draw.scaled(g, font, hint, cx - font.width(hint) * hintScale / 2f, labelY + 18, hintScale, Theme.TEXT_DIM, false);
+		}
 		if (selected >= 0) {
 			Component number = Component.literal(String.valueOf(selected + 1));
 			float numberScale = 2f * (1f + 0.25f * (1f - t));

@@ -9,6 +9,7 @@ import net.pretupid.client.PretupidClient;
 import net.pretupid.client.config.ConfigStore;
 import net.pretupid.client.hud.HudModule;
 import net.pretupid.client.module.Category;
+import net.pretupid.client.module.ManagedModule;
 import net.pretupid.client.module.Module;
 import net.pretupid.client.setting.Setting;
 import net.pretupid.client.ui.Draw;
@@ -193,7 +194,7 @@ public final class ModulesPage implements MenuPage {
 		Draw.text(g, font, Draw.ellipsize(font, module.name(), textWidth), textX, y + 9, Theme.TEXT);
 		Component description = module.isPaused() ? Component.translatable("pretupid.compat.paused_badge") : module.description();
 		boolean pausedHover = hover && module.isPaused() && ui.mouseX() < x + w - 50;
-		Widgets.marquee(ui, id + ".description", description, textX, y + 22, textWidth + 18, module.isPaused() ? Theme.WARNING : Theme.TEXT_MUTED, hover && !pausedHover);
+		Widgets.marqueeOnHover(ui, id + ".description", description, textX, y + 22, textWidth + 18, module.isPaused() ? Theme.WARNING : Theme.TEXT_MUTED, hover, hover && !pausedHover);
 		if (pausedHover) {
 			ui.tooltip(module.pauseReason());
 		}
@@ -233,7 +234,8 @@ public final class ModulesPage implements MenuPage {
 		}
 		boolean hud = module instanceof HudModule;
 		boolean crosshair = module instanceof net.pretupid.client.module.visual.CrosshairModule;
-		int extra = Widgets.ROW_HEIGHT + 14 + (hud && screen.inWorld() ? Widgets.ROW_HEIGHT + 4 : 0) + (crosshair ? 24 : 0);
+		ManagedModule managed = module instanceof ManagedModule candidate && candidate.canManage(net.minecraft.client.Minecraft.getInstance()) ? candidate : null;
+		int extra = Widgets.ROW_HEIGHT + 14 + (hud && screen.inWorld() ? Widgets.ROW_HEIGHT + 4 : 0) + (crosshair ? 24 : 0) + (managed != null ? 24 : 0);
 		int contentHeight = Math.max(1, visible.size()) * Widgets.ROW_HEIGHT + extra;
 		int listH = h - 28;
 		settingsScroll.begin(ui, "settings." + module.id(), x, listY, w, listH, contentHeight);
@@ -243,6 +245,11 @@ public final class ModulesPage implements MenuPage {
 		if (crosshair) {
 			Widgets.button(ui, "settings.crosshair_designer", x + 4, rowY + 2, 150, 18, Component.translatable("pretupid.crosshair.open_designer"), Widgets.ButtonStyle.PRIMARY,
 				() -> Platform.setScreen(new net.pretupid.client.ui.screen.CrosshairDesignerScreen(screen)));
+			rowY += 24;
+		}
+		if (managed != null) {
+			Widgets.button(ui, "settings.manage." + module.id(), x + 4, rowY + 2, 150, 18, managed.manageLabel(), Widgets.ButtonStyle.PRIMARY,
+				() -> Platform.setScreen(managed.createManager(screen)));
 			rowY += 24;
 		}
 		int index = 0;

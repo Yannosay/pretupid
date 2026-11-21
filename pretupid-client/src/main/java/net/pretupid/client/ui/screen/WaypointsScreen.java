@@ -17,11 +17,14 @@ import net.pretupid.client.util.Colors;
 
 public final class WaypointsScreen extends PretupidScreen {
 	private static final int ROW = 26;
+	private static final long CONFIRM_MS = 3000L;
 
 	private final WaypointsModule module = PretupidClient.get().modules().get(WaypointsModule.class);
 	private final ScrollState scroll = new ScrollState();
 	private final TextInput nameInput = new TextInput(WaypointsModule.MAX_NAME_LENGTH);
 	private WaypointsModule.Waypoint editing;
+	private WaypointsModule.Waypoint pendingDelete;
+	private long pendingDeleteAt;
 	private boolean allDimensions;
 	private Component status;
 	private boolean statusError;
@@ -138,7 +141,14 @@ public final class WaypointsScreen extends PretupidScreen {
 		Draw.text(g, font, Draw.ellipsize(font, Component.literal(detail), w - 210), x + 24, y + 13, Theme.TEXT_DIM);
 		int bx = x + w - 4;
 		bx -= 48;
-		Widgets.button(ui, "waypoints.delete." + waypoint.name(), bx, y + 4, 48, 16, Component.translatable("pretupid.waypoints.delete"), Widgets.ButtonStyle.DANGER, () -> {
+		boolean confirming = waypoint.equals(pendingDelete) && System.currentTimeMillis() - pendingDeleteAt < CONFIRM_MS;
+		Widgets.button(ui, "waypoints.delete." + waypoint.name(), bx, y + 4, 48, 16, Component.translatable(confirming ? "pretupid.waypoints.confirm_delete" : "pretupid.waypoints.delete"), Widgets.ButtonStyle.DANGER, () -> {
+			if (!confirming) {
+				pendingDelete = waypoint;
+				pendingDeleteAt = System.currentTimeMillis();
+				return;
+			}
+			pendingDelete = null;
 			module.delete(minecraft, waypoint);
 			if (waypoint.equals(editing)) {
 				editing = null;

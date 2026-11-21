@@ -18,6 +18,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.language.I18n;
@@ -31,6 +32,7 @@ import net.pretupid.client.hud.HudModule;
 import net.pretupid.client.hud.HudPosition;
 import net.pretupid.client.hud.OverlayRenderer;
 import net.pretupid.client.module.Category;
+import net.pretupid.client.module.ManagedModule;
 import net.pretupid.client.platform.Gfx;
 import net.pretupid.client.platform.Platform;
 import net.pretupid.client.setting.BooleanSetting;
@@ -40,11 +42,12 @@ import net.pretupid.client.setting.NumberSetting;
 import net.pretupid.client.ui.Draw;
 import net.pretupid.client.ui.Icon;
 import net.pretupid.client.ui.Theme;
+import net.pretupid.client.ui.screen.WaypointsScreen;
 import net.pretupid.client.util.Colors;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-public final class WaypointsModule extends HudModule implements OverlayRenderer {
+public final class WaypointsModule extends HudModule implements OverlayRenderer, ManagedModule {
 	public static final int MAX_NAME_LENGTH = 24;
 	public static final int[] PALETTE = {0xFF5AB0FF, 0xFF4ADE80, 0xFFFACC15, 0xFFF97316, 0xFFF43F5E, 0xFFC084FC, 0xFF2DD4BF, 0xFFFFFFFF};
 	private static final int MAX_PER_WORLD = 96;
@@ -53,7 +56,11 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 	private static final double ARRIVAL_DISTANCE = 3.0;
 	private static final String OVERWORLD = "minecraft:overworld";
 	private static final String NETHER = "minecraft:the_nether";
-	private static final String[] ARROWS = {"↑", "↗", "→", "↘", "↓", "↙", "←", "↖"};
+	private static final int ARROW_SIZE = 7;
+	private static final int ARROW_SPACE = 10;
+	private static final String[] ARROW_STRAIGHT = {"...#...", "..###..", ".#####.", "#######", "..###..", "..###..", "..###.."};
+	private static final String[] ARROW_DIAGONAL = {"..#####", "....###", "...####", "..###.#", ".###..#", "###....", ".#....."};
+	private static final boolean[][] ARROWS = buildArrows();
 
 	public record Waypoint(String name, int x, int y, int z, String dimension, int color, boolean visible, boolean death, long created) {
 		public Waypoint withName(String value) {
@@ -79,7 +86,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 	private final NumberSetting maxShown = add(new NumberSetting("max_shown", 3, 1, 8, 1));
 	private final BooleanSetting worldMarkers = add(new BooleanSetting("world_markers", true));
 	private final NumberSetting markerRange = add(new NumberSetting("marker_range", 2000, 50, 10000, 50, " m"));
-	private final BooleanSetting netherConversion = add(new BooleanSetting("nether_conversion", true));
+	private final BooleanSetting crossDimension = add(new BooleanSetting("cross_dimension", false));
 	private final BooleanSetting deathWaypoint = add(new BooleanSetting("death_waypoint", true));
 	private final BooleanSetting clearDeathOnArrival = add(new BooleanSetting("clear_death_on_arrival", true));
 	private final BooleanSetting showCoordinates = add(new BooleanSetting("show_coordinates", false));
@@ -285,7 +292,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		double z = waypoint.z() + 0.5;
 		boolean converted = false;
 		if (!waypoint.dimension().equals(here)) {
-			if (!netherConversion.enabled()) {
+			if (!crossDimension.enabled()) {
 				return Optional.empty();
 			}
 			if (waypoint.dimension().equals(OVERWORLD) && here.equals(NETHER)) {
@@ -303,7 +310,35 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		return Optional.of(new Located(waypoint, position, position.distanceTo(player.position()), converted));
 	}
 
-	private static String worldKey(Minecraft minecraft) {
+	public List<Located> locatedHere(Minecraft minecraft) {
+		if (minecraft.player == null || minecraft.level == null) {
+			return List.of();
+		}
+		List<Located> result = new ArrayList<>();
+		for (Waypoint waypoint : current(minecraft)) {
+			if (waypoint.visible()) {
+				locate(minecraft, waypoint).ifPresent(result::add);
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public Component manageLabel() {
+		return Component.translatable("pretupid.waypoints.manage");
+	}
+
+	@Override
+	public boolean canManage(Minecraft minecraft) {
+		return minecraft.level != null;
+	}
+
+	@Override
+	public Screen createManager(Screen parent) {
+		return new WaypointsScreen(parent);
+	}
+
+	public static String worldKey(Minecraft minecraft) {
 		MinecraftServer local = minecraft.getSingleplayerServer();
 		if (local != null) {
 			return "local:" + local.getWorldData().getLevelName().toLowerCase(Locale.ROOT);
@@ -391,14 +426,14 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		}
 	}
 
-	private record Shown(Waypoint waypoint, double distance, String arrow) {
+	private record Shown(Waypoint waypoint, double distance, int sector) {
 	}
 
 	private List<Shown> shown(Minecraft minecraft, boolean preview) {
 		LocalPlayer player = minecraft.player;
 		if (preview && (player == null || minecraft.level == null || current(minecraft).isEmpty())) {
-			return List.of(new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_home"), 0, 64, 0, "", PALETTE[0], true, false, 0L), 128, ARROWS[1]),
-				new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_death"), 0, 12, 0, "", 0xFFF43F5E, true, true, 0L), 412, ARROWS[5]));
+			return List.of(new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_home"), 0, 64, 0, "", PALETTE[0], true, false, 0L), 128, 1),
+				new Shown(new Waypoint(I18n.get("pretupid.waypoints.preview_death"), 0, 12, 0, "", 0xFFF43F5E, true, true, 0L), 412, 5));
 		}
 		if (player == null || minecraft.level == null) {
 			return List.of();
@@ -414,7 +449,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 				float bearing = (float) Math.toDegrees(Math.atan2(-dx, dz));
 				float relative = Mth.wrapDegrees(bearing - player.getYRot());
 				int sector = Math.floorMod(Math.round(relative / 45f), 8);
-				rows.add(new Shown(waypoint, located.distance(), ARROWS[sector]));
+				rows.add(new Shown(waypoint, located.distance(), sector));
 			});
 		}
 		rows.sort(Comparator.comparingDouble(Shown::distance));
@@ -427,7 +462,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 
 	private String line(Shown shown) {
 		String coordinates = showCoordinates.enabled() ? " (" + shown.waypoint().x() + ", " + shown.waypoint().y() + ", " + shown.waypoint().z() + ")" : "";
-		return shown.arrow() + " " + shown.waypoint().name() + "  " + distanceText(shown.distance()) + coordinates;
+		return shown.waypoint().name() + "  " + distanceText(shown.distance()) + coordinates;
 	}
 
 	@Override
@@ -439,7 +474,7 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 	public int width(Font font, Minecraft minecraft, boolean preview) {
 		int width = 40;
 		for (Shown shown : shown(minecraft, preview)) {
-			width = Math.max(width, font.width(line(shown)) + 6);
+			width = Math.max(width, font.width(line(shown)) + 6 + ARROW_SPACE);
 		}
 		return width + padding() * 2;
 	}
@@ -457,9 +492,15 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		boolean shadow = textShadow.enabled();
 		for (Shown shown : rows) {
 			Draw.rect(graphics, padding(), y + 1, 3, 7, shown.waypoint().color());
-			String prefix = shown.arrow() + " " + shown.waypoint().name() + "  ";
-			int x = padding() + 6;
-			graphics.text(font, prefix, x, y, nameColor.resolve(), shadow);
+			String prefix = shown.waypoint().name() + "  ";
+			int arrowX = padding() + 6;
+			int nameColorValue = nameColor.resolve();
+			if (shadow) {
+				drawArrow(graphics, arrowX + 1, y + 1, shown.sector(), (nameColorValue & 0xFF000000) | ((nameColorValue & 0xFCFCFC) >> 2));
+			}
+			drawArrow(graphics, arrowX, y, shown.sector(), nameColorValue);
+			int x = arrowX + ARROW_SPACE;
+			graphics.text(font, prefix, x, y, nameColorValue, shadow);
 			graphics.text(font, line(shown).substring(prefix.length()), x + font.width(prefix), y, distanceColor.resolve(), shadow);
 			y += ROW_HEIGHT;
 		}
@@ -582,10 +623,8 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		disc(graphics, px, py, 6, Colors.withAlpha(color, 230));
 		float nx = -dy;
 		float ny = dx;
-		int tipX = Math.round(px + dx * 12);
-		int tipY = Math.round(py + dy * 12);
-		triangle(graphics, Math.round(px + dx * 6 + nx * 4), Math.round(py + dy * 6 + ny * 4), Math.round(px + dx * 6 - nx * 4), Math.round(py + dy * 6 - ny * 4),
-			tipX, tipY, Colors.withAlpha(color, 230));
+		triangle(graphics, px + 0.5f + dx * 5 + nx * 5, py + 0.5f + dy * 5 + ny * 5, px + 0.5f + dx * 5 - nx * 5, py + 0.5f + dy * 5 - ny * 5,
+			px + 0.5f + dx * 13, py + 0.5f + dy * 13, Colors.withAlpha(color, 230));
 		String glyph = located.waypoint().death() ? "☠" : located.waypoint().name().isEmpty() ? "•" : located.waypoint().name().substring(0, 1).toUpperCase(Locale.ROOT);
 		int textColor = luminance(color) > 0.6f ? 0xFF101318 : 0xFFFFFFFF;
 		graphics.text(font, glyph, px - font.width(glyph) / 2 + 1, py - 3, textColor, false);
@@ -593,6 +632,46 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		int textX = Math.clamp(Math.round(px - dx * 14) - font.width(meters) / 2, 2, width - font.width(meters) - 2);
 		int textY = Math.clamp(Math.round(py - dy * 14) - 4, 2, height - 10);
 		graphics.text(font, meters, textX, textY, 0xFFFFFFFF, true);
+	}
+
+	private static boolean[][] buildArrows() {
+		boolean[][] arrows = new boolean[8][];
+		for (int sector = 0; sector < 8; sector++) {
+			String[] source = sector % 2 == 0 ? ARROW_STRAIGHT : ARROW_DIAGONAL;
+			boolean[] cells = new boolean[ARROW_SIZE * ARROW_SIZE];
+			for (int y = 0; y < ARROW_SIZE; y++) {
+				for (int x = 0; x < ARROW_SIZE; x++) {
+					int px = x;
+					int py = y;
+					for (int turn = 0; turn < sector / 2; turn++) {
+						int next = ARROW_SIZE - 1 - py;
+						py = px;
+						px = next;
+					}
+					cells[py * ARROW_SIZE + px] = source[y].charAt(x) == '#';
+				}
+			}
+			arrows[sector] = cells;
+		}
+		return arrows;
+	}
+
+	private static void drawArrow(Gfx graphics, int x, int y, int sector, int color) {
+		boolean[] cells = ARROWS[Math.floorMod(sector, 8)];
+		for (int row = 0; row < ARROW_SIZE; row++) {
+			int column = 0;
+			while (column < ARROW_SIZE) {
+				if (!cells[row * ARROW_SIZE + column]) {
+					column++;
+					continue;
+				}
+				int start = column;
+				while (column < ARROW_SIZE && cells[row * ARROW_SIZE + column]) {
+					column++;
+				}
+				graphics.fill(x + start, y + row, x + column, y + row + 1, color);
+			}
+		}
 	}
 
 	private static float luminance(int argb) {
@@ -634,25 +713,27 @@ public final class WaypointsModule extends HudModule implements OverlayRenderer 
 		}
 	}
 
-	private static void triangle(Gfx graphics, int x1, int y1, int x2, int y2, int x3, int y3, int color) {
-		int minY = Math.min(y1, Math.min(y2, y3));
-		int maxY = Math.max(y1, Math.max(y2, y3));
-		for (int y = minY; y <= maxY; y++) {
+	static void triangle(Gfx graphics, float x1, float y1, float x2, float y2, float x3, float y3, int color) {
+		int minY = (int) Math.floor(Math.min(y1, Math.min(y2, y3)));
+		int maxY = (int) Math.ceil(Math.max(y1, Math.max(y2, y3)));
+		float[][] edges = {{x1, y1, x2, y2}, {x2, y2, x3, y3}, {x3, y3, x1, y1}};
+		for (int y = minY; y < maxY; y++) {
+			float sample = y + 0.5f;
 			float left = Float.MAX_VALUE;
 			float right = -Float.MAX_VALUE;
-			int[][] edges = {{x1, y1, x2, y2}, {x2, y2, x3, y3}, {x3, y3, x1, y1}};
-			for (int[] edge : edges) {
-				int ay = edge[1];
-				int by = edge[3];
-				if (ay == by || y < Math.min(ay, by) || y > Math.max(ay, by)) {
+			for (float[] edge : edges) {
+				float ay = edge[1];
+				float by = edge[3];
+				if (ay == by || sample < Math.min(ay, by) || sample >= Math.max(ay, by)) {
 					continue;
 				}
-				float x = edge[0] + (edge[2] - edge[0]) * (y - ay) / (float) (by - ay);
+				float x = edge[0] + (edge[2] - edge[0]) * (sample - ay) / (by - ay);
 				left = Math.min(left, x);
 				right = Math.max(right, x);
 			}
 			if (left <= right) {
-				graphics.fill(Math.round(left), y, Math.round(right) + 1, y + 1, color);
+				int start = Math.round(left);
+				graphics.fill(start, y, Math.max(start + 1, Math.round(right)), y + 1, color);
 			}
 		}
 	}

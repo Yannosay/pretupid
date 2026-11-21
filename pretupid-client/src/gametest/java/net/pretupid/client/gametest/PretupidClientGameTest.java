@@ -69,6 +69,7 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			testFreecam(context, world, feet);
 			testCinematic(context, world, feet);
 			testWaypoints(context, world, feet);
+			testNewModules(context, world, feet);
 			testScreenies(context);
 			testTexturedWearable(context);
 			testCosmetics(context);
@@ -446,6 +447,96 @@ public final class PretupidClientGameTest implements FabricClientGameTest {
 			check(!waypoints.names(minecraft).contains("Game test base"), "Waypoint was not removed");
 		});
 		context.waitTicks(20);
+	}
+
+	private static void testNewModules(ClientGameTestContext context, TestSingleplayerContext world, BlockPos feet) {
+		world.getServer().runCommand("gamemode creative @a");
+		context.runOnClient(minecraft -> {
+			var modules = PretupidClient.get().modules();
+			modules.get(WaypointsModule.class).setEnabled(true);
+			modules.get(net.pretupid.client.module.utility.MinimapModule.class).setEnabled(true);
+			modules.get(net.pretupid.client.module.hud.NowPlayingModule.class).setEnabled(true);
+			modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).setEnabled(true);
+			WaypointsModule waypoints = modules.get(WaypointsModule.class);
+			waypoints.add(minecraft, "Here");
+			modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandStart(minecraft);
+			var music = PretupidClient.get().music();
+			var tracks = music.catalog().tracks(minecraft);
+			check(tracks.size() > 40, "Music catalog is incomplete: " + tracks.size());
+			var track = tracks.stream().filter(entry -> entry.title().equals("Sweden")).findFirst().orElse(tracks.get(0));
+			music.play(minecraft, track);
+			check(track.equals(music.current(minecraft)), "Chosen track is not current");
+			music.enqueue(minecraft, tracks.get(1));
+			check(music.queue().size() == 1, "Track was not queued");
+		});
+		String[][] spots = {{"0", "-30"}, {"24", "-24"}, {"30", "0"}, {"24", "24"}, {"0", "30"}, {"-24", "24"}, {"-30", "0"}, {"-24", "-24"}};
+		for (int i = 0; i < spots.length; i++) {
+			int x = feet.getX() + Integer.parseInt(spots[i][0]);
+			int z = feet.getZ() + Integer.parseInt(spots[i][1]);
+			int index = i;
+			world.getServer().runCommand("tp @a " + x + " " + feet.getY() + " " + z);
+			context.waitTicks(3);
+			context.runOnClient(minecraft -> PretupidClient.get().modules().get(WaypointsModule.class).add(minecraft, "Dir " + index));
+		}
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 0 20");
+		context.waitTicks(80);
+		context.takeScreenshot("pretupid-new-modules");
+		context.setScreen(() -> new net.pretupid.client.ui.screen.MusicScreen(null));
+		context.waitTicks(5);
+		context.takeScreenshot("pretupid-music-player");
+		context.setScreen(() -> null);
+		world.getServer().runCommand("tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 45 20");
+		context.runOnClient(minecraft -> {
+			var music = PretupidClient.get().music();
+			music.skip(minecraft);
+			check(music.queue().isEmpty(), "Skip did not advance the queue");
+			setNowPlayingWhenMuted(true);
+		});
+		context.waitTicks(30);
+		context.takeScreenshot("pretupid-now-playing");
+		context.runOnClient(minecraft -> {
+			var music = PretupidClient.get().music();
+			check(music.current(minecraft) != null && music.overridesVanilla(), "Queued track stopped playing");
+			setNowPlayingWhenMuted(false);
+			music.useDynamic(minecraft);
+			check(!music.overridesVanilla(), "Dynamic music was not restored");
+		});
+		world.getServer().runCommand("execute in minecraft:the_nether run tp @a " + feet.getX() + " 70 " + feet.getZ());
+		context.waitTicks(60);
+		context.runOnClient(minecraft -> {
+			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
+			check(waypoints.locatedHere(minecraft).isEmpty(), "Overworld waypoints are visible in the Nether");
+		});
+		context.takeScreenshot("pretupid-minimap-nether");
+		world.getServer().runCommand("execute in minecraft:the_end run tp @a 0 70 0");
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> {
+			WaypointsModule waypoints = PretupidClient.get().modules().get(WaypointsModule.class);
+			check(waypoints.locatedHere(minecraft).isEmpty(), "Overworld waypoints are visible in the End");
+		});
+		world.getServer().runCommand("execute in minecraft:overworld run tp @a " + feet.getX() + " " + feet.getY() + " " + feet.getZ() + " 180 10");
+		world.getServer().runCommand("gamemode survival @a");
+		context.waitTicks(40);
+		context.runOnClient(minecraft -> {
+			var modules = PretupidClient.get().modules();
+			WaypointsModule waypoints = modules.get(WaypointsModule.class);
+			waypoints.remove(minecraft, "Here");
+			for (int i = 0; i < 8; i++) {
+				waypoints.remove(minecraft, "Dir " + i);
+			}
+			modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).commandReset(minecraft);
+			modules.get(net.pretupid.client.module.hud.SpeedrunTimerModule.class).setEnabled(false);
+			modules.get(net.pretupid.client.module.hud.NowPlayingModule.class).setEnabled(false);
+			modules.get(net.pretupid.client.module.utility.MinimapModule.class).setEnabled(false);
+		});
+		context.waitTicks(5);
+	}
+
+	private static void setNowPlayingWhenMuted(boolean value) {
+		PretupidClient.get().modules().get(net.pretupid.client.module.hud.NowPlayingModule.class).settings().stream()
+			.filter(setting -> setting.id().equals("show_when_muted"))
+			.map(net.pretupid.client.setting.BooleanSetting.class::cast)
+			.forEach(setting -> setting.set(value));
 	}
 
 	private static void testScreenies(ClientGameTestContext context) {
